@@ -16,8 +16,11 @@ const dbPath = resolverDbPath();
 const db = new DatabaseSync(dbPath);
 
 console.log('Atualizando e inicializando estrutura de tabelas no SQLite...');
+console.log('[DB] Caminho do banco:', dbPath);
 
-db.exec('PRAGMA foreign_keys = ON;');
+// Desabilitar foreign keys durante a criação das tabelas e inserção de dados iniciais
+// Isso evita erros de constraint em bancos vazios (ex: Render, primeiro deploy)
+db.exec('PRAGMA foreign_keys = OFF;');
 db.exec('PRAGMA journal_mode = WAL;');
 
 // 1. Tabela de Usuários do Sistema (Login & Senha)
