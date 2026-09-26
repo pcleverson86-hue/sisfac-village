@@ -1,0 +1,20152 @@
+// app.js - Lógica Completa SISFAC 2.0 (Autenticação, RBAC, Postos, Férias, Benefícios, Compras & Importação)
+
+// Estado Global da Aplicação
+const state = {
+  usuarioLogado: null,
+  abaAtiva: 'faltas',
+  clientes: [],
+  unidades: [],
+  postos: [],
+  cargos: [],
+  colaboradores: [],
+  freelancers: [],
+  produtos: [],
+  fornecedores: [],
+  orcamentos: [],
+  mesAtual: new Date().toISOString().slice(0, 7), // 'YYYY-MM'
+  matrizDados: null,
+  tipoImportacaoAtual: 'colaboradores',
+  colabSelecionados: new Set(),
+  clientesSelecionados: new Set(),
+  faltasSelecionadas: new Set(),
+  fatSelecionados: new Set(),
+  benefSelecionados: new Set(),
+  feriasSelecionadas: new Set(),
+  freeSelecionados: new Set(),
+  clientesComPostos: [],
+  filtroNomeClientePosto: '',
+  filtroApenasVagasAbertas: false,
+  filtroClientePostoSelectId: '',
+  cargoSelectOrigem: null,
+  relatorioTipoAtual: 'admitidos-demitidos',
+  dadosRelatorioAtual: null,
+  dadosDashboard: null,
+  previaImportacao: [],
+  termoBuscaPrevia: '',
+  linhaCriarPostoPreviaIdx: null,
+  escalas: [],
+  escalaDiasAtivos: new Set(['seg', 'ter', 'qua', 'qui', 'sex']),
+  multiClienteClientes: [],
+  roteirosMultiCliente: [],
+  visaoCalendarioAtiva: false,
+  financeiro: {
+    contas: [],
+    kpis: {},
+    filtroStatus: 'todos',
+    filtroForma: 'todos',
+    filtroFornecedor: 'todos',
+    busca: ''
+  },
+  comprasParcelasTemp: [],
+  comprasParcelasEditTemp: [],
+  sstDocumentos: [],
+  sstModelosOS: [],
+  sstFiltro: {
+    busca: '',
+    tipo: 'todos',
+    statusAssinatura: 'todos',
+    statusArquivo: 'todos'
+  },
+  docSSTVisualizando: null,
+  arquivoDocumentos: [],
+  arquivoFiltro: {
+    busca: '',
+    status: 'todos',
+    tipo: 'todos'
+  }
+};
+
+function abrirModal(modalId) {
+  const el = document.getElementById(modalId);
+  if (el) el.classList.remove('hidden');
+}
+
+function escapeJsString(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// -------------------------------------------------------------
+// INICIALIZAÇÃO DA APLICAÇÃO & SESSÃO
+// -------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+  configurarDataPadrao();
+  verificarSessao();
+  carregarEscalas();
+  // Iniciar polling de comunicados para alertas sonoros (a cada 30s após login)
+  setTimeout(() => iniciarPollingComunicados(), 8000);
+});
+
+
+function configurarDataPadrao() {
+  const mesAtual = state.mesAtual;
+  const hoje = new Date().toISOString().split('T')[0];
+
+  ['filtroFaltasMes', 'filtroFeriasMes', 'benefAnoMes', 'comprasAnoMes', 'dashboardMes', 'relatorioMesFiltro', 'filtroFinanceiroMes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = mesAtual;
+  });
+
+  const elDataFalta = document.getElementById('faltaData');
+  if (elDataFalta) elDataFalta.value = hoje;
+
+  const elCobInicio = document.getElementById('cobDataInicio');
+  if (elCobInicio) elCobInicio.value = hoje;
+
+  const elCobFim = document.getElementById('cobDataFim');
+  if (elCobFim) {
+    const dFim = new Date();
+    dFim.setDate(dFim.getDate() + 30);
+    elCobFim.value = dFim.toISOString().split('T')[0];
+  }
+
+  // Datas padrão para Compras e Financeiro
+  const elOrcDataAdiant = document.getElementById('orcDataAdiantamento_novo');
+  if (elOrcDataAdiant && !elOrcDataAdiant.value) elOrcDataAdiant.value = hoje;
+  const elOrcDataAVista = document.getElementById('orcDataAVista_novo');
+  if (elOrcDataAVista && !elOrcDataAVista.value) elOrcDataAVista.value = hoje;
+  const elBaixaData = document.getElementById('baixaDataPagamento');
+  if (elBaixaData && !elBaixaData.value) elBaixaData.value = hoje;
+  const elAvulsaData = document.getElementById('avulsaDataVencimento');
+  if (elAvulsaData && !elAvulsaData.value) elAvulsaData.value = hoje;
+}
+
+// -------------------------------------------------------------
+// 1. AUTENTICAÇÃO E PERMISSÕES (RBAC)
+// -------------------------------------------------------------
+function verificarSessao() {
+  const sessaoSalva = localStorage.getItem('sisfac_usuario');
+  if (sessaoSalva) {
+    try {
+      const dados = JSON.parse(sessaoSalva);
+      state.usuarioLogado = dados.usuario;
+      state.permissoes = dados.permissoes || [];
+      iniciarAplicacaoAutenticada();
+      return;
+    } catch (e) {
+      localStorage.removeItem('sisfac_usuario');
+    }
+  }
+  // Se não logado, exibir tela de login
+  document.getElementById('telaLogin').classList.remove('hidden');
+}
+
+function preencherLoginRapido(login, senha) {
+  document.getElementById('inputLogin').value = login;
+  document.getElementById('inputSenha').value = senha;
+}
+
+async function efetuarLogin(e) {
+  e.preventDefault();
+  const login = document.getElementById('inputLogin').value;
+  const senha = document.getElementById('inputSenha').value;
+  const divErro = document.getElementById('loginErro');
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login, senha })
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      state.usuarioLogado = json.usuario;
+      state.permissoes = json.permissoes || [];
+      localStorage.setItem('sisfac_usuario', JSON.stringify({
+        usuario: json.usuario,
+        permissoes: json.permissoes
+      }));
+      iniciarAplicacaoAutenticada();
+    } else {
+      divErro.classList.remove('hidden');
+      document.getElementById('loginErroTexto').textContent = json.message || 'Login ou senha incorretos.';
+    }
+  } catch (err) {
+    divErro.classList.remove('hidden');
+    document.getElementById('loginErroTexto').textContent = 'Erro ao conectar com o servidor: ' + err.message;
+  }
+}
+
+function efetuarLogout() {
+  localStorage.removeItem('sisfac_usuario');
+  state.usuarioLogado = null;
+  state.permissoes = [];
+  document.getElementById('telaLogin').classList.remove('hidden');
+}
+
+async function iniciarAplicacaoAutenticada() {
+  document.getElementById('telaLogin').classList.add('hidden');
+  const u = state.usuarioLogado;
+
+  // Atualizar Header com dados do usuário logado
+  document.getElementById('headerUsuarioNome').textContent = u.nome;
+  document.getElementById('headerUsuarioSetor').textContent = `Setor: ${u.setor.toUpperCase()}`;
+  document.getElementById('headerSetorBadge').textContent = u.setor;
+
+  // Se for admin, garantir permissões completas
+  if (isUsuarioAdminMaster() && (!state.permissoes || state.permissoes.length < 10)) {
+    try {
+      const res = await fetch('/api/usuarios');
+      const usuarios = await res.json();
+      const me = usuarios.find(x => x.id === u.id || x.login === u.login);
+      if (me && me.permissoes) {
+        state.permissoes = me.permissoes;
+        localStorage.setItem('sisfac_usuario', JSON.stringify({
+          usuario: state.usuarioLogado,
+          permissoes: state.permissoes
+        }));
+      }
+    } catch(e) {}
+  }
+
+  aplicarPermissoesUI();
+  await carregarDadosBase();
+  navegarParaPrimeiraAbaPermitida();
+  atualizarBadgeFinanceiro();
+}
+
+function isUsuarioAdminMaster() {
+  if (!state.usuarioLogado) return false;
+  const setor = String(state.usuarioLogado.setor || '').toLowerCase().trim();
+  const login = String(state.usuarioLogado.login || '').toLowerCase().trim();
+  return setor === 'admin' || 
+         setor === 'administrador master' || 
+         setor === 'administrador' || 
+         setor.includes('admin') || 
+         login === 'admin' || 
+         state.usuarioLogado.id === 1;
+}
+
+function temPermissao(modulo, acao = 'visualizar') {
+  if (!state.usuarioLogado) return false;
+  if (isUsuarioAdminMaster()) return true;
+
+  if (modulo === 'comunicados' || modulo === 'arquivo') {
+    if (acao === 'visualizar') return true;
+    if (modulo === 'arquivo' && (acao === 'criar' || acao === 'editar')) return true;
+    if (modulo === 'comunicados' && (acao === 'criar' || acao === 'editar' || acao === 'excluir')) {
+      return state.usuarioLogado.pode_enviar_comunicados === 1;
+    }
+  }
+
+  if (modulo === 'sst') {
+    const setor = (state.usuarioLogado?.setor || '').toLowerCase();
+    if (setor.includes('rh') || setor.includes('recursos') || setor.includes('oper') || setor.includes('admin') || setor.includes('seguran')) return true;
+  }
+
+  if (modulo === 'compras') {
+    const setor = (state.usuarioLogado?.setor || '').toLowerCase();
+    if (setor.includes('compra') || setor.includes('suprimento') || setor.includes('admin') || setor.includes('diretor')) return true;
+  }
+
+  const perm = (state.permissoes || []).find(p => p.modulo === modulo);
+  if (!perm) {
+    return false;
+  }
+
+  if (acao === 'visualizar') return perm.pode_visualizar === 1;
+  if (acao === 'criar') return perm.pode_criar === 1;
+  if (acao === 'editar') return perm.pode_editar === 1;
+  if (acao === 'excluir') return perm.pode_excluir === 1;
+  if (acao === 'aprovar') return perm.pode_aprovar === 1;
+  return false;
+}
+
+function aplicarPermissoesUI() {
+  const ehAdmin = isUsuarioAdminMaster();
+
+  // Botão de acesso rápido no topo (ao lado de Mural de Avisos)
+  const headerAdminBtn = document.getElementById('headerBtnAdmin');
+  if (headerAdminBtn) {
+    if (ehAdmin) {
+      headerAdminBtn.classList.remove('hidden');
+    } else {
+      headerAdminBtn.classList.add('hidden');
+    }
+  }
+
+  // Ajustar visibilidade das abas conforme permissões
+  const abasMap = {
+    'dashboard': 'dashboard',
+    'relatorios': 'relatorios',
+    'faltas': 'faltas',
+    'comercial': 'comercial',
+    'comunicados': 'comunicados',
+    'sst': 'sst',
+    'arquivo': 'arquivo',
+    'colaboradores': 'colaboradores',
+    'ferias': 'ferias',
+    'beneficios': 'beneficios',
+    'faturamento': 'faturamento',
+    'freelancers': 'freelancers',
+    'compras': 'compras',
+    'financeiro': 'financeiro',
+    'diretoria': 'diretoria',
+    'clientes': 'clientes',
+    'usuarios': 'usuarios',
+    'denuncias': 'denuncias'
+  };
+
+  for (const [tabId, modulo] of Object.entries(abasMap)) {
+    const btn = document.getElementById(`tabBtn-${tabId}`);
+    if (btn) {
+      let tem = false;
+      if (ehAdmin) {
+        tem = true;
+      } else if (modulo === 'comunicados' || modulo === 'arquivo' || modulo === 'sst') {
+        tem = true;
+      } else if (modulo === 'denuncias') {
+        const setor = (state.usuarioLogado?.setor || '').toLowerCase();
+        tem = ehAdmin || setor.includes('coordena') || setor.includes('operac') || setor.includes('cop') || setor.includes('diretor') || setor.includes('rh') || temPermissao('denuncias', 'visualizar');
+      } else if (modulo === 'clientes') {
+        tem = temPermissao('clientes', 'visualizar') || temPermissao('postos', 'visualizar');
+      } else {
+        tem = temPermissao(modulo, 'visualizar');
+      }
+
+      if (tem) {
+        btn.classList.remove('hidden');
+      } else {
+        btn.classList.add('hidden');
+      }
+    }
+  }
+
+  // Habilitar rolagem horizontal com a rodinha do mouse no menu de abas
+  const navTabs = document.getElementById('mainNavTabs');
+  if (navTabs && !navTabs.dataset.wheelListener) {
+    navTabs.dataset.wheelListener = 'true';
+    navTabs.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        navTabs.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
+
+  // Verificar comunicados não lidos para atualizar badges
+  verificarComunicadosNaoLidos();
+}
+
+function navegarParaPrimeiraAbaPermitida() {
+  const ordemAbas = ['dashboard', 'comercial', 'comunicados', 'relatorios', 'faltas', 'clientes', 'colaboradores', 'ferias', 'beneficios', 'faturamento', 'freelancers', 'compras', 'financeiro', 'diretoria', 'usuarios', 'denuncias'];
+  for (const tab of ordemAbas) {
+    if (tab === 'comunicados') {
+      navegarPara(tab);
+      break;
+    } else if (tab === 'clientes' ? (temPermissao('clientes', 'visualizar') || temPermissao('postos', 'visualizar')) : temPermissao(tab, 'visualizar')) {
+      navegarPara(tab);
+      break;
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// NAVEGAÇÃO ENTRE ABAS
+// -------------------------------------------------------------
+function navegarPara(tabId) {
+  if (tabId === 'postos') tabId = 'clientes';
+
+  const ehAdmin = isUsuarioAdminMaster();
+  const setorUsuario = (state.usuarioLogado?.setor || '').toLowerCase();
+  const permissaoOk = (tabId === 'comunicados' || tabId === 'arquivo' || tabId === 'sst' || tabId === 'compras' || tabId === 'implantacao')
+    ? true
+    : (tabId === 'denuncias'
+      ? (ehAdmin || setorUsuario.includes('coordena') || setorUsuario.includes('operac') || setorUsuario.includes('cop') || setorUsuario.includes('diretor') || setorUsuario.includes('rh') || temPermissao('denuncias', 'visualizar'))
+      : (tabId === 'usuarios'
+        ? (ehAdmin || temPermissao('usuarios', 'visualizar'))
+        : (tabId === 'clientes'
+          ? (temPermissao('clientes', 'visualizar') || temPermissao('postos', 'visualizar') || ehAdmin)
+          : (temPermissao(tabId, 'visualizar') || ehAdmin))));
+
+
+  if (!permissaoOk && !ehAdmin) {
+    alert('Acesso Restrito: Seu usuário não possui permissão para acessar este módulo.');
+    return;
+  }
+
+  state.abaAtiva = tabId;
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('text-white', 'bg-slate-800', 'border-b-2', 'border-blue-500');
+    btn.classList.add('text-slate-400');
+  });
+
+  const btnAtivo = document.getElementById(`tabBtn-${tabId}`);
+  if (btnAtivo) {
+    btnAtivo.classList.remove('text-slate-400');
+    btnAtivo.classList.add('text-white', 'bg-slate-800', 'border-b-2', 'border-blue-500');
+  }
+
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  const secaoAtiva = document.getElementById(`aba-${tabId}`);
+  if (secaoAtiva) secaoAtiva.classList.remove('hidden');
+
+  // Disparar carregamentos específicos
+  if (tabId === 'dashboard') carregarDashboardExecutivo();
+  else if (tabId === 'comercial') carregarComercial();
+  else if (tabId === 'comunicados') carregarComunicados();
+  else if (tabId === 'implantacao') carregarFluxoImplantacao();
+  else if (tabId === 'sst') carregarPainelSST();
+
+  else if (tabId === 'arquivo') carregarPainelArquivo();
+  else if (tabId === 'relatorios') carregarRelatorioAtual();
+  else if (tabId === 'faltas') { popularSelectSupervisoresFiltro(); carregarFaltas(); }
+  else if (tabId === 'clientes') carregarClientesComPostos();
+  else if (tabId === 'colaboradores') carregarColaboradores();
+  else if (tabId === 'ferias') carregarPainelFerias();
+  else if (tabId === 'beneficios') carregarBeneficios();
+  else if (tabId === 'faturamento') carregarFaturamento();
+  else if (tabId === 'freelancers') carregarFechamentoFreelancers();
+  else if (tabId === 'compras') { carregarDadosComprasMultiPredios(); carregarOrcamentosCompras(); }
+  else if (tabId === 'financeiro') { carregarFinanceiro(); }
+  else if (tabId === 'diretoria') carregarPainelDiretoria();
+  else if (tabId === 'usuarios') carregarPainelAdminMaster();
+  else if (tabId === 'denuncias') carregarPainelDenuncias();
+}
+
+function trocarSubAbaCompras(subId) {
+  document.querySelectorAll('.subtab-compras-btn').forEach(b => {
+    b.classList.remove('text-teal-700', 'border-b-2', 'border-teal-600');
+    b.classList.add('text-slate-500');
+  });
+  const btn = document.getElementById(`subBtn-${subId}`);
+  if (btn) {
+    btn.classList.remove('text-slate-500');
+    btn.classList.add('text-teal-700', 'border-b-2', 'border-teal-600');
+  }
+
+  ['sub-matriz-compras', 'sub-cadastro-predios', 'sub-orcamentos-aprovacao', 'sub-fornecedores-cartela'].forEach(id => {
+    const el = document.getElementById(`subConteudo-${id}`);
+    if (el) el.classList.add('hidden');
+  });
+  const alvo = document.getElementById(`subConteudo-${subId}`);
+  if (alvo) alvo.classList.remove('hidden');
+
+  if (subId === 'sub-cadastro-predios') {
+    carregarGestaoPredios();
+  } else if (subId === 'sub-matriz-compras') {
+    carregarDadosComprasMultiPredios();
+  } else if (subId === 'sub-orcamentos-aprovacao') {
+    carregarOrcamentosCompras();
+  } else if (subId === 'sub-fornecedores-cartela') {
+    carregarFornecedoresECartela();
+  }
+}
+
+
+// -------------------------------------------------------------
+// CARREGAMENTO DE DADOS BASE
+// -------------------------------------------------------------
+async function carregarDadosBase() {
+  try {
+    const [resCli, resUni, resPos, resCar, resCol, resFree, resProd, resForn] = await Promise.all([
+      fetch('/api/clientes'),
+      fetch('/api/unidades'),
+      fetch('/api/postos'),
+      fetch('/api/cargos'),
+      fetch('/api/colaboradores'),
+      fetch('/api/freelancers'),
+      fetch('/api/produtos'),
+      fetch('/api/fornecedores')
+    ]);
+
+    const [dCli, dUni, dPos, dCar, dCol, dFree, dProd, dForn] = await Promise.all([
+      resCli.json(),
+      resUni.json(),
+      resPos.json(),
+      resCar.json(),
+      resCol.json(),
+      resFree.json(),
+      resProd.json(),
+      resForn.json()
+    ]);
+
+    state.clientes = Array.isArray(dCli) ? dCli : [];
+    state.unidades = Array.isArray(dUni) ? dUni : [];
+    state.postos = Array.isArray(dPos) ? dPos : [];
+    state.cargos = Array.isArray(dCar) ? dCar : [];
+    state.colaboradores = Array.isArray(dCol) ? dCol : [];
+    state.freelancers = Array.isArray(dFree) ? dFree : [];
+    state.produtos = Array.isArray(dProd) ? dProd : [];
+    state.fornecedores = Array.isArray(dForn) ? dForn : [];
+
+    popularSelectsGlobais();
+
+    fetch('/api/tunnel').then(r => r.json()).then(t => {
+      if (t) {
+        if (t.url) state.urlTunnelGlobal = t.url;
+        if (t.local_url) state.urlLocalRede = t.local_url;
+      }
+    }).catch(err => console.warn('Erro ao carregar dados do túnel:', err));
+
+    fetch('/api/sst/modelos-os').then(r => r.json()).then(d => {
+      state.sstModelosOS = Array.isArray(d) ? d : [];
+      atualizarSelectModelosOSColaborador('novo');
+      atualizarSelectModelosOSColaborador('edicao');
+    }).catch(() => {});
+  } catch (err) {
+    console.error('Erro ao carregar dados base:', err);
+  }
+}
+
+function obterBasePublicaLink() {
+  if (state.urlTunnelGlobal && state.urlTunnelGlobal.startsWith('http')) {
+    return state.urlTunnelGlobal;
+  }
+  if (state.urlLocalRede && state.urlLocalRede.startsWith('http')) {
+    return state.urlLocalRede;
+  }
+  return window.location.origin;
+}
+
+function atualizarSelectModelosOSColaborador(tipo = 'novo', cargoIdForcado = null, selectedModeloId = null) {
+  const selectId = tipo === 'novo' ? 'cadColabModeloOSId' : 'editColabModeloOSId';
+  const cargoSelectId = tipo === 'novo' ? 'cadColabCargoId' : 'editColabCargoId';
+  const selModelo = document.getElementById(selectId);
+  if (!selModelo) return;
+
+  const currentVal = selectedModeloId !== null && selectedModeloId !== undefined
+    ? String(selectedModeloId)
+    : (selModelo.value || '');
+
+  const cargoId = cargoIdForcado !== null && cargoIdForcado !== undefined
+    ? parseInt(cargoIdForcado, 10)
+    : (parseInt(document.getElementById(cargoSelectId)?.value, 10) || null);
+
+  const modelos = Array.isArray(state.sstModelosOS) ? state.sstModelosOS : [];
+
+  let html = '<option value="">-- Padrão Automático da Função --</option>';
+
+  if (modelos.length > 0) {
+    const vinculadosAoCargo = cargoId ? modelos.filter(m => m.cargo_id === cargoId) : [];
+    const outrosModelos = cargoId ? modelos.filter(m => m.cargo_id !== cargoId) : modelos;
+
+    if (vinculadosAoCargo.length > 0) {
+      html += `<optgroup label="Modelos específicos deste Cargo">`;
+      vinculadosAoCargo.forEach(m => {
+        const tit = m.titulo_modelo || m.nome_funcao;
+        const sub = m.titulo_modelo && m.nome_funcao !== m.titulo_modelo ? ` (${m.nome_funcao})` : '';
+        html += `<option value="${m.id}">${escapeHtml(tit + sub)}</option>`;
+      });
+      html += `</optgroup>`;
+    }
+
+    if (outrosModelos.length > 0) {
+      html += `<optgroup label="${vinculadosAoCargo.length > 0 ? 'Outros Modelos de OS Cadastrados' : 'Modelos de OS Disponíveis'}">`;
+      outrosModelos.forEach(m => {
+        const tit = m.titulo_modelo || m.nome_funcao;
+        const cargoNome = m.nome_cargo ? ` [${m.nome_cargo}]` : (m.nome_funcao ? ` [${m.nome_funcao}]` : '');
+        html += `<option value="${m.id}">${escapeHtml(tit + cargoNome)}</option>`;
+      });
+      html += `</optgroup>`;
+    }
+  }
+
+  selModelo.innerHTML = html;
+  if (currentVal) selModelo.value = currentVal;
+}
+
+function aoMudarCargoColaborador(tipo) {
+  atualizarSelectModelosOSColaborador(tipo);
+}
+
+function popularSelectsGlobais() {
+  if (!Array.isArray(state.clientes)) state.clientes = [];
+  if (!Array.isArray(state.cargos)) state.cargos = [];
+  if (!Array.isArray(state.colaboradores)) state.colaboradores = [];
+  if (!Array.isArray(state.freelancers)) state.freelancers = [];
+  if (!Array.isArray(state.postos)) state.postos = [];
+
+  // Ordenar clientes em ordem alfabética estrita por Nome Fantasia / Razão Social
+  state.clientes.sort((a, b) => {
+    const nA = (a.nome_fantasia || a.nome_razao_social || '').toLowerCase();
+    const nB = (b.nome_fantasia || b.nome_razao_social || '').toLowerCase();
+    return nA.localeCompare(nB);
+  });
+
+  // Clientes
+  ['filtroFaltasCliente', 'filtroClientesPostosSelect', 'filtroColabCliente', 'comprasClienteSelect', 'faltaClienteId', 'postoClienteId', 'cadColabClienteId', 'orcClienteId', 'relatorioClienteFiltro', 'editColabClienteId', 'filtroGestaoPrediosCliente', 'predioClienteId', 'importarPrediosClientePadrao'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isFilter = id.startsWith('filtro') || id.includes('Filtro');
+    el.innerHTML = isFilter ? '<option value="">Todos os Clientes (Por Nome)</option>' : '<option value="">Selecione o Cliente (Por Nome)...</option>';
+    state.clientes.forEach(c => {
+      el.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome_fantasia || c.nome_razao_social}</option>`;
+    });
+  });
+
+  popularSelectSupervisoresFiltro();
+
+  // Cargos
+  ['postoCargoId', 'cadColabCargoId', 'cadFreeCargoId', 'editColabCargoId', 'inlinePostoCargoId', 'inlinePostoCargoIdEdicao'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const valAtual = el.value;
+    el.innerHTML = '<option value="">Selecione a Função / Cargo...</option>';
+    state.cargos.forEach(c => {
+      el.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome_cargo}</option>`;
+    });
+    if (valAtual) el.value = valAtual;
+  });
+
+  // Popular selects de cargos no modal de cliente (postos iniciais)
+  document.querySelectorAll('.select-posto-cargo').forEach(sel => {
+    const valAtual = sel.value;
+    sel.innerHTML = '<option value="">Selecione a Função / Cargo...</option>';
+    state.cargos.forEach(c => {
+      sel.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome_cargo}</option>`;
+    });
+    if (valAtual) sel.value = valAtual;
+  });
+
+  // Fornecedores no Orçamento
+  const elFornOrc = document.getElementById('orcFornecedorId');
+  if (elFornOrc) {
+    elFornOrc.innerHTML = '<option value="">Selecione o Fornecedor...</option>';
+    state.fornecedores.forEach(f => {
+      elFornOrc.innerHTML += `<option value="${f.id}" data-pix="${f.chave_pix || ''}" data-banco="${f.dados_bancarios || ''}">${f.nome_empresa} (${f.tipo_fornecedor})</option>`;
+    });
+  }
+
+  // Clientes no Orçamento
+  const elCliOrc = document.getElementById('orcClienteId');
+  if (elCliOrc) {
+    elCliOrc.innerHTML = '<option value="">Selecione o Cliente Destino...</option>';
+    state.clientes.forEach(c => {
+      elCliOrc.innerHTML += `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`;
+    });
+  }
+
+  // Fornecedores no Filtro do Financeiro
+  const elFornFinan = document.getElementById('filtroFinanceiroFornecedor');
+  if (elFornFinan) {
+    const valAtual = elFornFinan.value || 'todos';
+    elFornFinan.innerHTML = '<option value="todos">Todos os Fornecedores</option>';
+    state.fornecedores.forEach(f => {
+      elFornFinan.innerHTML += `<option value="${f.id}">${f.nome_empresa}</option>`;
+    });
+    elFornFinan.value = valAtual;
+  }
+
+  // Freelancers no Modal de Férias, Faltas e Concessão
+  ['faltaFreelancerId', 'cobFreelancerId', 'feriasFreelancerId'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<option value="">Selecione o Freelancer...</option>';
+    state.freelancers.forEach(f => {
+      el.innerHTML += `<option value="${f.id}" data-valor="${f.valor_diaria_padrao}">${f.nome} - PIX: ${f.chave_pix}</option>`;
+    });
+  });
+
+  // Colaboradores Titulares no Modal de Férias
+  const elColabTitular = document.getElementById('cobColabTitularId');
+  if (elColabTitular) {
+    elColabTitular.innerHTML = '<option value="">Selecione o Colaborador Titular...</option>';
+    state.colaboradores.forEach(col => {
+      elColabTitular.innerHTML += `<option value="${col.id}">${col.nome} (${col.cliente_nome || 'Geral'} - ${col.nome_posto || 'Posto Padrão'})</option>`;
+    });
+  }
+}
+
+// -------------------------------------------------------------
+// 2. POSTOS DE TRABALHO & CONTROLE DE VAGAS CONTRATADAS
+// -------------------------------------------------------------
+async function carregarPostosTrabalho() {
+  const clienteId = document.getElementById('filtroPostosCliente')?.value || '';
+  let url = '/api/postos';
+  if (clienteId) url += `?cliente_id=${clienteId}`;
+
+  const tbody = document.getElementById('tabelaPostosBody');
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando postos de trabalho...</td></tr>`;
+  }
+
+  try {
+    const res = await fetch(url);
+    const postos = await res.json();
+    state.postos = Array.isArray(postos) ? postos : [];
+
+    if (!tbody) return;
+
+    if (state.postos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 font-medium">Nenhum posto de trabalho encontrado.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = '';
+    state.postos.forEach(p => {
+      const badgeLotacao = p.esta_lotado
+        ? `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-lock text-red-600 mr-1"></i>${p.total_ocupados}/${p.quantidade_vagas_limite} LOTADO</span>`
+        : `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-lock-open text-emerald-600 mr-1"></i>${p.total_ocupados}/${p.quantidade_vagas_limite} Ocupadas</span>`;
+
+      const badgeVagas = p.vagas_disponiveis > 0
+        ? `<span class="text-emerald-700 font-bold text-xs">${p.vagas_disponiveis} vaga(s) livre(s)</span>`
+        : `<span class="text-red-600 font-bold text-xs">Sem vagas livres</span>`;
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-bold text-slate-900">${p.cliente_nome}</td>
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-800">${p.nome_posto}</div>
+            <div class="text-xs text-slate-400">${p.nome_unidade || 'Matriz / Central'}</div>
+          </td>
+          <td class="px-4 py-3"><span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-medium">${p.nome_cargo}</span></td>
+          <td class="px-4 py-3 text-xs"><b>${p.escala}</b> (${p.turno})</td>
+          <td class="px-4 py-3 text-center">${badgeLotacao}</td>
+          <td class="px-4 py-3 text-center">${badgeVagas}</td>
+          <td class="px-4 py-3 text-right">
+            <button onclick="excluirItem('postos', ${p.id})" class="text-slate-400 hover:text-red-600 p-1" title="Excluir Posto"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar postos:', err);
+  }
+}
+
+function carregarPostos() {
+  if (typeof carregarPostosTrabalho === 'function') carregarPostosTrabalho();
+  if (typeof carregarClientesComPostos === 'function') carregarClientesComPostos();
+}
+
+function filtrarClientesModalPosto(inputId = 'postoBuscaCliente', selectId = 'postoClienteId') {
+  const input = document.getElementById(inputId);
+  const select = document.getElementById(selectId);
+  if (!input || !select) return;
+
+  const termo = input.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const valorAtual = select.value;
+
+  const filtrados = (state.clientes || []).filter(c => {
+    if (!termo) return true;
+    const nome = ((c.nome_fantasia || '') + ' ' + (c.nome_razao_social || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const idStr = String(c.id);
+    return nome.includes(termo) || idStr.includes(termo);
+  });
+
+  select.innerHTML = '<option value="">Selecione o Cliente (Por Nome)...</option>';
+  filtrados.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `[ID: ${c.id}] ${c.nome_fantasia || c.nome_razao_social}`;
+    select.appendChild(opt);
+  });
+
+  if (valorAtual && filtrados.some(c => String(c.id) === String(valorAtual))) {
+    select.value = valorAtual;
+  } else if (filtrados.length === 1 && termo) {
+    select.value = filtrados[0].id;
+    aoMudarClientePosto();
+  } else if (!valorAtual) {
+    select.value = '';
+    aoMudarClientePosto();
+  }
+}
+
+function filtrarCargosModalPosto(inputId = 'postoBuscaCargo', selectId = 'postoCargoId') {
+  const input = document.getElementById(inputId);
+  const select = document.getElementById(selectId);
+  if (!select) return;
+
+  const termo = input ? input.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+  const valorAtual = select.value;
+
+  const filtrados = (state.cargos || []).filter(c => {
+    if (!termo) return true;
+    const nome = (c.nome_cargo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const idStr = String(c.id);
+    return nome.includes(termo) || idStr.includes(termo);
+  });
+
+  select.innerHTML = '<option value="">Selecione o Cargo / Função...</option>';
+  filtrados.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.nome_cargo;
+    select.appendChild(opt);
+  });
+
+  if (valorAtual && filtrados.some(c => String(c.id) === String(valorAtual))) {
+    select.value = valorAtual;
+  } else if (filtrados.length === 1 && termo) {
+    select.value = filtrados[0].id;
+  } else if (!valorAtual) {
+    select.value = '';
+  }
+}
+
+// -------------------------------------------------------------
+// SISTEMA DE CADASTRO DE MÚLTIPLOS POSTOS PARA O MESMO CLIENTE
+// -------------------------------------------------------------
+state.novosPostos = [];
+state.linhaCargoPendente = null;
+
+function sincronizarValoresLinhasNovosPostos() {
+  const container = document.getElementById('listaNovosPostosContainer');
+  if (!container) return;
+  const linhas = container.querySelectorAll('.linha-novo-posto');
+  linhas.forEach((linhaEl, idx) => {
+    if (!state.novosPostos[idx]) state.novosPostos[idx] = {};
+    const nomeEl = linhaEl.querySelector('[name="postoNome"]');
+    const cargoEl = linhaEl.querySelector('[name="postoCargoId"]');
+    const vagasEl = linhaEl.querySelector('[name="postoLimiteVagas"]');
+    const escalaEl = linhaEl.querySelector('[name="postoEscala"]');
+    const turnoEl = linhaEl.querySelector('[name="postoTurno"]');
+    const unidadeEl = linhaEl.querySelector('[name="postoUnidadeId"]');
+
+    if (nomeEl) state.novosPostos[idx].nome_posto = nomeEl.value;
+    if (cargoEl) state.novosPostos[idx].cargo_id = cargoEl.value ? parseInt(cargoEl.value, 10) : '';
+    if (vagasEl) state.novosPostos[idx].quantidade_vagas_limite = parseInt(vagasEl.value, 10) || 1;
+    if (escalaEl) state.novosPostos[idx].escala = escalaEl.value;
+    if (turnoEl) state.novosPostos[idx].turno = turnoEl.value;
+    if (unidadeEl) state.novosPostos[idx].unidade_id = unidadeEl.value ? parseInt(unidadeEl.value, 10) : null;
+  });
+}
+
+function adicionarLinhaNovoPosto(dados = {}) {
+  sincronizarValoresLinhasNovosPostos();
+  const unidadePadrao = document.getElementById('postoUnidadeId')?.value;
+  const primeiroCargoId = (state.cargos && state.cargos.length > 0) ? state.cargos[0].id : '';
+
+  state.novosPostos.push({
+    nome_posto: dados.nome_posto || '',
+    cargo_id: dados.cargo_id || primeiroCargoId,
+    quantidade_vagas_limite: dados.quantidade_vagas_limite || 1,
+    escala: dados.escala || '5x2',
+    turno: dados.turno || '08:00 às 17:00',
+    unidade_id: dados.unidade_id !== undefined ? dados.unidade_id : (unidadePadrao ? parseInt(unidadePadrao, 10) : null)
+  });
+
+  renderizarLinhasNovosPostos();
+
+  const novaIdx = state.novosPostos.length - 1;
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#listaNovosPostosContainer [name="postoNome"]');
+    if (inputs && inputs[novaIdx]) inputs[novaIdx].focus();
+  }, 40);
+}
+
+function removerLinhaNovoPosto(idx) {
+  sincronizarValoresLinhasNovosPostos();
+  if (state.novosPostos.length > 1) {
+    state.novosPostos.splice(idx, 1);
+  } else {
+    const unidadePadrao = document.getElementById('postoUnidadeId')?.value;
+    state.novosPostos[0] = {
+      nome_posto: '',
+      cargo_id: (state.cargos && state.cargos.length > 0) ? state.cargos[0].id : '',
+      quantidade_vagas_limite: 1,
+      escala: '5x2',
+      turno: '08:00 às 17:00',
+      unidade_id: unidadePadrao ? parseInt(unidadePadrao, 10) : null
+    };
+  }
+  renderizarLinhasNovosPostos();
+}
+
+function duplicarLinhaNovoPosto(idx) {
+  sincronizarValoresLinhasNovosPostos();
+  const orig = state.novosPostos[idx] || {};
+  let novoNome = (orig.nome_posto || '').trim();
+  let novoTurno = (orig.turno || '').trim();
+
+  if (novoNome.toLowerCase().includes('diurno') || novoNome.toLowerCase().includes('dia')) {
+    novoNome = novoNome.replace(/diurno/i, 'Noturno').replace(/dia/i, 'Noite');
+    if (novoTurno.includes('06:00') || novoTurno.includes('07:00') || novoTurno.includes('08:00')) {
+      novoTurno = '18:00 às 06:00';
+    }
+  } else if (novoNome) {
+    novoNome += ' (Cópia)';
+  }
+
+  state.novosPostos.splice(idx + 1, 0, {
+    ...orig,
+    nome_posto: novoNome,
+    turno: novoTurno
+  });
+
+  renderizarLinhasNovosPostos();
+
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#listaNovosPostosContainer [name="postoNome"]');
+    if (inputs && inputs[idx + 1]) {
+      inputs[idx + 1].focus();
+      inputs[idx + 1].select();
+    }
+  }, 40);
+}
+
+function aoDigitarNomePostoLinha(idx, val) {
+  if (state.novosPostos[idx]) state.novosPostos[idx].nome_posto = val;
+  const container = document.getElementById('listaNovosPostosContainer');
+  if (!container) return;
+  const elPreview = container.querySelector(`.linha-novo-posto[data-index="${idx}"] .nome-posto-preview`);
+  if (elPreview) elPreview.textContent = val.trim() || 'Novo Posto de Trabalho';
+}
+
+function renderizarLinhasNovosPostos() {
+  const container = document.getElementById('listaNovosPostosContainer');
+  if (!container) return;
+
+  if (!state.novosPostos || state.novosPostos.length === 0) {
+    const primeiroCargoId = (state.cargos && state.cargos.length > 0) ? state.cargos[0].id : '';
+    const unidadePadrao = document.getElementById('postoUnidadeId')?.value;
+    state.novosPostos = [{
+      nome_posto: '',
+      cargo_id: primeiroCargoId,
+      quantidade_vagas_limite: 1,
+      escala: '5x2',
+      turno: '08:00 às 17:00',
+      unidade_id: unidadePadrao ? parseInt(unidadePadrao, 10) : null
+    }];
+  }
+
+  const clienteId = parseInt(document.getElementById('postoClienteId')?.value, 10);
+  const unidadesDoCliente = clienteId ? (state.unidades || []).filter(u => u.cliente_id === clienteId) : [];
+
+  container.innerHTML = state.novosPostos.map((p, idx) => {
+    const cargosOptions = (state.cargos || []).map(cg => `
+      <option value="${cg.id}" ${String(cg.id) === String(p.cargo_id) ? 'selected' : ''}>
+        ${escapeHtml(cg.nome_cargo)}
+      </option>
+    `).join('');
+
+    const unidadesOptions = unidadesDoCliente.map(u => `
+      <option value="${u.id}" ${String(u.id) === String(p.unidade_id) ? 'selected' : ''}>
+        ${escapeHtml(u.nome_unidade)}
+      </option>
+    `).join('');
+
+    return `
+      <div class="linha-novo-posto bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 relative hover:border-rose-300 transition" data-index="${idx}">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="bg-rose-100 text-rose-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+              Posto #${idx + 1}
+            </span>
+            <span class="text-xs font-bold text-slate-800 nome-posto-preview truncate max-w-xs md:max-w-md">
+              ${escapeHtml(p.nome_posto || 'Novo Posto de Trabalho')}
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="duplicarLinhaNovoPosto(${idx})" class="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 text-xs font-semibold px-2 py-1 rounded transition flex items-center gap-1" title="Duplicar para criar um posto semelhante">
+              <i class="fa-solid fa-copy"></i> Duplicar
+            </button>
+            <button type="button" onclick="removerLinhaNovoPosto(${idx})" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 text-xs font-semibold px-2 py-1 rounded transition flex items-center gap-1" title="Remover este posto">
+              <i class="fa-solid fa-trash-can"></i> Remover
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          <!-- Nome do Posto -->
+          <div class="md:col-span-4">
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Nome de Identificação do Posto *</label>
+            <input type="text" name="postoNome" required value="${escapeHtml(p.nome_posto || '')}" oninput="aoDigitarNomePostoLinha(${idx}, this.value)" placeholder="Ex: Portaria 12x36 ou Limpeza Bloco A" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-rose-500">
+          </div>
+
+          <!-- Cargo / Função -->
+          <div class="md:col-span-3">
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-[11px] font-semibold text-slate-700">Função / Cargo *</label>
+              <button type="button" onclick="abrirModalNovaFuncaoRapida(${idx})" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold" title="Cadastrar nova função">
+                + Nova Função
+              </button>
+            </div>
+            <select name="postoCargoId" id="linhaPostoCargo_${idx}" required class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white">
+              <option value="">Selecione a Função...</option>
+              ${cargosOptions}
+            </select>
+          </div>
+
+          <!-- Limite de Vagas -->
+          <div class="md:col-span-1">
+            <label class="block text-[11px] font-bold text-rose-700 mb-1" title="Quantidade limite de vagas contratadas">Vagas *</label>
+            <input type="number" name="postoLimiteVagas" min="1" required value="${p.quantidade_vagas_limite || 1}" oninput="atualizarResumoNovosPostos()" class="w-full border border-rose-300 rounded-lg px-2 py-1.5 text-xs font-bold text-rose-800 focus:outline-none text-center">
+          </div>
+
+          <!-- Escala -->
+          <div class="md:col-span-2">
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Escala</label>
+            <select name="postoEscala" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none bg-white">
+              <option value="5x2" ${p.escala === '5x2' ? 'selected' : ''}>5x2 (Seg a Sex)</option>
+              <option value="6x1" ${p.escala === '6x1' ? 'selected' : ''}>6x1</option>
+              <option value="12x36" ${p.escala === '12x36' ? 'selected' : ''}>12x36</option>
+            </select>
+          </div>
+
+          <!-- Turno -->
+          <div class="md:col-span-2">
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Turno</label>
+            <input type="text" name="postoTurno" value="${escapeHtml(p.turno || '08:00 às 17:00')}" placeholder="06h às 18h" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Unidade específica -->
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-50 text-[11px] text-slate-500">
+          <span class="font-medium text-slate-600"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>Unidade / Prédio deste posto:</span>
+          <select name="postoUnidadeId" class="border border-slate-200 rounded px-2 py-1 text-xs bg-slate-50 focus:bg-white focus:outline-none text-slate-700 max-w-xs">
+            <option value="">(Padrão do Cliente / Matriz)</option>
+            ${unidadesOptions}
+          </select>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  atualizarResumoNovosPostos();
+}
+
+function atualizarResumoNovosPostos() {
+  sincronizarValoresLinhasNovosPostos();
+  const totalPostos = state.novosPostos ? state.novosPostos.length : 0;
+  const totalVagas = (state.novosPostos || []).reduce((acc, p) => acc + (parseInt(p.quantidade_vagas_limite, 10) || 1), 0);
+
+  const badgeResumo = document.getElementById('resumoQtdPostosNovos');
+  if (badgeResumo) {
+    badgeResumo.textContent = `${totalPostos} posto${totalPostos > 1 ? 's' : ''} configurado${totalPostos > 1 ? 's' : ''} (${totalVagas} vaga${totalVagas > 1 ? 's' : ''} no total)`;
+  }
+
+  const txtBtn = document.getElementById('txtBtnSalvarNovosPostos');
+  if (txtBtn) {
+    txtBtn.textContent = totalPostos > 1 ? `Salvar ${totalPostos} Postos no Cliente` : 'Salvar Posto de Trabalho';
+  }
+}
+
+function abrirModalNovaFuncaoRapida(linhaIdx) {
+  state.linhaCargoPendente = linhaIdx;
+  abrirModalNovaFuncao('linhaPostoCargo_' + linhaIdx);
+}
+
+function aoMudarClientePosto() {
+  const clienteId = parseInt(document.getElementById('postoClienteId')?.value, 10);
+  const selUni = document.getElementById('postoUnidadeId');
+  if (selUni) {
+    selUni.innerHTML = '<option value="">Selecione a Unidade (ou Matriz / Central)...</option>';
+  }
+
+  const badgeInfo = document.getElementById('badgeInfoClientePostos');
+  if (!clienteId) {
+    if (badgeInfo) badgeInfo.classList.add('hidden');
+    renderizarLinhasNovosPostos();
+    return;
+  }
+
+  const cliObj = (state.clientes || []).find(c => c.id === clienteId);
+  const postosDoCliente = (state.postos || []).filter(p => p.cliente_id === clienteId);
+  if (badgeInfo) {
+    badgeInfo.classList.remove('hidden');
+    badgeInfo.innerHTML = `<i class="fa-solid fa-layer-group text-rose-500 mr-1"></i> ${postosDoCliente.length} postos já cadastrados neste cliente`;
+  }
+
+  const unidadesDoCliente = (state.unidades || []).filter(u => u.cliente_id === clienteId);
+  if (selUni) {
+    unidadesDoCliente.forEach(u => {
+      selUni.innerHTML += `<option value="${u.id}">${escapeHtml(u.nome_unidade)}</option>`;
+    });
+  }
+
+  renderizarLinhasNovosPostos();
+}
+
+function aoMudarUnidadePadraoPosto() {
+  const selUni = document.getElementById('postoUnidadeId');
+  const val = selUni ? selUni.value : '';
+  const uId = val ? parseInt(val, 10) : null;
+  (state.novosPostos || []).forEach(p => {
+    if (!p.unidade_id) p.unidade_id = uId;
+  });
+  renderizarLinhasNovosPostos();
+}
+
+function abrirModalNovoPosto(clienteId = null) {
+  popularSelectsGlobais();
+  const modal = document.getElementById('modalNovoPosto');
+  if (modal) modal.classList.remove('hidden');
+
+  const buscaCliente = document.getElementById('postoBuscaCliente');
+
+  // Inicializa com 1 linha vazia pronta para digitar
+  const primeiroCargoId = (state.cargos && state.cargos.length > 0) ? state.cargos[0].id : '';
+  state.novosPostos = [{
+    nome_posto: '',
+    cargo_id: primeiroCargoId,
+    quantidade_vagas_limite: 1,
+    escala: '5x2',
+    turno: '08:00 às 17:00',
+    unidade_id: null
+  }];
+
+  if (clienteId) {
+    const cliObj = (state.clientes || []).find(c => String(c.id) === String(clienteId));
+    if (buscaCliente && cliObj) {
+      buscaCliente.value = cliObj.nome_fantasia || cliObj.nome_razao_social;
+    }
+    filtrarClientesModalPosto('postoBuscaCliente', 'postoClienteId');
+    const selCli = document.getElementById('postoClienteId');
+    if (selCli) {
+      selCli.value = clienteId;
+      aoMudarClientePosto();
+    }
+  } else {
+    if (buscaCliente) buscaCliente.value = '';
+    filtrarClientesModalPosto('postoBuscaCliente', 'postoClienteId');
+    aoMudarClientePosto();
+    setTimeout(() => {
+      if (buscaCliente) buscaCliente.focus();
+    }, 50);
+  }
+
+  renderizarLinhasNovosPostos();
+
+  setTimeout(() => {
+    const inputNome = document.querySelector('#listaNovosPostosContainer [name="postoNome"]');
+    if (inputNome) inputNome.focus();
+  }, 100);
+}
+
+async function salvarNovoPosto(e) {
+  e.preventDefault();
+  sincronizarValoresLinhasNovosPostos();
+
+  const clienteId = parseInt(document.getElementById('postoClienteId')?.value, 10);
+  if (!clienteId) {
+    alert('Por favor, selecione o cliente contratante.');
+    document.getElementById('postoClienteId')?.focus();
+    return;
+  }
+
+  const postos = state.novosPostos || [];
+  if (postos.length === 0) {
+    alert('Por favor, adicione ao menos um posto de trabalho na lista.');
+    return;
+  }
+
+  // Validação de cada linha
+  for (let i = 0; i < postos.length; i++) {
+    const p = postos[i];
+    if (!p.nome_posto || !p.nome_posto.trim()) {
+      alert(`Por favor, informe o Nome de Identificação do Posto #${i + 1}.`);
+      const inputs = document.querySelectorAll('#listaNovosPostosContainer [name="postoNome"]');
+      if (inputs && inputs[i]) inputs[i].focus();
+      return;
+    }
+    if (!p.cargo_id) {
+      alert(`Por favor, selecione a Função / Cargo do Posto #${i + 1} ("${p.nome_posto}").`);
+      const selects = document.querySelectorAll('#listaNovosPostosContainer [name="postoCargoId"]');
+      if (selects && selects[i]) selects[i].focus();
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btnSalvarNovosPostos');
+  const txtBtn = document.getElementById('txtBtnSalvarNovosPostos');
+  const txtOriginal = txtBtn ? txtBtn.textContent : 'Salvar Posto de Trabalho';
+  if (btn) btn.disabled = true;
+  if (txtBtn) txtBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Salvando ${postos.length} posto(s)...`;
+
+  try {
+    const res = await fetch('/api/postos/lote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente_id: clienteId,
+        postos: postos
+      })
+    });
+
+    const json = await res.json();
+    if (json.success) {
+      const cliObj = (state.clientes || []).find(c => c.id === clienteId);
+      const nomeCliente = cliObj ? (cliObj.nome_fantasia || cliObj.nome_razao_social) : 'cliente';
+      
+      await carregarDadosBase();
+      if (typeof carregarClientesComPostos === 'function') await carregarClientesComPostos();
+      if (typeof carregarPostosTrabalho === 'function') await carregarPostosTrabalho();
+
+      alert(`Sucesso!\n\n${json.count || postos.length} posto(s) de trabalho cadastrado(s) com sucesso para "${nomeCliente}"!`);
+
+      const manterAberto = document.getElementById('checkManterModalPostosAberto')?.checked;
+      if (manterAberto) {
+        const primeiroCargoId = (state.cargos && state.cargos.length > 0) ? state.cargos[0].id : '';
+        const unidadePadrao = document.getElementById('postoUnidadeId')?.value;
+        state.novosPostos = [{
+          nome_posto: '',
+          cargo_id: primeiroCargoId,
+          quantidade_vagas_limite: 1,
+          escala: '5x2',
+          turno: '08:00 às 17:00',
+          unidade_id: unidadePadrao ? parseInt(unidadePadrao, 10) : null
+        }];
+        aoMudarClientePosto();
+        setTimeout(() => {
+          const inputNome = document.querySelector('#listaNovosPostosContainer [name="postoNome"]');
+          if (inputNome) inputNome.focus();
+        }, 60);
+      } else {
+        fecharModal('modalNovoPosto');
+      }
+    } else {
+      alert('Erro ao salvar postos: ' + (json.message || 'Falha desconhecida.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão ao salvar postos: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (txtBtn) txtBtn.textContent = txtOriginal;
+    atualizarResumoNovosPostos();
+  }
+}
+
+// -------------------------------------------------------------
+// GESTÃO DE FUNÇÕES / CARGOS OPERACIONAIS
+// -------------------------------------------------------------
+function abrirModalNovaFuncao(origemSelectId = null) {
+  state.cargoSelectOrigem = origemSelectId;
+  const inputNome = document.getElementById('funcaoNome');
+  const inputDiaria = document.getElementById('funcaoValorDiaria');
+  const inputDesc = document.getElementById('funcaoDescricao');
+  if (inputNome) inputNome.value = '';
+  if (inputDiaria) inputDiaria.value = '';
+  if (inputDesc) inputDesc.value = '';
+  const modal = document.getElementById('modalNovaFuncao');
+  if (modal) modal.classList.remove('hidden');
+  renderizarTabelaFuncoesExistentes();
+}
+
+function renderizarTabelaFuncoesExistentes() {
+  const tbody = document.getElementById('tabelaFuncoesExistentesBody');
+  if (!tbody) return;
+  const elQtd = document.getElementById('qtdFuncoesCadastradas');
+  if (elQtd) elQtd.textContent = state.cargos.length;
+
+  if (state.cargos.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">Nenhuma função cadastrada.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+  state.cargos.forEach(c => {
+    const postos = c.total_postos || 0;
+    const colabs = c.total_colaboradores || 0;
+    const podeExcluir = postos === 0 && colabs === 0;
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="px-3 py-2.5 text-center">
+          <span class="bg-indigo-700 text-white font-mono font-bold text-xs px-2.5 py-1 rounded shadow-2xs">#${c.id}</span>
+        </td>
+        <td class="px-3 py-2.5">
+          <div class="font-bold text-slate-800">${c.nome_cargo}</div>
+          <div class="text-[11px] text-slate-400">${c.descricao || (c.valor_diaria_referencia > 0 ? 'Diária ref: ' + formatarMoeda(c.valor_diaria_referencia) : 'Sem descrição')}</div>
+        </td>
+        <td class="px-3 py-2.5 text-center">
+          <span class="bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded text-xs">${postos}</span>
+        </td>
+        <td class="px-3 py-2.5 text-center">
+          <span class="bg-sky-50 text-sky-700 font-bold px-2 py-0.5 rounded text-xs">${colabs}</span>
+        </td>
+        <td class="px-3 py-2.5 text-right">
+          ${podeExcluir ? `
+            <button type="button" onclick="excluirFuncao(${c.id}, '${escapeJsString(c.nome_cargo)}')" class="text-slate-400 hover:text-red-600 p-1 transition" title="Excluir Função">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          ` : `
+            <span class="text-[10px] text-slate-400 italic" title="Função em uso no sistema">Em uso</span>
+          `}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function salvarNovaFuncao(e) {
+  e.preventDefault();
+  const nomeCargo = document.getElementById('funcaoNome').value.trim();
+  const valorDiaria = parseFloat(document.getElementById('funcaoValorDiaria').value) || 0;
+  const descricao = document.getElementById('funcaoDescricao').value.trim();
+
+  if (!nomeCargo) {
+    alert('Por favor, digite o nome da função / cargo.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/cargos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome_cargo: nomeCargo,
+        valor_diaria_referencia: valorDiaria,
+        descricao: descricao
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('formNovaFuncao').reset();
+      await carregarDadosBase();
+      renderizarTabelaFuncoesExistentes();
+
+      // Se acionado a partir de um select específico, seleciona a nova função automaticamente
+      if (state.cargoSelectOrigem) {
+        const selAlvo = document.getElementById(state.cargoSelectOrigem);
+        if (selAlvo) selAlvo.value = json.id;
+      }
+
+      // Se o modal de múltiplos postos estiver aberto, atualiza a linha do posto
+      if (!document.getElementById('modalNovoPosto')?.classList.contains('hidden')) {
+        sincronizarValoresLinhasNovosPostos();
+        if (state.linhaCargoPendente !== null && state.linhaCargoPendente !== undefined) {
+          if (state.novosPostos[state.linhaCargoPendente]) {
+            state.novosPostos[state.linhaCargoPendente].cargo_id = json.id;
+          }
+          state.linhaCargoPendente = null;
+        }
+        renderizarLinhasNovosPostos();
+      }
+
+      alert(`Função '${nomeCargo}' cadastrada com sucesso e já disponível em todos os postos e colaboradores!`);
+    } else {
+      alert('Aviso: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao salvar função: ' + err.message);
+  }
+}
+
+async function excluirFuncao(id, nome) {
+  if (!confirm(`Deseja realmente inativar/excluir a função '${nome}'?`)) return;
+
+  try {
+    const res = await fetch(`/api/cargos/${id}`, {
+      method: 'DELETE'
+    });
+    const json = await res.json();
+    if (json.success) {
+      await carregarDadosBase();
+      renderizarTabelaFuncoesExistentes();
+      alert(`Função '${nome}' excluída com sucesso!`);
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao excluir função: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 3. COLABORADORES EFETIVOS & EXCLUSÃO MÚLTIPLA COM CHECKBOXES
+// -------------------------------------------------------------
+function filtrarClientesAbaColab() {
+  const input = document.getElementById('filtroColabBuscaCliente');
+  const select = document.getElementById('filtroColabCliente');
+  if (!select) return;
+
+  const termo = input ? input.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+  const valorAtual = select.value;
+
+  const filtrados = (state.clientes || []).filter(c => {
+    if (!termo) return true;
+    const nome = ((c.nome_fantasia || '') + ' ' + (c.nome_razao_social || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const idStr = String(c.id);
+    return nome.includes(termo) || idStr.includes(termo);
+  });
+
+  select.innerHTML = '<option value="">Todos os Clientes (Por Nome)</option>';
+  filtrados.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `[ID: #${c.id}] ${c.nome_fantasia || c.nome_razao_social}`;
+    select.appendChild(opt);
+  });
+
+  if (valorAtual && filtrados.some(c => String(c.id) === String(valorAtual))) {
+    select.value = valorAtual;
+  } else if (filtrados.length === 1 && termo) {
+    select.value = filtrados[0].id;
+    carregarColaboradores();
+  } else if (!termo && !valorAtual) {
+    select.value = '';
+  }
+}
+
+async function carregarColaboradores() {
+  const clienteId = document.getElementById('filtroColabCliente')?.value || '';
+  const statusFiltro = document.getElementById('filtroColabStatus')?.value || 'ativos';
+  let url = '/api/colaboradores';
+  const params = [];
+  if (clienteId) params.push(`cliente_id=${clienteId}`);
+  if (statusFiltro) params.push(`status=${statusFiltro}`);
+  if (params.length > 0) url += `?${params.join('&')}`;
+
+  const tbody = document.getElementById('tabelaColaboradoresBody');
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando colaboradores...</td></tr>`;
+  }
+
+  try {
+    const res = await fetch(url);
+    const colabs = await res.json();
+    state.colaboradores = Array.isArray(colabs) ? colabs : [];
+    state.colabSelecionados.clear();
+    atualizarBarraAcoesColab();
+
+    const countAfastados = (state.colaboradores || []).filter(c => c.afastado === 1 || (c.nome_posto || '').toUpperCase().includes('AFASTADO')).length;
+    const badgeTop = document.getElementById('badgeContadorAfastadosTop');
+    if (badgeTop) badgeTop.textContent = countAfastados;
+
+    renderizarLinhasColaboradores();
+  } catch (err) {
+    console.error('Erro ao carregar colaboradores:', err);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-red-500 font-medium"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro ao carregar colaboradores: ${err.message}</td></tr>`;
+    }
+  }
+}
+
+function filtrarColaboradoresLista() {
+  renderizarLinhasColaboradores();
+}
+
+function limparBuscaColaborador() {
+  const input = document.getElementById('filtroColabBuscaNome');
+  if (input) input.value = '';
+  renderizarLinhasColaboradores();
+}
+
+function renderizarLinhasColaboradores() {
+  const tbody = document.getElementById('tabelaColaboradoresBody');
+  if (!tbody) return;
+
+  const totalGeral = (state.colaboradores || []).length;
+  const termoInput = (document.getElementById('filtroColabBuscaNome')?.value || '').trim();
+  const termoLimpo = termoInput.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const termoDigitos = termoInput.replace(/\D/g, '');
+
+  const filtrados = (state.colaboradores || []).filter(c => {
+    if (!termoLimpo) return true;
+    const nome = (c.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cpf = (c.cpf || '').toLowerCase();
+    const cpfDigitos = cpf.replace(/\D/g, '');
+    const cargo = (c.nome_cargo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cliente = (c.cliente_nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const posto = (c.nome_posto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const matchTexto = nome.includes(termoLimpo) || cargo.includes(termoLimpo) || cliente.includes(termoLimpo) || posto.includes(termoLimpo);
+    const matchCpf = (termoDigitos.length >= 2 && cpfDigitos.includes(termoDigitos)) || cpf.includes(termoLimpo);
+
+    return matchTexto || matchCpf;
+  });
+
+  const txtInfo = document.getElementById('txtInfoBuscaColab');
+  if (txtInfo) {
+    if (termoInput) {
+      txtInfo.innerHTML = `<span class="text-sky-700 font-bold">${filtrados.length}</span> de ${totalGeral} colaborador(es)`;
+    } else {
+      txtInfo.textContent = `Total: ${totalGeral} colaborador(es)`;
+    }
+  }
+
+  if (totalGeral === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400 font-medium">Nenhum colaborador encontrado com os filtros aplicados.</td></tr>`;
+    return;
+  }
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-8 text-slate-400 font-medium">
+          <i class="fa-solid fa-user-xmark text-3xl text-slate-300 block mb-2"></i>
+          Nenhum colaborador encontrado para "<b>${termoInput}</b>".
+          <div class="mt-2">
+            <button type="button" onclick="limparBuscaColaborador()" class="text-xs bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold px-3 py-1.5 rounded-lg border border-sky-200 transition">
+              <i class="fa-solid fa-xmark mr-1"></i> Limpar Filtro de Busca
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  filtrados.forEach(c => {
+    const isDemitido = c.ativo === 0 || c.status_colaborador === 'Demitido';
+    const isAfastado = !isDemitido && (c.afastado === 1 || (c.nome_posto || '').toUpperCase().includes('AFASTADO'));
+
+    let badgeStatusColab = '';
+    if (isDemitido) {
+      badgeStatusColab = `<span class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded font-medium">Desligado</span>`;
+    } else if (isAfastado) {
+      badgeStatusColab = `<span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-0.5 rounded border border-purple-300" title="Colaborador Afastado"><i class="fa-solid fa-hospital-user mr-1"></i>Afastado</span>`;
+    } else if (c.status_ferias_atual === 'Em Férias') {
+      badgeStatusColab = `<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded border border-indigo-200"><i class="fa-solid fa-umbrella-beach mr-1"></i>Em Férias</span>`;
+    } else if (c.status_ferias === 'Vencida') {
+      badgeStatusColab = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded animate-pulse">VENCIDA!</span>`;
+    } else if (c.status_ferias && c.status_ferias.includes('60d')) {
+      badgeStatusColab = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">Vence em 60 dias</span>`;
+    } else {
+      badgeStatusColab = `<span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">Em dia</span>`;
+    }
+
+    let clientePostoHtml = '';
+    if (isDemitido) {
+      clientePostoHtml = `
+        <div class="text-xs text-red-600 font-bold"><i class="fa-solid fa-user-slash mr-1"></i>Demitido em ${formatarData(c.data_demissao)}</div>
+        <div class="text-[11px] text-slate-500">${c.motivo_demissao || 'Desligado da empresa'}</div>
+      `;
+    } else if (isAfastado) {
+      clientePostoHtml = `
+        <div class="font-bold text-purple-900 flex items-center gap-1">
+          <i class="fa-solid fa-hospital text-purple-600 text-xs"></i>
+          ${c.cliente_nome || 'Afastado'}
+          ${c.cliente_id ? `<span class="text-purple-700 font-mono font-bold text-[10px] bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded ml-1">#${c.cliente_id}</span>` : ''}
+        </div>
+        <div class="text-xs text-purple-700 font-semibold">📍 Posto: AFASTADOS</div>
+      `;
+    } else {
+      clientePostoHtml = `
+        <div class="font-bold text-slate-800">
+          ${c.cliente_nome || 'Reserva Técnica'}
+          ${c.cliente_id ? `<span class="text-violet-700 font-mono font-bold text-[10px] bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded ml-1" title="Código ID do Cliente"><i class="fa-solid fa-id-badge mr-0.5"></i>ID: #${c.cliente_id}</span>` : ''}
+        </div>
+        <div class="text-xs text-rose-700 font-semibold">${c.nome_posto ? '📍 ' + c.nome_posto : 'Sem posto fixo'}</div>
+      `;
+    }
+
+    let btnDemissao = '';
+    let btnFerias = '';
+    let btnAfastamento = '';
+    if (!isDemitido) {
+      if (isAfastado) {
+        btnAfastamento = `
+          <button onclick="abrirModalRetornoAfastamento(${c.id}, '${escapeJsString(c.nome)}')" class="text-teal-600 hover:text-teal-800 p-1 mr-1" title="Registrar Retorno do Afastamento e Realocar">
+            <i class="fa-solid fa-person-walking-arrow-loop-left"></i>
+          </button>
+        `;
+      } else {
+        btnFerias = `
+          <button onclick="abrirModalConcederFerias(${c.id})" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Conceder Férias ao Colaborador">
+            <i class="fa-solid fa-umbrella-beach"></i>
+          </button>
+        `;
+        btnAfastamento = `
+          <button onclick="abrirModalAfastarColaborador(${c.id}, '${escapeJsString(c.nome)}', '${escapeJsString(c.cliente_nome || 'Sem cliente')} - ${escapeJsString(c.nome_posto || 'Sem posto')}')" class="text-purple-600 hover:text-purple-800 p-1 mr-1" title="Lançar Afastamento (INSS, Licença Médica, etc.)">
+            <i class="fa-solid fa-hospital-user"></i>
+          </button>
+        `;
+      }
+      btnDemissao = `
+        <button onclick="abrirModalDemitirColaborador(${c.id}, '${escapeJsString(c.nome)}', '${escapeJsString(c.cliente_nome || 'Sem cliente')} - ${escapeJsString(c.nome_posto || 'Sem posto')}')" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Demitir / Desligar Colaborador e Liberar Vaga">
+          <i class="fa-solid fa-user-slash"></i>
+        </button>
+      `;
+    }
+
+    const btnEditar = `
+      <button onclick="abrirModalEditarColaborador(${c.id})" class="text-sky-600 hover:text-sky-800 p-1 mr-1" title="Editar Dados do Colaborador">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </button>
+    `;
+
+    const isChecked = state.colabSelecionados.has(c.id);
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition ${isDemitido ? 'bg-slate-50/60 opacity-80' : (isAfastado ? 'bg-purple-50/30' : '')}">
+        <td class="px-3 py-3 text-center">
+          <input type="checkbox" class="chk-colab" value="${c.id}" ${isChecked ? 'checked' : ''} onchange="aoAlternarChkColab(this)">
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-900">${c.nome}</div>
+          <div class="text-xs text-slate-400 font-mono">${c.cpf || 'Sem CPF'}</div>
+        </td>
+        <td class="px-4 py-3">
+          <span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-medium">${c.nome_cargo}</span>
+          <span class="text-indigo-700 font-mono font-bold text-[10px] ml-1 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded" title="Código ID da Função/Cargo"><i class="fa-solid fa-briefcase mr-0.5"></i>ID: #${c.cargo_id}</span>
+        </td>
+        <td class="px-4 py-3">
+          ${clientePostoHtml}
+        </td>
+        <td class="px-4 py-3 font-mono text-xs">${c.escala}</td>
+        <td class="px-4 py-3 text-xs font-medium text-slate-800">${formatarData(c.data_admissao)}</td>
+        <td class="px-4 py-3 text-center">${badgeStatusColab}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <button onclick="abrirModalHistoricoColaborador(${c.id})" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Ver Dossiê e Histórico da Vida do Colaborador (Linha do Tempo 360°)">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </button>
+          <button onclick="abrirModalEditarBeneficiosRapido(${c.id})" class="text-emerald-600 hover:text-emerald-800 p-1 mr-1" title="Editar Benefícios (VT e VA) do Colaborador">
+            <i class="fa-solid fa-utensils"></i>
+          </button>
+          ${btnAfastamento}
+          ${btnFerias}
+          ${btnEditar}
+          ${btnDemissao}
+          <button onclick="excluirItem('colaboradores', ${c.id})" class="text-slate-400 hover:text-red-600 p-1" title="Excluir Definitivamente"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function aoAlternarChkColab(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.colabSelecionados.add(id);
+  else state.colabSelecionados.delete(id);
+  atualizarBarraAcoesColab();
+}
+
+function alternarTodosColab(master) {
+  const chks = document.querySelectorAll('.chk-colab');
+  chks.forEach(chk => {
+    chk.checked = master.checked;
+    const id = parseInt(chk.value, 10);
+    if (master.checked) state.colabSelecionados.add(id);
+    else state.colabSelecionados.delete(id);
+  });
+  atualizarBarraAcoesColab();
+}
+
+function atualizarBarraAcoesColab() {
+  const barra = document.getElementById('barraAcoesColab');
+  const qtd = state.colabSelecionados.size;
+  document.getElementById('qtdColabSelecionados').textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirColaboradoresSelecionados() {
+  const ids = Array.from(state.colabSelecionados);
+  if (!confirm(`Deseja realmente inativar/excluir os ${ids.length} colaboradores selecionados em lote?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'colaboradores', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`${json.count} colaboradores excluídos com sucesso!`);
+      carregarColaboradores();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+    }
+  } catch (err) {
+    alert('Erro ao excluir em massa: ' + err.message);
+  }
+}
+
+function filtrarClientesModalColab(inputId = 'cadColabBuscaCliente', selectId = 'cadColabClienteId') {
+  const input = document.getElementById(inputId);
+  const select = document.getElementById(selectId);
+  if (!input || !select) return;
+
+  const termo = input.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const valorAtual = select.value;
+
+  const filtrados = (state.clientes || []).filter(c => {
+    if (!termo) return true;
+    const nome = ((c.nome_fantasia || '') + ' ' + (c.nome_razao_social || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const idStr = String(c.id);
+    return nome.includes(termo) || idStr.includes(termo);
+  });
+
+  select.innerHTML = '<option value="">Selecione o Cliente (Por Nome)...</option>';
+  filtrados.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `[ID: ${c.id}] ${c.nome_fantasia || c.nome_razao_social}`;
+    select.appendChild(opt);
+  });
+
+  if (valorAtual && filtrados.some(c => String(c.id) === String(valorAtual))) {
+    select.value = valorAtual;
+  } else if (filtrados.length === 1 && termo) {
+    select.value = filtrados[0].id;
+    if (selectId === 'cadColabClienteId') aoMudarClienteColab();
+    else if (selectId === 'editColabClienteId') aoMudarClienteColabEdicao();
+  } else if (!valorAtual) {
+    select.value = '';
+    if (selectId === 'cadColabClienteId') aoMudarClienteColab();
+    else if (selectId === 'editColabClienteId') aoMudarClienteColabEdicao();
+  }
+}
+
+// -------------------------------------------------------------
+// MÓDULO DE TRANSPORTE MULTI-LINHAS (IDA & VOLTA)
+// -------------------------------------------------------------
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+state.linhasTransporteNovo = [];
+state.linhasTransporteEdicao = [];
+
+
+function adicionarLinhaTransporte(modo, dados) {
+  const lista = modo === 'novo' ? state.linhasTransporteNovo : state.linhasTransporteEdicao;
+  const novoId = lista.length > 0 ? Math.max(...lista.map(l => l.id || 0)) + 1 : 1;
+  const novaLinha = {
+    id: novoId,
+    nome_linha: dados?.nome_linha || `Linha ${novoId}`,
+    tarifa: dados?.tarifa !== undefined ? parseFloat(dados.tarifa) : 4.40,
+    qtd_ida: dados?.qtd_ida !== undefined ? parseInt(dados.qtd_ida, 10) : 1,
+    qtd_volta: dados?.qtd_volta !== undefined ? parseInt(dados.qtd_volta, 10) : 1,
+    total_diario: 0
+  };
+  novaLinha.total_diario = Math.round((novaLinha.qtd_ida + novaLinha.qtd_volta) * novaLinha.tarifa * 100) / 100;
+  lista.push(novaLinha);
+  renderizarLinhasTransporte(modo);
+}
+
+function removerLinhaTransporte(idx, modo) {
+  const lista = modo === 'novo' ? state.linhasTransporteNovo : state.linhasTransporteEdicao;
+  if (lista.length <= 1) {
+    alert('O colaborador deve possuir ao menos 1 linha de transporte cadastrada.');
+    return;
+  }
+  lista.splice(idx, 1);
+  renderizarLinhasTransporte(modo);
+}
+
+function atualizarLinhaTransporte(idx, campo, valor, modo) {
+  const lista = modo === 'novo' ? state.linhasTransporteNovo : state.linhasTransporteEdicao;
+  if (!lista[idx]) return;
+  if (campo === 'nome_linha') {
+    lista[idx].nome_linha = valor;
+  } else if (campo === 'tarifa') {
+    lista[idx].tarifa = Math.max(0, parseFloat(valor) || 0);
+  } else if (campo === 'qtd_ida') {
+    lista[idx].qtd_ida = Math.max(0, parseInt(valor, 10) || 0);
+  } else if (campo === 'qtd_volta') {
+    lista[idx].qtd_volta = Math.max(0, parseInt(valor, 10) || 0);
+  }
+  lista[idx].total_diario = Math.round((lista[idx].qtd_ida + lista[idx].qtd_volta) * lista[idx].tarifa * 100) / 100;
+  
+  const subtotalEl = document.getElementById(`subtotalLinha_${modo}_${idx}`);
+  if (subtotalEl) {
+    subtotalEl.innerText = `R$ ${lista[idx].total_diario.toFixed(2).replace('.', ',')}`;
+  }
+  if (modo === 'novo') atualizarResumoBeneficiosNovoColab();
+  else atualizarResumoBeneficiosEdicaoColab();
+}
+
+function renderizarLinhasTransporte(modo) {
+  const lista = modo === 'novo' ? state.linhasTransporteNovo : state.linhasTransporteEdicao;
+  const tbody = document.getElementById(modo === 'novo' ? 'listaLinhasTransporteNovo' : 'listaLinhasTransporteEdicao');
+  if (!tbody) return;
+
+  if (lista.length === 0) {
+    lista.push({ id: 1, nome_linha: 'Linha Municipal', tarifa: 4.40, qtd_ida: 1, qtd_volta: 1, total_diario: 8.80 });
+  }
+
+  tbody.innerHTML = lista.map((l, idx) => `
+    <tr class="hover:bg-slate-50/70 transition">
+      <td class="p-2">
+        <input type="text" value="${escapeHtml(l.nome_linha || '')}" 
+          placeholder="Ex: Linha 107T ou Metrô L1" 
+          class="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-sky-500" 
+          onchange="atualizarLinhaTransporte(${idx}, 'nome_linha', this.value, '${modo}')">
+      </td>
+      <td class="p-2">
+        <input type="number" step="0.05" min="0" value="${Number(l.tarifa || 0).toFixed(2)}" 
+          class="w-full border border-slate-300 rounded px-2 py-1 text-xs text-right font-bold bg-white focus:outline-none focus:ring-1 focus:ring-sky-500" 
+          oninput="atualizarLinhaTransporte(${idx}, 'tarifa', this.value, '${modo}')">
+      </td>
+      <td class="p-2 text-center">
+        <input type="number" min="0" max="10" value="${l.qtd_ida !== undefined ? l.qtd_ida : 1}" 
+          class="w-14 border border-slate-300 rounded px-1.5 py-1 text-xs text-center font-bold bg-white focus:outline-none" 
+          oninput="atualizarLinhaTransporte(${idx}, 'qtd_ida', this.value, '${modo}')">
+      </td>
+      <td class="p-2 text-center">
+        <input type="number" min="0" max="10" value="${l.qtd_volta !== undefined ? l.qtd_volta : 1}" 
+          class="w-14 border border-slate-300 rounded px-1.5 py-1 text-xs text-center font-bold bg-white focus:outline-none" 
+          oninput="atualizarLinhaTransporte(${idx}, 'qtd_volta', this.value, '${modo}')">
+      </td>
+      <td class="p-2 text-right font-bold text-slate-800 text-xs">
+        <span id="subtotalLinha_${modo}_${idx}">R$ ${(l.total_diario || 0).toFixed(2).replace('.', ',')}</span>
+      </td>
+      <td class="p-2 text-center">
+        <button type="button" onclick="removerLinhaTransporte(${idx}, '${modo}')" class="text-red-500 hover:text-red-700 p-1" title="Remover esta linha">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  if (modo === 'novo') atualizarResumoBeneficiosNovoColab();
+  else atualizarResumoBeneficiosEdicaoColab();
+}
+
+function atualizarResumoBeneficiosNovoColab() {
+  const lista = state.linhasTransporteNovo || [];
+  let totalPassagens = 0;
+  let totalDiarioVT = 0;
+  lista.forEach(l => {
+    const viagens = (Number(l.qtd_ida) || 0) + (Number(l.qtd_volta) || 0);
+    totalPassagens += viagens;
+    totalDiarioVT += (viagens * (Number(l.tarifa) || 0));
+  });
+  totalDiarioVT = Math.round(totalDiarioVT * 100) / 100;
+
+  const txtLinhas = `${lista.length} linha(s) • ${totalPassagens} passagens/dia`;
+  const elTexto = document.getElementById('resumoTransporteNovoTexto');
+  const elValor = document.getElementById('resumoTransporteNovoValor');
+  if (elTexto) elTexto.innerText = txtLinhas;
+  if (elValor) elValor.innerText = `R$ ${totalDiarioVT.toFixed(2).replace('.', ',')}`;
+
+  const inputLinhas = document.getElementById('cadColabLinhas');
+  const inputTarifa = document.getElementById('cadColabValorPassagem');
+  const inputQtd = document.getElementById('cadColabQtdPassagens');
+  const inputTotal = document.getElementById('cadColabTotalDiarioVT');
+  if (inputLinhas) inputLinhas.value = lista.map(l => `${l.nome_linha} (${(Number(l.qtd_ida)||1) + (Number(l.qtd_volta)||1)}x R$ ${(Number(l.tarifa)||0).toFixed(2)})`).join(' + ');
+  if (inputTarifa) inputTarifa.value = totalPassagens > 0 ? (totalDiarioVT / totalPassagens).toFixed(2) : '4.40';
+  if (inputQtd) inputQtd.value = totalPassagens;
+  if (inputTotal) inputTotal.value = totalDiarioVT.toFixed(2);
+}
+
+function atualizarResumoBeneficiosEdicaoColab() {
+  const lista = state.linhasTransporteEdicao || [];
+  let totalPassagens = 0;
+  let totalDiarioVT = 0;
+  lista.forEach(l => {
+    const viagens = (Number(l.qtd_ida) || 0) + (Number(l.qtd_volta) || 0);
+    totalPassagens += viagens;
+    totalDiarioVT += (viagens * (Number(l.tarifa) || 0));
+  });
+  totalDiarioVT = Math.round(totalDiarioVT * 100) / 100;
+  const va = parseFloat(document.getElementById('editColabValorVA')?.value) || 0;
+  const totalDiario = totalDiarioVT + va;
+
+  const txtLinhas = `${lista.length} linha(s) • ${totalPassagens} passagens/dia`;
+  const elTexto = document.getElementById('resumoTransporteEdicaoTexto');
+  const elValor = document.getElementById('resumoTransporteEdicaoValor');
+  if (elTexto) elTexto.innerText = txtLinhas;
+  if (elValor) elValor.innerText = `R$ ${totalDiarioVT.toFixed(2).replace('.', ',')}`;
+
+  const elPrevia = document.getElementById('editColabPreviaTotalBenef');
+  if (elPrevia) {
+    elPrevia.innerHTML = `Total diário: <b class="text-emerald-800">R$ ${totalDiario.toFixed(2).replace('.', ',')}</b> (VT: R$ ${totalDiarioVT.toFixed(2).replace('.', ',')} + VA: R$ ${va.toFixed(2).replace('.', ',')})`;
+  }
+
+  const inputLinhas = document.getElementById('editColabLinhas');
+  const inputTarifa = document.getElementById('editColabValorPassagem');
+  const inputQtd = document.getElementById('editColabQtdPassagens');
+  const inputTotal = document.getElementById('editColabTotalDiarioVT');
+  if (inputLinhas) inputLinhas.value = lista.map(l => `${l.nome_linha} (${(Number(l.qtd_ida)||1) + (Number(l.qtd_volta)||1)}x R$ ${(Number(l.tarifa)||0).toFixed(2)})`).join(' + ');
+  if (inputTarifa) inputTarifa.value = totalPassagens > 0 ? (totalDiarioVT / totalPassagens).toFixed(2) : '4.40';
+  if (inputQtd) inputQtd.value = totalPassagens;
+  if (inputTotal) inputTotal.value = totalDiarioVT.toFixed(2);
+}
+
+function abrirModalNovoColaborador() {
+  popularSelectsGlobais();
+  const inputBusca = document.getElementById('cadColabBuscaCliente');
+  if (inputBusca) inputBusca.value = '';
+  const boxInline = document.getElementById('boxCriarPostoInlineColab');
+  if (boxInline) boxInline.classList.add('hidden');
+  const aviso = document.getElementById('avisoSemPostoColab');
+  if (aviso) aviso.classList.add('hidden');
+  const avisoLotado = document.getElementById('avisoLotacaoPostoColab');
+  if (avisoLotado) avisoLotado.classList.add('hidden');
+
+  state.linhasTransporteNovo = [
+    { id: 1, nome_linha: 'Linha Municipal', tarifa: 4.40, qtd_ida: 1, qtd_volta: 1, total_diario: 8.80 }
+  ];
+  renderizarLinhasTransporte('novo');
+  const inputVA = document.getElementById('cadColabValorVA');
+  if (inputVA) inputVA.value = '28.00';
+  atualizarResumoBeneficiosNovoColab();
+
+  const selModelo = document.getElementById('cadColabModeloOSId');
+  if (selModelo) selModelo.value = '';
+  atualizarSelectModelosOSColaborador('novo');
+
+  document.getElementById('modalNovoColaborador').classList.remove('hidden');
+}
+
+
+function aoMudarClienteColab() {
+  const clienteId = parseInt(document.getElementById('cadColabClienteId').value, 10);
+  const selPosto = document.getElementById('cadColabPostoId');
+  const aviso = document.getElementById('avisoSemPostoColab');
+  const boxInline = document.getElementById('boxCriarPostoInlineColab');
+  const avisoLotado = document.getElementById('avisoLotacaoPostoColab');
+
+  if (boxInline) boxInline.classList.add('hidden');
+  if (aviso) aviso.classList.add('hidden');
+  if (avisoLotado) avisoLotado.classList.add('hidden');
+
+  selPosto.innerHTML = '<option value="">Selecione o Posto de Trabalho...</option>';
+  if (!clienteId) return;
+
+  const postosCliente = (state.postos || []).filter(p => p.cliente_id === clienteId);
+  if (postosCliente.length === 0) {
+    selPosto.innerHTML = '<option value="">⚠️ Nenhum posto cadastrado para este cliente</option>';
+    if (aviso) aviso.classList.remove('hidden');
+  } else {
+    postosCliente.forEach(p => {
+      const estaLotado = p.total_ocupados >= p.quantidade_vagas_limite;
+      const statusTxt = estaLotado ? `(⚠️ LOTADO ${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)` : `(${p.total_ocupados}/${p.quantidade_vagas_limite} vagas ocupadas)`;
+      selPosto.innerHTML += `<option value="${p.id}" data-cargo="${p.cargo_id || ''}" data-escala="${p.escala || ''}" data-lotado="${estaLotado ? '1' : '0'}" class="${estaLotado ? 'text-red-600 font-bold bg-red-50' : ''}">${p.nome_posto} ${statusTxt}</option>`;
+    });
+  }
+}
+
+function toggleCriarPostoInlineColab(forcarAbertura) {
+  const box = document.getElementById('boxCriarPostoInlineColab');
+  if (!box) return;
+
+  const clienteId = parseInt(document.getElementById('cadColabClienteId').value, 10);
+  if (!clienteId && forcarAbertura !== false && box.classList.contains('hidden')) {
+    alert('Por favor, selecione primeiro o Cliente Alocado no campo acima para vincular o novo posto.');
+    document.getElementById('cadColabClienteId').focus();
+    return;
+  }
+
+  const deveAbrir = forcarAbertura !== undefined ? forcarAbertura : box.classList.contains('hidden');
+  if (deveAbrir) {
+    box.classList.remove('hidden');
+    const cli = (state.clientes || []).find(c => c.id === clienteId);
+    const titulo = document.getElementById('tituloCriarPostoInlineColab');
+    if (titulo && cli) {
+      titulo.innerHTML = `<i class="fa-solid fa-briefcase text-sky-600 mr-1"></i> Novo Posto para: <span class="text-sky-700 font-bold">${cli.nome_fantasia || cli.nome_razao_social}</span>`;
+    }
+    const colabCargo = document.getElementById('cadColabCargoId')?.value;
+    const inlineCargo = document.getElementById('inlinePostoCargoId');
+    if (inlineCargo && colabCargo) inlineCargo.value = colabCargo;
+
+    const colabEscala = document.getElementById('cadColabEscala')?.value;
+    const inlineEscala = document.getElementById('inlinePostoEscala');
+    if (inlineEscala && colabEscala) inlineEscala.value = colabEscala;
+
+    const inputNome = document.getElementById('inlinePostoNome');
+    if (inputNome) {
+      inputNome.value = '';
+      setTimeout(() => inputNome.focus(), 50);
+    }
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
+async function salvarPostoInlineColab() {
+  const clienteId = parseInt(document.getElementById('cadColabClienteId').value, 10);
+  if (!clienteId) {
+    alert('Por favor, selecione o Cliente Alocado primeiro.');
+    return;
+  }
+
+  const nomePosto = document.getElementById('inlinePostoNome').value.trim();
+  if (!nomePosto) {
+    alert('Por favor, informe o Nome / Descrição do Posto (Ex: Portaria Principal, Limpeza Bloco A...).');
+    document.getElementById('inlinePostoNome').focus();
+    return;
+  }
+
+  const cargoId = parseInt(document.getElementById('inlinePostoCargoId').value, 10);
+  if (!cargoId) {
+    alert('Por favor, selecione a Função / Cargo para este posto.');
+    document.getElementById('inlinePostoCargoId').focus();
+    return;
+  }
+
+  const vagas = parseInt(document.getElementById('inlinePostoVagas').value, 10) || 1;
+  const escala = document.getElementById('inlinePostoEscala').value || '5x2';
+  const turno = document.getElementById('inlinePostoTurno').value || 'Diurno';
+
+  const payload = {
+    cliente_id: clienteId,
+    nome_posto: nomePosto,
+    cargo_id: cargoId,
+    quantidade_vagas_limite: vagas,
+    escala: escala,
+    turno: turno
+  };
+
+  try {
+    const res = await fetch('/api/postos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      // Recarregar postos da API
+      const resPos = await fetch('/api/postos');
+      state.postos = await resPos.json();
+
+      // Atualizar select de postos do modal
+      aoMudarClienteColab();
+
+      // Selecionar o posto recém-criado
+      const selPosto = document.getElementById('cadColabPostoId');
+      if (selPosto) selPosto.value = json.id;
+
+      // Se a função do colaborador não estiver selecionada, sincronizar com o posto
+      const selCargo = document.getElementById('cadColabCargoId');
+      if (selCargo && !selCargo.value) {
+        selCargo.value = cargoId;
+      }
+
+      // Sincronizar escala
+      const selEscala = document.getElementById('cadColabEscala');
+      if (selEscala && escala) selEscala.value = escala;
+
+      // Fechar caixa inline e aviso
+      toggleCriarPostoInlineColab(false);
+      const aviso = document.getElementById('avisoSemPostoColab');
+      if (aviso) aviso.classList.add('hidden');
+
+      alert(`Posto "${nomePosto}" criado com sucesso e selecionado para o colaborador!`);
+    } else {
+      alert('Erro ao criar posto: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao comunicar com o servidor: ' + err.message);
+  }
+}
+
+function aoMudarPostoColab() {
+  const selPosto = document.getElementById('cadColabPostoId');
+  const avisoLotado = document.getElementById('avisoLotacaoPostoColab');
+  const txtLotado = document.getElementById('txtAvisoLotacaoPostoColab');
+
+  if (avisoLotado) avisoLotado.classList.add('hidden');
+
+  if (!selPosto || !selPosto.value) return;
+
+  const postoId = parseInt(selPosto.value, 10);
+  const p = (state.postos || []).find(x => x.id === postoId);
+
+  if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
+    if (avisoLotado && txtLotado) {
+      txtLotado.innerHTML = `⚠️ <b>Setor Lotado:</b> ${p.nome_posto} já possui ${p.total_ocupados}/${p.quantidade_vagas_limite} colaboradores alocados.`;
+      avisoLotado.classList.remove('hidden');
+    }
+
+    const outrosComVagas = (state.postos || []).filter(x => x.cliente_id === p.cliente_id && x.id !== p.id && x.total_ocupados < x.quantidade_vagas_limite);
+    let msg = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO NESTE SETOR!\n\n` +
+      `O setor "${p.nome_posto}" já possui a quantidade total de ${p.quantidade_vagas_limite} colaborador(es) alocado(s) (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
+
+    if (outrosComVagas.length > 0) {
+      msg += `Outros setores deste mesmo cliente com vagas disponíveis:\n` +
+        outrosComVagas.map(o => ` • ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
+        `\n\nDeseja selecionar outro setor disponível ou criar um novo posto?`;
+    } else {
+      msg += `Não há outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
+    }
+
+    const trocar = confirm(msg + `\n\nClique em [OK] para criar novo posto ou escolher outro setor.\nClique em [CANCELAR] para manter seleção.`);
+    if (trocar) {
+      selPosto.value = '';
+      toggleCriarPostoInlineColab(true);
+      return;
+    }
+  }
+
+  const opt = selPosto.options[selPosto.selectedIndex];
+  if (opt) {
+    const cargoId = opt.getAttribute('data-cargo');
+    const selCargo = document.getElementById('cadColabCargoId');
+    if (selCargo && cargoId) selCargo.value = cargoId;
+
+    const escala = opt.getAttribute('data-escala');
+    const selEscala = document.getElementById('cadColabEscala');
+    if (selEscala && escala) selEscala.value = escala;
+  }
+}
+
+function abrirModalAlocarNoPosto(clienteId, postoId, postoNome, clienteNome, cargoId) {
+  popularSelectsGlobais();
+  const modal = document.getElementById('modalNovoColaborador');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+
+  const busca = document.getElementById('cadColabBuscaCliente');
+  if (busca) busca.value = '';
+  const boxInline = document.getElementById('boxCriarPostoInlineColab');
+  if (boxInline) boxInline.classList.add('hidden');
+  const aviso = document.getElementById('avisoSemPostoColab');
+  if (aviso) aviso.classList.add('hidden');
+  const avisoLotado = document.getElementById('avisoLotacaoPostoColab');
+  if (avisoLotado) avisoLotado.classList.add('hidden');
+
+  const selCli = document.getElementById('cadColabClienteId');
+  if (selCli) {
+    selCli.value = clienteId;
+    aoMudarClienteColab();
+  }
+
+  const selPosto = document.getElementById('cadColabPostoId');
+  if (selPosto) {
+    selPosto.value = postoId;
+    aoMudarPostoColab();
+  }
+
+  const selCargo = document.getElementById('cadColabCargoId');
+  if (selCargo && cargoId) {
+    selCargo.value = cargoId;
+  }
+}
+
+async function salvarNovoColaborador(e) {
+  e.preventDefault();
+  const postoIdVal = parseInt(document.getElementById('cadColabPostoId').value, 10);
+  if (postoIdVal) {
+    const p = (state.postos || []).find(x => x.id === postoIdVal);
+    if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
+      alert(`⚠️ BLOQUEIO DE LOTAÇÃO: O setor "${p.nome_posto}" já atingiu a capacidade máxima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, vincule este colaborador a outro setor com vagas disponíveis ou crie um novo posto.`);
+      return;
+    }
+  }
+
+  const linhasArray = state.linhasTransporteNovo || [];
+  let somaPass = 0;
+  let somaVal = 0;
+  linhasArray.forEach(l => {
+    const viagens = (Number(l.qtd_ida) || 0) + (Number(l.qtd_volta) || 0);
+    somaPass += viagens;
+    somaVal += (viagens * (Number(l.tarifa) || 0));
+  });
+  const totalDiarioVT = Math.round(somaVal * 100) / 100;
+  const passagensDia = somaPass > 0 ? somaPass : 2;
+  const tarifaMedia = somaPass > 0 ? Math.round((totalDiarioVT / somaPass) * 100) / 100 : 4.40;
+  const resumoLinhas = linhasArray.map(l => `${l.nome_linha || 'Linha'} (${(Number(l.qtd_ida) || 1) + (Number(l.qtd_volta) || 1)}x R$ ${(Number(l.tarifa) || 0).toFixed(2)})`).join(' + ');
+
+  const payload = {
+    nome: document.getElementById('cadColabNome').value,
+    cargo_id: parseInt(document.getElementById('cadColabCargoId').value, 10),
+    data_admissao: document.getElementById('cadColabAdmissao').value,
+    cliente_id: parseInt(document.getElementById('cadColabClienteId').value, 10),
+    posto_trabalho_id: postoIdVal || null,
+    escala: document.getElementById('cadColabEscala').value,
+    telefone: document.getElementById('cadColabTelefone').value,
+    linhas_onibus: resumoLinhas || 'Municipal',
+    quantidade_passagens_dia: passagensDia,
+    valor_passagem_unitaria: tarifaMedia,
+    total_diario_vt: totalDiarioVT,
+    linhas_transporte_json: JSON.stringify(linhasArray),
+    valor_diario_va: parseFloat(document.getElementById('cadColabValorVA').value) || 28.00,
+    modelo_os_id: document.getElementById('cadColabModeloOSId')?.value ? parseInt(document.getElementById('cadColabModeloOSId').value, 10) : null
+  };
+
+
+  try {
+    const res = await fetch('/api/colaboradores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoColaborador');
+      document.getElementById('formNovoColaborador').reset();
+      await carregarDadosBase();
+      if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+      alert('Colaborador cadastrado e vinculado ao posto de trabalho com sucesso!');
+    } else {
+      alert(json.message); // Trava de lotação
+    }
+  } catch (err) {
+    alert('Erro ao salvar: ' + err.message);
+  }
+}
+
+function abrirModalDemitirColaborador(id, nome, postoInfo) {
+  document.getElementById('demissaoColabId').value = id;
+  document.getElementById('demissaoColabNome').value = nome;
+  document.getElementById('demissaoColabPosto').value = postoInfo;
+  document.getElementById('demissaoData').value = new Date().toISOString().split('T')[0];
+  document.getElementById('demissaoMotivo').value = 'Pedido de Demissão';
+  document.getElementById('demissaoObs').value = '';
+  document.getElementById('modalDemitirColaborador').classList.remove('hidden');
+}
+
+async function confirmarDemissaoColaborador(e) {
+  e.preventDefault();
+  const id = document.getElementById('demissaoColabId').value;
+  const payload = {
+    data_demissao: document.getElementById('demissaoData').value,
+    motivo_demissao: document.getElementById('demissaoMotivo').value,
+    observacoes: document.getElementById('demissaoObs').value
+  };
+
+  try {
+    const res = await fetch(`/api/colaboradores/${id}/demitir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalDemitirColaborador');
+      await carregarDadosBase();
+      if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+      alert('Demissão registrada com sucesso!\nA vaga do posto de trabalho foi liberada e agora requer contratação ou realocação.');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao registrar demissão: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// EDIÇÃO DE DADOS DO COLABORADOR
+// -------------------------------------------------------------
+async function abrirModalEditarColaborador(id) {
+  try {
+    const res = await fetch(`/api/colaboradores/${id}`);
+    if (!res.ok) throw new Error('Falha ao buscar dados do colaborador');
+    const c = await res.json();
+
+    popularSelectsGlobais();
+
+    const inputBusca = document.getElementById('editColabBuscaCliente');
+    if (inputBusca) inputBusca.value = '';
+    const boxInline = document.getElementById('boxCriarPostoInlineColabEdicao');
+    if (boxInline) boxInline.classList.add('hidden');
+    const avisoLotado = document.getElementById('avisoLotacaoPostoColabEdicao');
+    if (avisoLotado) avisoLotado.classList.add('hidden');
+
+    document.getElementById('editColabId').value = c.id;
+    document.getElementById('editColabNome').value = c.nome || '';
+    document.getElementById('editColabCpf').value = c.cpf || '';
+    document.getElementById('editColabCargoId').value = c.cargo_id || '';
+    atualizarSelectModelosOSColaborador('edicao', c.cargo_id, c.modelo_os_id);
+    document.getElementById('editColabClienteId').value = c.cliente_id || '';
+
+    aoMudarClienteColabEdicao(c.posto_trabalho_id);
+
+    document.getElementById('editColabEscala').value = c.escala || '5x2';
+    document.getElementById('editColabAdmissao').value = c.data_admissao ? c.data_admissao.split('T')[0] : '';
+    let linhasArray = [];
+    if (c.linhas_transporte_json) {
+      try {
+        linhasArray = typeof c.linhas_transporte_json === 'string' ? JSON.parse(c.linhas_transporte_json) : c.linhas_transporte_json;
+      } catch (e) {
+        linhasArray = [];
+      }
+    }
+    if (!Array.isArray(linhasArray) || linhasArray.length === 0) {
+      const tarifaPadrao = parseFloat(c.valor_passagem_unitaria) || 4.40;
+      const totalPadrao = parseFloat(c.total_diario_vt) || ((parseInt(c.quantidade_passagens_dia, 10) || 2) * tarifaPadrao);
+      linhasArray = [
+        {
+          id: 1,
+          nome_linha: c.linhas_onibus || 'Linha Principal',
+          tarifa: tarifaPadrao,
+          qtd_ida: 1,
+          qtd_volta: 1,
+          total_diario: totalPadrao
+        }
+      ];
+    }
+    state.linhasTransporteEdicao = linhasArray;
+    renderizarLinhasTransporte('edicao');
+    document.getElementById('editColabValorVA').value = (c.valor_diario_va !== undefined && c.valor_diario_va !== null) ? Number(c.valor_diario_va).toFixed(2) : '28.00';
+    atualizarResumoBeneficiosEdicaoColab();
+
+    document.getElementById('modalEditarColaborador').classList.remove('hidden');
+
+  } catch (err) {
+    alert('Erro ao abrir edição de colaborador: ' + err.message);
+  }
+}
+
+function atualizarPreviaBeneficiosEdicaoColab() {
+  const qtd = parseInt(document.getElementById('editColabQtdPassagens')?.value, 10) || 0;
+  const tarifa = parseFloat(document.getElementById('editColabValorPassagem')?.value) || 0;
+  const va = parseFloat(document.getElementById('editColabValorVA')?.value) || 0;
+  const vtDiario = qtd * tarifa;
+  const totalDiario = vtDiario + va;
+  const el = document.getElementById('editColabPreviaTotalBenef');
+  if (el) {
+    el.innerHTML = `Total diário: <b class="text-emerald-800">R$ ${totalDiario.toFixed(2).replace('.', ',')}</b> (VT: R$ ${vtDiario.toFixed(2).replace('.', ',')} + VA: R$ ${va.toFixed(2).replace('.', ',')})`;
+  }
+}
+
+function aoMudarClienteColabEdicao(postoSelecionadoId) {
+  const clienteId = parseInt(document.getElementById('editColabClienteId').value, 10);
+  const selPosto = document.getElementById('editColabPostoId');
+  const boxInline = document.getElementById('boxCriarPostoInlineColabEdicao');
+  const avisoLotado = document.getElementById('avisoLotacaoPostoColabEdicao');
+  if (boxInline) boxInline.classList.add('hidden');
+  if (avisoLotado) avisoLotado.classList.add('hidden');
+
+  if (!selPosto) return;
+  selPosto.innerHTML = '<option value="">-- Sem Posto Fixo (Reserva Técnica) --</option>';
+  if (!clienteId) return;
+
+  const postosCliente = (state.postos || []).filter(p => p.cliente_id === clienteId);
+  postosCliente.forEach(p => {
+    const estaLotado = p.total_ocupados >= p.quantidade_vagas_limite;
+    const statusTxt = estaLotado ? `(⚠️ LOTADO ${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)` : `(${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)`;
+    selPosto.innerHTML += `<option value="${p.id}" data-cargo="${p.cargo_id || ''}" data-escala="${p.escala || ''}" data-lotado="${estaLotado ? '1' : '0'}" class="${estaLotado ? 'text-red-600 font-bold bg-red-50' : ''}">${p.nome_posto} ${statusTxt}</option>`;
+  });
+  if (postoSelecionadoId) {
+    selPosto.value = postoSelecionadoId;
+  }
+}
+
+function aoMudarPostoColabEdicao() {
+  const selPosto = document.getElementById('editColabPostoId');
+  const avisoLotado = document.getElementById('avisoLotacaoPostoColabEdicao');
+  const txtLotado = document.getElementById('txtAvisoLotacaoPostoColabEdicao');
+
+  if (avisoLotado) avisoLotado.classList.add('hidden');
+
+  if (!selPosto || !selPosto.value) return;
+
+  const postoId = parseInt(selPosto.value, 10);
+  const colabId = parseInt(document.getElementById('editColabId')?.value, 10);
+  const colabAtual = (state.colaboradores || []).find(c => c.id === colabId);
+  const p = (state.postos || []).find(x => x.id === postoId);
+
+  const jaAlocadoNestePosto = colabAtual && colabAtual.posto_trabalho_id === postoId;
+
+  if (p && !jaAlocadoNestePosto && p.total_ocupados >= p.quantidade_vagas_limite) {
+    if (avisoLotado && txtLotado) {
+      txtLotado.innerHTML = `⚠️ <b>Setor Lotado:</b> ${p.nome_posto} já possui ${p.total_ocupados}/${p.quantidade_vagas_limite} colaboradores alocados.`;
+      avisoLotado.classList.remove('hidden');
+    }
+
+    const outrosComVagas = (state.postos || []).filter(x => x.cliente_id === p.cliente_id && x.id !== p.id && x.total_ocupados < x.quantidade_vagas_limite);
+    let msg = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO NESTE SETOR!\n\n` +
+      `O setor "${p.nome_posto}" já possui a quantidade total de ${p.quantidade_vagas_limite} colaboradores alocados (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
+
+    if (outrosComVagas.length > 0) {
+      msg += `Outros setores deste mesmo cliente com vagas disponíveis:\n` +
+        outrosComVagas.map(o => ` • ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
+        `\n\nDeseja selecionar outro setor disponível ou criar um novo posto?`;
+    } else {
+      msg += `Não há outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
+    }
+
+    const trocar = confirm(msg + `\n\nClique em [OK] para criar novo posto ou escolher outro setor.\nClique em [CANCELAR] para manter seleção.`);
+    if (trocar) {
+      selPosto.value = colabAtual?.posto_trabalho_id || '';
+      toggleCriarPostoInlineColabEdicao(true);
+      return;
+    }
+  }
+
+  const opt = selPosto.options[selPosto.selectedIndex];
+  if (opt) {
+    const cargoId = opt.getAttribute('data-cargo');
+    const selCargo = document.getElementById('editColabCargoId');
+    if (selCargo && cargoId) selCargo.value = cargoId;
+
+    const escala = opt.getAttribute('data-escala');
+    const selEscala = document.getElementById('editColabEscala');
+    if (selEscala && escala) selEscala.value = escala;
+  }
+}
+
+function toggleCriarPostoInlineColabEdicao(forcarAbertura) {
+  const box = document.getElementById('boxCriarPostoInlineColabEdicao');
+  if (!box) return;
+
+  const clienteId = parseInt(document.getElementById('editColabClienteId').value, 10);
+  if (!clienteId && forcarAbertura !== false && box.classList.contains('hidden')) {
+    alert('Por favor, selecione primeiro o Cliente Alocado no campo acima para vincular o novo posto.');
+    document.getElementById('editColabClienteId').focus();
+    return;
+  }
+
+  const deveAbrir = forcarAbertura !== undefined ? forcarAbertura : box.classList.contains('hidden');
+  if (deveAbrir) {
+    box.classList.remove('hidden');
+    const cli = (state.clientes || []).find(c => c.id === clienteId);
+    const titulo = document.getElementById('tituloCriarPostoInlineColabEdicao');
+    if (titulo && cli) {
+      titulo.innerHTML = `<i class="fa-solid fa-briefcase text-sky-600 mr-1"></i> Novo Posto para: <span class="text-sky-700 font-bold">${cli.nome_fantasia || cli.nome_razao_social}</span>`;
+    }
+    const colabCargo = document.getElementById('editColabCargoId')?.value;
+    const inlineCargo = document.getElementById('inlinePostoCargoIdEdicao');
+    if (inlineCargo && colabCargo) inlineCargo.value = colabCargo;
+
+    const colabEscala = document.getElementById('editColabEscala')?.value;
+    const inlineEscala = document.getElementById('inlinePostoEscalaEdicao');
+    if (inlineEscala && colabEscala) inlineEscala.value = colabEscala;
+
+    const inputNome = document.getElementById('inlinePostoNomeEdicao');
+    if (inputNome) {
+      inputNome.value = '';
+      setTimeout(() => inputNome.focus(), 50);
+    }
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
+async function salvarPostoInlineColabEdicao() {
+  const clienteId = parseInt(document.getElementById('editColabClienteId').value, 10);
+  if (!clienteId) {
+    alert('Por favor, selecione o Cliente Alocado primeiro.');
+    return;
+  }
+
+  const nomePosto = document.getElementById('inlinePostoNomeEdicao').value.trim();
+  if (!nomePosto) {
+    alert('Por favor, informe o Nome / Descrição do Posto (Ex: Portaria Principal, Limpeza Bloco A...).');
+    document.getElementById('inlinePostoNomeEdicao').focus();
+    return;
+  }
+
+  const cargoId = parseInt(document.getElementById('inlinePostoCargoIdEdicao').value, 10);
+  if (!cargoId) {
+    alert('Por favor, selecione a Função / Cargo para este posto.');
+    document.getElementById('inlinePostoCargoIdEdicao').focus();
+    return;
+  }
+
+  const vagas = parseInt(document.getElementById('inlinePostoVagasEdicao').value, 10) || 1;
+  const escala = document.getElementById('inlinePostoEscalaEdicao').value || '5x2';
+  const turno = document.getElementById('inlinePostoTurnoEdicao').value || 'Diurno';
+
+  const payload = {
+    cliente_id: clienteId,
+    nome_posto: nomePosto,
+    cargo_id: cargoId,
+    quantidade_vagas_limite: vagas,
+    escala: escala,
+    turno: turno
+  };
+
+  try {
+    const res = await fetch('/api/postos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      const resPos = await fetch('/api/postos');
+      state.postos = await resPos.json();
+
+      aoMudarClienteColabEdicao(json.id);
+
+      const selPosto = document.getElementById('editColabPostoId');
+      if (selPosto) selPosto.value = json.id;
+
+      toggleCriarPostoInlineColabEdicao(false);
+      alert(`Posto "${nomePosto}" criado com sucesso e selecionado para o colaborador!`);
+    } else {
+      alert('Erro ao criar posto: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao comunicar com o servidor: ' + err.message);
+  }
+}
+
+async function salvarEdicaoColaborador(e) {
+  e.preventDefault();
+  const id = document.getElementById('editColabId').value;
+  const colabId = parseInt(id, 10);
+  const colabAtual = (state.colaboradores || []).find(c => c.id === colabId);
+  const postoIdVal = document.getElementById('editColabPostoId').value ? parseInt(document.getElementById('editColabPostoId').value, 10) : null;
+
+  if (postoIdVal && (!colabAtual || colabAtual.posto_trabalho_id !== postoIdVal)) {
+    const p = (state.postos || []).find(x => x.id === postoIdVal);
+    if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
+      alert(`⚠️ BLOQUEIO DE LOTAÇÃO: O setor "${p.nome_posto}" já atingiu a capacidade máxima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, selecione outro setor com vagas abertas ou crie um novo posto.`);
+      return;
+    }
+  }
+
+  const linhasArray = state.linhasTransporteEdicao || [];
+  let somaPass = 0;
+  let somaVal = 0;
+  linhasArray.forEach(l => {
+    const viagens = (Number(l.qtd_ida) || 0) + (Number(l.qtd_volta) || 0);
+    somaPass += viagens;
+    somaVal += (viagens * (Number(l.tarifa) || 0));
+  });
+  const totalDiarioVT = Math.round(somaVal * 100) / 100;
+  const passagensDia = somaPass > 0 ? somaPass : 2;
+  const tarifaMedia = somaPass > 0 ? Math.round((totalDiarioVT / somaPass) * 100) / 100 : 4.40;
+  const resumoLinhas = linhasArray.map(l => `${l.nome_linha || 'Linha'} (${(Number(l.qtd_ida) || 1) + (Number(l.qtd_volta) || 1)}x R$ ${(Number(l.tarifa) || 0).toFixed(2)})`).join(' + ');
+
+  const payload = {
+    nome: document.getElementById('editColabNome').value,
+    cpf: document.getElementById('editColabCpf').value,
+    cargo_id: parseInt(document.getElementById('editColabCargoId').value, 10),
+    cliente_id: document.getElementById('editColabClienteId').value ? parseInt(document.getElementById('editColabClienteId').value, 10) : null,
+    posto_trabalho_id: postoIdVal,
+    escala: document.getElementById('editColabEscala').value,
+    data_admissao: document.getElementById('editColabAdmissao').value,
+    telefone: document.getElementById('editColabTelefone').value,
+    linhas_onibus: resumoLinhas || 'Municipal',
+    quantidade_passagens_dia: passagensDia,
+    valor_passagem_unitaria: tarifaMedia,
+    total_diario_vt: totalDiarioVT,
+    linhas_transporte_json: JSON.stringify(linhasArray),
+    valor_diario_va: parseFloat(document.getElementById('editColabValorVA').value) || 28.00,
+    modelo_os_id: document.getElementById('editColabModeloOSId')?.value ? parseInt(document.getElementById('editColabModeloOSId').value, 10) : null
+  };
+
+
+  try {
+    const res = await fetch(`/api/colaboradores/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarColaborador');
+      await carregarDadosBase();
+      if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+      alert('Dados do colaborador atualizados com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao atualizar colaborador');
+    }
+  } catch (err) {
+    alert('Erro ao salvar alterações: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// CONCESSÃO DE FÉRIAS AO COLABORADOR
+// -------------------------------------------------------------
+async function abrirModalConcederFerias(id) {
+  try {
+    let colab = state.colaboradores.find(c => c.id === id);
+    if (!colab) {
+      const res = await fetch(`/api/colaboradores/${id}`);
+      if (res.ok) colab = await res.json();
+    }
+    if (!colab) return alert('Colaborador não encontrado');
+
+    popularSelectsGlobais();
+
+    document.getElementById('feriasColabId').value = colab.id;
+    document.getElementById('feriasColabNome').textContent = `${colab.nome} (Função: ${colab.nome_cargo || 'Não informada'})`;
+    document.getElementById('feriasColabPostoCliente').textContent = `Cliente: ${colab.cliente_nome || 'Reserva Técnica'} | Posto: ${colab.nome_posto || 'Sem posto fixo'}`;
+
+    const hoje = new Date();
+    const amanha = new Date(hoje);
+    amanha.setDate(hoje.getDate() + 1);
+    const em30Dias = new Date(amanha);
+    em30Dias.setDate(amanha.getDate() + 29);
+
+    document.getElementById('feriasDataInicio').value = amanha.toISOString().split('T')[0];
+    document.getElementById('feriasDataFim').value = em30Dias.toISOString().split('T')[0];
+    document.getElementById('feriasTipo').value = 'Férias Integrais (30 dias)';
+
+    const chkCob = document.getElementById('feriasHaveraCobertura');
+    if (chkCob) {
+      chkCob.checked = false;
+    }
+    const blocoCob = document.getElementById('blocoCoberturaFerias');
+    if (blocoCob) {
+      blocoCob.classList.add('hidden');
+    }
+    document.getElementById('feriasObs').value = '';
+
+    document.getElementById('modalConcederFerias').classList.remove('hidden');
+  } catch (err) {
+    alert('Erro ao abrir concessão de férias: ' + err.message);
+  }
+}
+
+function aoMudarDataInicioFerias() {
+  const dIniStr = document.getElementById('feriasDataInicio').value;
+  if (!dIniStr) return;
+  const dIni = new Date(dIniStr + 'T00:00:00');
+  const dFim = new Date(dIni);
+  dFim.setDate(dIni.getDate() + 29);
+  document.getElementById('feriasDataFim').value = dFim.toISOString().split('T')[0];
+}
+
+function aoAlternarHaveraCoberturaFerias(chk) {
+  const bloco = document.getElementById('blocoCoberturaFerias');
+  if (bloco) {
+    if (chk.checked) {
+      bloco.classList.remove('hidden');
+    } else {
+      bloco.classList.add('hidden');
+    }
+  }
+}
+
+async function salvarConcessaoFerias(e) {
+  e.preventDefault();
+  const id = document.getElementById('feriasColabId').value;
+  const haveraCob = document.getElementById('feriasHaveraCobertura').checked;
+
+  const payload = {
+    data_inicio: document.getElementById('feriasDataInicio').value,
+    data_fim: document.getElementById('feriasDataFim').value,
+    tipo_ferias: document.getElementById('feriasTipo').value,
+    havera_cobertura: haveraCob ? 1 : 0,
+    tipo_cobertura: haveraCob ? 'freelancer' : 'sem_cobertura',
+    freelancer_id: haveraCob ? parseInt(document.getElementById('feriasFreelancerId').value, 10) : null,
+    valor_cobertura: haveraCob ? (parseFloat(document.getElementById('feriasValorCobertura').value) || 0) : 0,
+    observacoes: document.getElementById('feriasObs').value
+  };
+
+  if (haveraCob && !payload.freelancer_id) {
+    alert('Por favor, selecione um Freelancer para assumir a cobertura das férias.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/colaboradores/${id}/conceder-ferias`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalConcederFerias');
+      await carregarDadosBase();
+      if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+      if (state.abaAtiva === 'ferias') carregarPainelFerias();
+      alert(`FÉRIAS CONCEDIDAS COM SUCESSO!\n\n${json.message}`);
+    } else {
+      alert(json.message || 'Erro ao conceder férias');
+    }
+  } catch (err) {
+    alert('Erro ao registrar férias: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 4. FÉRIAS, CALENDÁRIO INTERATIVO & PROCESSOS DO DP
+// -------------------------------------------------------------
+
+state.visualizacaoFerias = state.visualizacaoFerias || 'calendario';
+state.mesFeriasAtivo = state.mesFeriasAtivo || state.mesAtual;
+
+async function carregarPainelFerias() {
+  const inputMes = document.getElementById('filtroFeriasMes');
+  if (inputMes && !inputMes.value) {
+    inputMes.value = state.mesFeriasAtivo || state.mesAtual;
+  }
+  const mes = inputMes?.value || state.mesFeriasAtivo || state.mesAtual;
+  state.mesFeriasAtivo = mes;
+
+  const etapa = document.getElementById('filtroFeriasEtapa')?.value || '';
+  const clienteId = document.getElementById('filtroFeriasCliente')?.value || '';
+  const busca = document.getElementById('filtroFeriasBusca')?.value || '';
+
+  // Popular Select de Clientes do Filtro de Férias se estiver vazio
+  const selectCli = document.getElementById('filtroFeriasCliente');
+  if (selectCli && selectCli.options.length <= 1 && Array.isArray(state.clientes)) {
+    const atual = selectCli.value;
+    selectCli.innerHTML = '<option value="">Todos os Clientes</option>';
+    state.clientes.forEach(c => {
+      const nome = c.nome_fantasia || c.nome_razao_social;
+      selectCli.innerHTML += `<option value="${c.id}">${nome}</option>`;
+    });
+    selectCli.value = atual;
+  }
+
+  state.feriasSelecionadas.clear();
+  atualizarBarraAcoesFerias();
+  const chkMasterFerias = document.getElementById('chkTodasFerias');
+  if (chkMasterFerias) chkMasterFerias.checked = false;
+
+  try {
+    // 1. Carregar Programação de Férias com KPIs e Detalhes
+    const url = `/api/ferias/programadas?ano_mes=${mes}&etapa_processo=${encodeURIComponent(etapa)}&cliente_id=${clienteId}&busca=${encodeURIComponent(busca)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const feriasList = data.programadas || [];
+    const kpis = data.kpis || {
+      total_solicitadas_dp: 0,
+      total_aviso_entregue: 0,
+      total_recibo_entregue: 0,
+      total_concluidas: 0,
+      total_programadas: 0
+    };
+
+    // Atualizar Contadores de KPIs
+    if (document.getElementById('kpiFeriasSolicitadas')) document.getElementById('kpiFeriasSolicitadas').textContent = kpis.total_solicitadas_dp;
+    if (document.getElementById('kpiFeriasAviso')) document.getElementById('kpiFeriasAviso').textContent = kpis.total_aviso_entregue;
+    if (document.getElementById('kpiFeriasRecibo')) document.getElementById('kpiFeriasRecibo').textContent = kpis.total_recibo_entregue;
+    if (document.getElementById('kpiFeriasConcluidas')) document.getElementById('kpiFeriasConcluidas').textContent = kpis.total_concluidas;
+    if (document.getElementById('badgeTotalFeriasMes')) {
+      document.getElementById('badgeTotalFeriasMes').textContent = `${feriasList.length} colaborador(es) em férias neste mês`;
+    }
+    if (document.getElementById('qtdProcessosFeriasTxt')) {
+      document.getElementById('qtdProcessosFeriasTxt').textContent = `${feriasList.length} registro(s) encontrado(s)`;
+    }
+
+    // 2. Renderizar Calendário Mensal
+    renderizarCalendarioFerias(feriasList, mes);
+
+    // 3. Renderizar Tabela de Processos DP
+    renderizarTabelaProcessosFerias(feriasList);
+
+    // 4. Carregar Coberturas Mensais de Freelancers (View 4)
+    const resCob = await fetch(`/api/ferias/coberturas?ano_mes=${mes}`);
+    const coberturas = await resCob.json();
+    const tbodyCob = document.getElementById('tabelaCoberturasFeriasBody');
+    if (tbodyCob) {
+      tbodyCob.innerHTML = '';
+      if (!coberturas || coberturas.length === 0) {
+        tbodyCob.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400">Nenhum freelancer dimensionado para cobertura em ${mes}.</td></tr>`;
+      } else {
+        coberturas.forEach(cob => {
+          tbodyCob.innerHTML += `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="px-3 py-3 text-center">
+                <input type="checkbox" class="chk-ferias" value="${cob.id}" onchange="aoAlternarChkFerias(this)">
+              </td>
+              <td class="px-4 py-3 font-semibold text-slate-800">${formatarData(cob.data_inicio)} a ${formatarData(cob.data_fim)}</td>
+              <td class="px-4 py-3">
+                <div class="font-bold text-slate-900">${cob.cliente_nome}</div>
+                <div class="text-xs text-slate-500">📍 ${cob.nome_posto}</div>
+              </td>
+              <td class="px-4 py-3 font-bold text-slate-800">${cob.titular_nome}</td>
+              <td class="px-4 py-3 font-bold text-blue-700">${cob.freelancer_nome}</td>
+              <td class="px-4 py-3"><span class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded font-medium">${cob.tipo_cobertura}</span></td>
+              <td class="px-4 py-3 font-black text-slate-900">${formatarMoeda(cob.valor_acordado_mensal)}</td>
+              <td class="px-4 py-3 font-mono text-xs text-slate-600">${cob.freelancer_pix || '-'}</td>
+              <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-bold">Ativo</span></td>
+            </tr>
+          `;
+        });
+      }
+    }
+
+    // 5. Previsões e Prazos de Férias dos Colaboradores (View 3)
+    const resCol = await fetch('/api/colaboradores');
+    const colabs = await resCol.json();
+    const tbodyPrev = document.getElementById('tabelaPrevisoesFeriasBody');
+    if (tbodyPrev) {
+      tbodyPrev.innerHTML = '';
+      colabs.filter(c => c.data_admissao).forEach(c => {
+        let badgeSit = '';
+        if (c.status_ferias === 'Vencida') {
+          badgeSit = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded">FÉRIAS VENCIDAS</span>`;
+        } else if (c.status_ferias && c.status_ferias.includes('60d')) {
+          badgeSit = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">VENCE EM BREVE</span>`;
+        } else {
+          badgeSit = `<span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded">Em dia</span>`;
+        }
+
+        tbodyPrev.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-4 py-2.5 font-bold text-slate-900">${c.nome}</td>
+            <td class="px-4 py-2.5 text-xs text-slate-600">${c.cliente_nome || 'Geral'} - ${c.nome_posto || 'Posto'}</td>
+            <td class="px-4 py-2.5 text-xs font-medium text-slate-800">${formatarData(c.data_admissao)}</td>
+            <td class="px-4 py-2.5 text-xs font-mono font-bold text-slate-800">${formatarData(c.limite_ferias_vencimento)}</td>
+            <td class="px-4 py-2.5 text-xs font-semibold ${c.dias_para_ferias < 0 ? 'text-red-600' : 'text-slate-700'}">
+              ${c.dias_para_ferias < 0 ? `Atrasado ${Math.abs(c.dias_para_ferias)} dias` : `${c.dias_para_ferias} dias restantes`}
+            </td>
+            <td class="px-4 py-2.5 text-center">${badgeSit}</td>
+            <td class="px-4 py-2.5 text-right">
+              <button onclick="abrirModalProgramarFerias(${c.id})" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2.5 py-1 rounded transition inline-flex items-center gap-1">
+                <i class="fa-solid fa-calendar-plus"></i> Programar
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+  } catch (err) {
+    console.error('Erro ao carregar férias:', err);
+  }
+}
+
+function renderizarCalendarioFerias(feriasList, anoMes) {
+  const grid = document.getElementById('gridDiasCalendarioFerias');
+  if (!grid) return;
+
+  const partes = (anoMes || state.mesAtual).split('-');
+  const ano = parseInt(partes[0], 10);
+  const mes = parseInt(partes[1], 10);
+
+  // Nome do Mês Formatado
+  const dataReferencia = new Date(ano, mes - 1, 1);
+  const nomeMes = dataReferencia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const elTitulo = document.getElementById('tituloCalendarioMesAno');
+  if (elTitulo) elTitulo.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+  // Dias do mês
+  const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay(); // 0 = Domingo
+  const totalDiasMes = new Date(ano, mes, 0).getDate();
+
+  const hoje = new Date();
+  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+
+  let html = '';
+
+  // Células vazias dos dias antes do 1º dia do mês
+  for (let i = 0; i < primeiroDiaSemana; i++) {
+    html += `<div class="bg-slate-50/50 min-h-[90px] p-1.5 rounded-lg border border-slate-100 text-slate-300"></div>`;
+  }
+
+  // Células dos dias do mês
+  for (let dia = 1; dia <= totalDiasMes; dia++) {
+    const diaFormatado = String(dia).padStart(2, '0');
+    const mesFormatado = String(mes).padStart(2, '0');
+    const dataDiaStr = `${ano}-${mesFormatado}-${diaFormatado}`;
+    const isHoje = dataDiaStr === hojeStr;
+
+    // Férias ativas neste dia específico
+    const feriasDoDia = feriasList.filter(f => {
+      return f.data_inicio <= dataDiaStr && f.data_fim >= dataDiaStr;
+    });
+
+    let feriasCardsHtml = '';
+    feriasDoDia.forEach(f => {
+      // Cores por etapa do processo
+      let estiloEtapa = 'bg-purple-100 text-purple-900 border-purple-300';
+      let dotCor = 'bg-purple-500';
+      if (f.etapa_processo === 'Aviso de férias entregue') {
+        estiloEtapa = 'bg-amber-100 text-amber-900 border-amber-300';
+        dotCor = 'bg-amber-500';
+      } else if (f.etapa_processo === 'Recibo de férias entregue') {
+        estiloEtapa = 'bg-blue-100 text-blue-900 border-blue-300';
+        dotCor = 'bg-blue-500';
+      } else if (f.etapa_processo === 'Férias em Gozo / Concluídas') {
+        estiloEtapa = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+        dotCor = 'bg-emerald-500';
+      }
+
+      // Detalhe de Cobertura
+      let coberturaTag = '';
+      if (f.havera_cobertura === 1) {
+        if (f.tipo_cobertura === 'freelancer') {
+          const nomeDiarista = f.freelancer_nome || 'Diarista';
+          coberturaTag = `<span class="text-[9px] text-amber-700 font-bold block truncate" title="Cob: ${nomeDiarista} (Diarista Freelancer)"><i class="fa-solid fa-user-clock"></i> ${nomeDiarista}</span>`;
+        } else if (f.tipo_cobertura === 'remanejamento') {
+          const nomeSub = f.substituto_nome || f.nome_substituto_avulso || 'Colega';
+          coberturaTag = `<span class="text-[9px] text-indigo-700 font-bold block truncate" title="Cob: ${nomeSub} (Colega)"><i class="fa-solid fa-users"></i> ${nomeSub}</span>`;
+        }
+      } else {
+        coberturaTag = `<span class="text-[9px] text-slate-400 italic block">Sem cob.</span>`;
+      }
+
+      feriasCardsHtml += `
+        <div onclick="abrirModalEditarFerias(${f.id})" class="p-1.5 rounded-lg border ${estiloEtapa} cursor-pointer hover:shadow-sm transition-all hover:scale-[1.02] text-left relative group mb-1.5">
+          <div class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full ${dotCor} shrink-0"></span>
+            <span class="font-bold text-[11px] truncate leading-tight">${f.titular_nome}</span>
+          </div>
+          <div class="text-[9px] text-slate-600 truncate mt-0.5">${f.cliente_nome || ''}</div>
+          ${coberturaTag}
+          <div class="text-[8px] font-mono text-slate-500 mt-0.5">${formatarData(f.data_inicio).slice(0,5)} a ${formatarData(f.data_fim).slice(0,5)}</div>
+        </div>
+      `;
+    });
+
+    html += `
+      <div class="min-h-[110px] p-1.5 rounded-lg border ${isHoje ? 'border-amber-400 bg-amber-50/30 ring-2 ring-amber-200' : 'border-slate-200 bg-white hover:border-slate-300'} transition flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold ${isHoje ? 'text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded-full' : 'text-slate-700'}">${dia}</span>
+            ${feriasDoDia.length > 0 ? `<span class="text-[9px] font-bold text-slate-400">${feriasDoDia.length}</span>` : ''}
+          </div>
+          <div class="space-y-0.5 overflow-y-auto max-h-[130px]">
+            ${feriasCardsHtml}
+          </div>
+        </div>
+        <div class="pt-1 text-right">
+          <button onclick="abrirModalProgramarFeriasComData('${dataDiaStr}')" class="text-[10px] text-slate-400 hover:text-amber-600 transition" title="Programar férias iniciando neste dia">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Células restantes para completar a última semana (grid de 7)
+  const celulasPreenchidas = primeiroDiaSemana + totalDiasMes;
+  const celulasFinais = (7 - (celulasPreenchidas % 7)) % 7;
+  for (let j = 0; j < celulasFinais; j++) {
+    html += `<div class="bg-slate-50/50 min-h-[90px] p-1.5 rounded-lg border border-slate-100 text-slate-300"></div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function renderizarTabelaProcessosFerias(feriasList) {
+  const tbody = document.getElementById('tabelaProcessosFeriasBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (feriasList.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-10 text-slate-400">
+          <i class="fa-solid fa-umbrella-beach text-3xl mb-2 text-slate-300 block"></i>
+          Nenhuma programação de férias encontrada para os filtros selecionados.
+          <div class="mt-2">
+            <button onclick="abrirModalProgramarFerias()" class="text-amber-600 hover:text-amber-700 font-bold text-xs">
+              + Programar férias de um colaborador agora
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  feriasList.forEach(f => {
+    // Badges de Etapa do Processo
+    let badgeEtapa = '';
+    let btnAvancar = '';
+
+    if (f.etapa_processo === 'Férias solicitada ao Departamento Pessoal') {
+      badgeEtapa = `<span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-purple-200">
+        <i class="fa-solid fa-paper-plane text-purple-600"></i> 1. DP Solicitada
+      </span>`;
+      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Aviso de férias entregue')" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-lg border border-amber-200 transition" title="Marcar que o aviso formal foi assinado e entregue">
+        Aviso Entregue ➜
+      </button>`;
+    } else if (f.etapa_processo === 'Aviso de férias entregue') {
+      badgeEtapa = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-amber-200">
+        <i class="fa-solid fa-file-signature text-amber-600"></i> 2. Aviso Entregue
+      </span>`;
+      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Recibo de férias entregue')" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition" title="Marcar recibo assinado e pagamento efetuado">
+        Recibo Entregue ➜
+      </button>`;
+    } else if (f.etapa_processo === 'Recibo de férias entregue') {
+      badgeEtapa = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-blue-200">
+        <i class="fa-solid fa-money-check-dollar text-blue-600"></i> 3. Recibo Entregue
+      </span>`;
+      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Férias em Gozo / Concluídas')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-lg border border-emerald-200 transition" title="Concluir processo de férias">
+        Em Gozo / Concluir ➜
+      </button>`;
+    } else {
+      badgeEtapa = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-emerald-200">
+        <i class="fa-solid fa-circle-check text-emerald-600"></i> 4. Gozo / Concluída
+      </span>`;
+      btnAvancar = `<span class="text-[11px] text-emerald-700 font-bold"><i class="fa-solid fa-check-double mr-1"></i>Concluído</span>`;
+    }
+
+    // Cobertura
+    let cobHtml = '';
+    if (f.havera_cobertura === 1) {
+      if (f.tipo_cobertura === 'freelancer') {
+        cobHtml = `
+          <div class="font-bold text-amber-700 flex items-center gap-1 text-xs">
+            <i class="fa-solid fa-user-clock text-amber-600"></i>
+            ${f.freelancer_nome || 'Diarista Freelancer'}
+          </div>
+          <div class="text-[11px] text-slate-500">Valor Acordo: <b>${formatarMoeda(f.valor_cobertura || 2800)}</b></div>
+          ${f.freelancer_pix ? `<div class="text-[10px] text-slate-400 font-mono">PIX: ${f.freelancer_pix}</div>` : ''}
+        `;
+      } else if (f.tipo_cobertura === 'remanejamento') {
+        const subNome = f.substituto_nome || f.nome_substituto_avulso || 'Colega Efetivo';
+        cobHtml = `
+          <div class="font-bold text-indigo-700 flex items-center gap-1 text-xs">
+            <i class="fa-solid fa-users text-indigo-600"></i>
+            ${subNome}
+          </div>
+          <div class="text-[11px] text-slate-500">Remanejamento Interno</div>
+        `;
+      }
+    } else {
+      cobHtml = `<span class="text-xs text-slate-400 italic">Sem Cobertura Contratada</span>`;
+    }
+
+    // Comprovações de Entrega
+    let entregasHtml = `
+      <div class="text-xs space-y-0.5">
+        <div><b>Aviso:</b> ${f.data_aviso_entregue ? `<span class="text-amber-700 font-bold">${formatarData(f.data_aviso_entregue)}</span>` : '<span class="text-slate-400">Pendente</span>'}</div>
+        <div><b>Recibo:</b> ${f.data_recibo_entregue ? `<span class="text-blue-700 font-bold">${formatarData(f.data_recibo_entregue)}</span>` : '<span class="text-slate-400">Pendente</span>'}</div>
+      </div>
+    `;
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-900">${f.titular_nome}</div>
+          <div class="text-xs text-slate-500">CPF: ${f.titular_cpf || '-'}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-800 text-xs">${f.cliente_nome || 'Geral'}</div>
+          <div class="text-xs text-slate-500">📍 ${f.nome_posto || 'Posto'}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-semibold text-slate-900 text-xs">${formatarData(f.data_inicio)} a ${formatarData(f.data_fim)}</div>
+          <div class="text-[11px] text-slate-500"><b>${f.dias_ferias || 30} dias</b> de descanso</div>
+        </td>
+        <td class="px-4 py-3">
+          ${cobHtml}
+        </td>
+        <td class="px-4 py-3 text-center">
+          <div>${badgeEtapa}</div>
+          <div class="mt-1">${btnAvancar}</div>
+        </td>
+        <td class="px-4 py-3">
+          ${entregasHtml}
+        </td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <div class="flex items-center justify-end gap-1.5">
+            <button onclick="abrirModalEditarFerias(${f.id})" class="text-slate-600 hover:text-amber-700 p-1.5 rounded hover:bg-slate-100 transition" title="Editar Datas, Cobertura ou Processo">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="cancelarFeriasProgramadas(${f.id})" class="text-slate-400 hover:text-rose-600 p-1.5 rounded hover:bg-rose-50 transition" title="Cancelar / Excluir Programação">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function mudarMesCalendarioFerias(delta) {
+  const inputMes = document.getElementById('filtroFeriasMes');
+  const mesAtual = inputMes?.value || state.mesFeriasAtivo || state.mesAtual;
+  const partes = mesAtual.split('-');
+  let ano = parseInt(partes[0], 10);
+  let mes = parseInt(partes[1], 10);
+
+  mes += delta;
+  if (mes > 12) {
+    mes = 1;
+    ano += 1;
+  } else if (mes < 1) {
+    mes = 12;
+    ano -= 1;
+  }
+
+  const novoMes = `${ano}-${String(mes).padStart(2, '0')}`;
+  if (inputMes) inputMes.value = novoMes;
+  state.mesFeriasAtivo = novoMes;
+  carregarPainelFerias();
+}
+
+function irParaMesAtualFerias() {
+  const inputMes = document.getElementById('filtroFeriasMes');
+  if (inputMes) inputMes.value = state.mesAtual;
+  state.mesFeriasAtivo = state.mesAtual;
+  carregarPainelFerias();
+}
+
+function trocarVisualizacaoFerias(modo) {
+  state.visualizacaoFerias = modo;
+
+  const vCal = document.getElementById('visualizacaoCalendarioFerias');
+  const vProc = document.getElementById('visualizacaoProcessosFerias');
+  const vVenc = document.getElementById('visualizacaoVencimentosFerias');
+  const vCob = document.getElementById('visualizacaoCoberturasFerias');
+
+  const btnCal = document.getElementById('btnModoFeriasCalendario');
+  const btnProc = document.getElementById('btnModoFeriasProcessos');
+  const btnVenc = document.getElementById('btnModoFeriasVencimentos');
+  const btnCob = document.getElementById('btnModoFeriasCoberturas');
+
+  if (vCal) vCal.classList.toggle('hidden', modo !== 'calendario');
+  if (vProc) vProc.classList.toggle('hidden', modo !== 'processos');
+  if (vVenc) vVenc.classList.toggle('hidden', modo !== 'vencimentos');
+  if (vCob) vCob.classList.toggle('hidden', modo !== 'coberturas');
+
+  const ativoCls = ['bg-white', 'text-slate-800', 'shadow-xs', 'font-bold'];
+  const inativoCls = ['text-slate-600', 'hover:text-slate-900', 'font-semibold'];
+
+  [
+    { btn: btnCal, key: 'calendario' },
+    { btn: btnProc, key: 'processos' },
+    { btn: btnVenc, key: 'vencimentos' },
+    { btn: btnCob, key: 'coberturas' }
+  ].forEach(item => {
+    if (!item.btn) return;
+    if (modo === item.key) {
+      item.btn.classList.add(...ativoCls);
+      item.btn.classList.remove(...inativoCls);
+    } else {
+      item.btn.classList.remove(...ativoCls);
+      item.btn.classList.add(...inativoCls);
+    }
+  });
+}
+
+function filtrarFeriasPorEtapa(etapa) {
+  const select = document.getElementById('filtroFeriasEtapa');
+  if (select) {
+    select.value = (select.value === etapa) ? '' : etapa;
+  }
+  // Se estiver em outra view, muda para o calendário ou processos
+  if (state.visualizacaoFerias === 'vencimentos' || state.visualizacaoFerias === 'coberturas') {
+    trocarVisualizacaoFerias('calendario');
+  }
+  carregarPainelFerias();
+}
+
+function calcularDataFimFerias(prefix) {
+  const inicioEl = document.getElementById(`${prefix}FeriasDataInicio`);
+  const diasEl = document.getElementById(`${prefix}FeriasDias`);
+  const fimEl = document.getElementById(`${prefix}FeriasDataFim`);
+
+  if (!inicioEl || !diasEl || !fimEl) return;
+  const dataInicioStr = inicioEl.value;
+  const dias = parseInt(diasEl.value, 10) || 30;
+
+  if (!dataInicioStr) return;
+  const d = new Date(dataInicioStr + 'T12:00:00');
+  d.setDate(d.getDate() + (dias - 1));
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  fimEl.value = `${y}-${m}-${day}`;
+}
+
+function setDiasFeriasRapido(prefix, dias) {
+  const diasEl = document.getElementById(`${prefix}FeriasDias`);
+  if (diasEl) {
+    diasEl.value = dias;
+    calcularDataFimFerias(prefix);
+  }
+}
+
+function aoMudarTipoCoberturaFerias(prefix) {
+  const tipo = document.getElementById(`${prefix}FeriasTipoCob`)?.value;
+  const boxFree = document.getElementById(`${prefix}BoxFreelancer`);
+  const boxReman = document.getElementById(`${prefix}BoxRemanejamento`);
+
+  if (boxFree) boxFree.classList.toggle('hidden', tipo !== 'freelancer');
+  if (boxReman) boxReman.classList.toggle('hidden', tipo !== 'remanejamento');
+}
+
+function aoMudarEtapaFeriasForm(prefix) {
+  const etapa = document.getElementById(`${prefix}FeriasEtapa`)?.value;
+  const inputAviso = document.getElementById(`${prefix}FeriasDataAviso`);
+  const inputRecibo = document.getElementById(`${prefix}FeriasDataRecibo`);
+
+  const hoje = new Date();
+  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+
+  if (etapa === 'Aviso de férias entregue') {
+    if (inputAviso && !inputAviso.value) inputAviso.value = hojeStr;
+  } else if (etapa === 'Recibo de férias entregue' || etapa === 'Férias em Gozo / Concluídas') {
+    if (inputAviso && !inputAviso.value) inputAviso.value = hojeStr;
+    if (inputRecibo && !inputRecibo.value) inputRecibo.value = hojeStr;
+  }
+}
+
+function aoSelecionarColaboradorFerias(colabId) {
+  const colab = (state.colaboradores || []).find(c => c.id === parseInt(colabId, 10));
+  const elInfo = document.getElementById('progFeriasInfoPosto');
+  if (!elInfo) return;
+  if (colab) {
+    elInfo.innerHTML = `📍 Posto Atual: <b>${colab.nome_posto || 'Sem posto definido'}</b> | Cliente: <b>${colab.cliente_nome || 'Geral'}</b>`;
+  } else {
+    elInfo.innerHTML = '';
+  }
+}
+
+function abrirModalProgramarFerias(colabIdDefault, dataInicioDefault) {
+  popularSelectsGlobais();
+
+  const selectColab = document.getElementById('progFeriasColabId');
+  if (selectColab) {
+    selectColab.innerHTML = '<option value="">-- Selecione o Colaborador Titular --</option>';
+    (state.colaboradores || []).filter(c => c.ativo === 1).forEach(c => {
+      const postoStr = c.nome_posto ? ` - ${c.nome_posto}` : '';
+      const cliStr = c.cliente_nome ? ` (${c.cliente_nome})` : '';
+      selectColab.innerHTML += `<option value="${c.id}" ${colabIdDefault && c.id === parseInt(colabIdDefault, 10) ? 'selected' : ''}>${c.nome}${postoStr}${cliStr}</option>`;
+    });
+    if (colabIdDefault) {
+      selectColab.value = colabIdDefault;
+      aoSelecionarColaboradorFerias(colabIdDefault);
+    }
+  }
+
+  // Popular Freelancers
+  const selectFree = document.getElementById('progFeriasFreelancerId');
+  if (selectFree) {
+    selectFree.innerHTML = '<option value="">-- Selecione um Diarista / Freelancer --</option>';
+    (state.freelancers || []).filter(f => f.ativo === 1).forEach(f => {
+      selectFree.innerHTML += `<option value="${f.id}">${f.nome} (${f.funcao || 'Diarista'})</option>`;
+    });
+  }
+
+  // Popular Colegas Efetivos para Substituição
+  const selectSub = document.getElementById('progFeriasSubstitutoId');
+  if (selectSub) {
+    selectSub.innerHTML = '<option value="">-- Selecione o Colega Substituto --</option>';
+    (state.colaboradores || []).filter(c => c.ativo === 1 && c.id !== parseInt(colabIdDefault, 10)).forEach(c => {
+      selectSub.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_posto || 'Reserva Técnica'})</option>`;
+    });
+  }
+
+  // Datas padrão
+  let dataIni = dataInicioDefault;
+  if (!dataIni) {
+    const daqui30d = new Date();
+    daqui30d.setDate(daqui30d.getDate() + 30);
+    const y = daqui30d.getFullYear();
+    const m = String(daqui30d.getMonth() + 1).padStart(2, '0');
+    const d = String(daqui30d.getDate()).padStart(2, '0');
+    dataIni = `${y}-${m}-${d}`;
+  }
+
+  document.getElementById('progFeriasDataInicio').value = dataIni;
+  document.getElementById('progFeriasDias').value = 30;
+  calcularDataFimFerias('prog');
+
+  document.getElementById('progFeriasEtapa').value = 'Férias solicitada ao Departamento Pessoal';
+  document.getElementById('progFeriasDataAviso').value = '';
+  document.getElementById('progFeriasDataRecibo').value = '';
+  document.getElementById('progFeriasTipoCob').value = 'freelancer';
+  aoMudarTipoCoberturaFerias('prog');
+  document.getElementById('progFeriasValorCob').value = '2800.00';
+  document.getElementById('progFeriasSubstitutoNome').value = '';
+  document.getElementById('progFeriasObs').value = '';
+
+  abrirModal('modalProgramarFerias');
+}
+
+function abrirModalProgramarFeriasComData(dataStr) {
+  abrirModalProgramarFerias(null, dataStr);
+}
+
+async function salvarProgramacaoFerias(e) {
+  e.preventDefault();
+
+  const colabId = parseInt(document.getElementById('progFeriasColabId').value, 10);
+  if (!colabId) {
+    alert('Selecione o colaborador titular para as férias.');
+    return;
+  }
+
+  const colab = (state.colaboradores || []).find(c => c.id === colabId);
+  const data_inicio = document.getElementById('progFeriasDataInicio').value;
+  const dias_ferias = parseInt(document.getElementById('progFeriasDias').value, 10) || 30;
+  const data_fim = document.getElementById('progFeriasDataFim').value;
+  const etapa_processo = document.getElementById('progFeriasEtapa').value;
+  const data_aviso_entregue = document.getElementById('progFeriasDataAviso').value || null;
+  const data_recibo_entregue = document.getElementById('progFeriasDataRecibo').value || null;
+
+  const tipo_cobertura = document.getElementById('progFeriasTipoCob').value;
+  const havera_cobertura = tipo_cobertura === 'sem_cobertura' ? 0 : 1;
+  const freelancer_id = tipo_cobertura === 'freelancer' ? parseInt(document.getElementById('progFeriasFreelancerId').value, 10) || null : null;
+  const valor_cobertura = tipo_cobertura === 'freelancer' ? parseFloat(document.getElementById('progFeriasValorCob').value) || 2800.00 : 0;
+  const colaborador_substituto_id = tipo_cobertura === 'remanejamento' ? parseInt(document.getElementById('progFeriasSubstitutoId').value, 10) || null : null;
+  const nome_substituto_avulso = tipo_cobertura === 'remanejamento' ? document.getElementById('progFeriasSubstitutoNome').value.trim() : null;
+  const observacoes = document.getElementById('progFeriasObs').value.trim();
+
+  if (tipo_cobertura === 'freelancer' && !freelancer_id) {
+    alert('Por favor, selecione qual freelancer cobrirá as férias ou altere o tipo de cobertura.');
+    return;
+  }
+
+  const payload = {
+    colaborador_id: colabId,
+    posto_trabalho_id: colab?.posto_trabalho_id || null,
+    cliente_id: colab?.cliente_id || null,
+    data_inicio,
+    data_fim,
+    dias_ferias,
+    tipo_ferias: dias_ferias === 30 ? 'Férias Integrais (30 dias)' : `Férias Fracionadas (${dias_ferias} dias)`,
+    havera_cobertura,
+    tipo_cobertura,
+    freelancer_id,
+    valor_cobertura,
+    colaborador_substituto_id,
+    nome_substituto_avulso,
+    observacoes,
+    etapa_processo,
+    data_aviso_entregue,
+    data_recibo_entregue
+  };
+
+  const btn = document.getElementById('btnSalvarProgFerias');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Salvando...';
+  }
+
+  try {
+    const res = await fetch('/api/ferias/programar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao programar férias');
+
+    fecharModal('modalProgramarFerias');
+    alert('Férias programadas com sucesso!');
+    await carregarPainelFerias();
+  } catch (err) {
+    console.error('Erro ao programar férias:', err);
+    alert('Erro ao salvar programação de férias: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Programar Férias';
+    }
+  }
+}
+
+async function abrirModalEditarFerias(id) {
+  try {
+    const res = await fetch(`/api/ferias/programadas/${id}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erro ao carregar dados da programação de férias');
+    }
+    const f = await res.json();
+
+    document.getElementById('editFeriasId').value = f.id;
+    document.getElementById('editFeriasNomeColab').textContent = `${f.titular_nome} (CPF: ${f.titular_cpf || '-'})`;
+    document.getElementById('editFeriasPostoCliente').textContent = `${f.cliente_nome || 'Geral'} - ${f.nome_posto || 'Posto'}`;
+    document.getElementById('editFeriasSubtitulo').textContent = `Registro #${f.id} • Cadastrado em ${formatarData(f.created_at)}`;
+
+    document.getElementById('editFeriasDataInicio').value = f.data_inicio;
+    document.getElementById('editFeriasDias').value = f.dias_ferias || 30;
+    document.getElementById('editFeriasDataFim').value = f.data_fim;
+
+    document.getElementById('editFeriasEtapa').value = f.etapa_processo || 'Férias solicitada ao Departamento Pessoal';
+    document.getElementById('editFeriasDataAviso').value = f.data_aviso_entregue || '';
+    document.getElementById('editFeriasDataRecibo').value = f.data_recibo_entregue || '';
+
+    // Previsão de Cobertura
+    const tipoCob = f.havera_cobertura === 0 ? 'sem_cobertura' : (f.tipo_cobertura || 'freelancer');
+    document.getElementById('editFeriasTipoCob').value = tipoCob;
+
+    // Popular Freelancers
+    const selectFree = document.getElementById('editFeriasFreelancerId');
+    selectFree.innerHTML = '<option value="">-- Selecione o Diarista --</option>';
+    (state.freelancers || []).forEach(fr => {
+      selectFree.innerHTML += `<option value="${fr.id}" ${fr.id === f.freelancer_id ? 'selected' : ''}>${fr.nome} (${fr.funcao || 'Diarista'})</option>`;
+    });
+    document.getElementById('editFeriasValorCob').value = (f.valor_cobertura || 2800).toFixed(2);
+
+    // Popular Colegas Substitutos
+    const selectSub = document.getElementById('editFeriasSubstitutoId');
+    selectSub.innerHTML = '<option value="">-- Selecione o Colega Substituto --</option>';
+    (state.colaboradores || []).filter(c => c.id !== f.colaborador_id).forEach(c => {
+      selectSub.innerHTML += `<option value="${c.id}" ${c.id === f.colaborador_substituto_id ? 'selected' : ''}>${c.nome} (${c.nome_posto || 'Reserva Técnica'})</option>`;
+    });
+    document.getElementById('editFeriasSubstitutoNome').value = f.nome_substituto_avulso || '';
+
+    aoMudarTipoCoberturaFerias('edit');
+
+    document.getElementById('editFeriasObs').value = f.observacoes || '';
+    document.getElementById('editFeriasStatus').value = f.status_ferias || 'Programada';
+
+    abrirModal('modalEditarProgramacaoFerias');
+  } catch (err) {
+    console.error('Erro ao abrir edição de férias:', err);
+    alert('Erro ao carregar dados das férias: ' + err.message);
+  }
+}
+
+async function salvarEdicaoFerias(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('editFeriasId').value, 10);
+  if (!id) return;
+
+  const data_inicio = document.getElementById('editFeriasDataInicio').value;
+  const dias_ferias = parseInt(document.getElementById('editFeriasDias').value, 10) || 30;
+  const data_fim = document.getElementById('editFeriasDataFim').value;
+  const etapa_processo = document.getElementById('editFeriasEtapa').value;
+  const data_aviso_entregue = document.getElementById('editFeriasDataAviso').value || null;
+  const data_recibo_entregue = document.getElementById('editFeriasDataRecibo').value || null;
+
+  const tipo_cobertura = document.getElementById('editFeriasTipoCob').value;
+  const havera_cobertura = tipo_cobertura === 'sem_cobertura' ? 0 : 1;
+  const freelancer_id = tipo_cobertura === 'freelancer' ? parseInt(document.getElementById('editFeriasFreelancerId').value, 10) || null : null;
+  const valor_cobertura = tipo_cobertura === 'freelancer' ? parseFloat(document.getElementById('editFeriasValorCob').value) || 2800.00 : 0;
+  const colaborador_substituto_id = tipo_cobertura === 'remanejamento' ? parseInt(document.getElementById('editFeriasSubstitutoId').value, 10) || null : null;
+  const nome_substituto_avulso = tipo_cobertura === 'remanejamento' ? document.getElementById('editFeriasSubstitutoNome').value.trim() : null;
+  const observacoes = document.getElementById('editFeriasObs').value.trim();
+  const status_ferias = document.getElementById('editFeriasStatus').value;
+
+  const payload = {
+    data_inicio,
+    data_fim,
+    dias_ferias,
+    tipo_ferias: dias_ferias === 30 ? 'Férias Integrais (30 dias)' : `Férias Fracionadas (${dias_ferias} dias)`,
+    havera_cobertura,
+    tipo_cobertura,
+    freelancer_id,
+    valor_cobertura,
+    colaborador_substituto_id,
+    nome_substituto_avulso,
+    observacoes,
+    etapa_processo,
+    data_aviso_entregue,
+    data_recibo_entregue,
+    status_ferias
+  };
+
+  const btn = document.getElementById('btnSalvarEditFerias');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Salvando...';
+  }
+
+  try {
+    const res = await fetch(`/api/ferias/programadas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao atualizar férias');
+
+    fecharModal('modalEditarProgramacaoFerias');
+    alert('Programação de férias atualizada com sucesso!');
+    await carregarPainelFerias();
+  } catch (err) {
+    console.error('Erro ao atualizar férias:', err);
+    alert('Erro: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações';
+    }
+  }
+}
+
+async function cancelarFeriasProgramadas(idFromBtn) {
+  const id = idFromBtn || parseInt(document.getElementById('editFeriasId').value, 10);
+  if (!id) return;
+  if (!confirm('Deseja realmente cancelar/excluir esta programação de férias? Caso haja freelancer vinculado, a cobertura será removida e o colaborador retornará ao status normal.')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/ferias/programadas/${id}`, {
+      method: 'DELETE'
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao cancelar férias');
+
+    fecharModal('modalEditarProgramacaoFerias');
+    alert('Programação de férias cancelada com sucesso!');
+    await carregarPainelFerias();
+  } catch (err) {
+    console.error('Erro ao cancelar férias:', err);
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function avancarEtapaFerias(id, novaEtapa) {
+  const hoje = new Date();
+  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+
+  const payload = { etapa_processo: novaEtapa };
+  if (novaEtapa === 'Aviso de férias entregue') payload.data_aviso_entregue = hojeStr;
+  if (novaEtapa === 'Recibo de férias entregue') payload.data_recibo_entregue = hojeStr;
+
+  try {
+    const res = await fetch(`/api/ferias/programadas/${id}/etapa`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao avançar etapa');
+
+    await carregarPainelFerias();
+  } catch (err) {
+    console.error('Erro ao avançar etapa de férias:', err);
+    alert('Erro ao atualizar etapa: ' + err.message);
+  }
+}
+
+function abrirModalNovaCoberturaFerias() {
+  popularSelectsGlobais();
+  document.getElementById('modalNovaCoberturaFerias').classList.remove('hidden');
+}
+
+async function salvarNovaCoberturaFerias(e) {
+  e.preventDefault();
+  const payload = {
+    colaborador_titular_id: parseInt(document.getElementById('cobColabTitularId').value, 10),
+    freelancer_id: parseInt(document.getElementById('cobFreelancerId').value, 10),
+    data_inicio: document.getElementById('cobDataInicio').value,
+    data_fim: document.getElementById('cobDataFim').value,
+    tipo_cobertura: document.getElementById('cobTipo').value,
+    valor_acordado_mensal: parseFloat(document.getElementById('cobValorMensal').value) || 2800.00,
+    observacoes: document.getElementById('cobObs').value
+  };
+
+  try {
+    const res = await fetch('/api/ferias/coberturas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovaCoberturaFerias');
+      carregarPainelFerias();
+      alert('Freelancer alocado para cobertura de férias com sucesso!');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function aoAlternarChkFerias(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.feriasSelecionadas.add(id);
+  else state.feriasSelecionadas.delete(id);
+  atualizarBarraAcoesFerias();
+}
+
+function alternarTodasFerias(master) {
+  const chks = document.querySelectorAll('.chk-ferias');
+  chks.forEach(chk => {
+    chk.checked = master.checked;
+    const id = parseInt(chk.value, 10);
+    if (master.checked) state.feriasSelecionadas.add(id);
+    else state.feriasSelecionadas.delete(id);
+  });
+  atualizarBarraAcoesFerias();
+}
+
+function atualizarBarraAcoesFerias() {
+  const barra = document.getElementById('barraAcoesFerias');
+  if (!barra) return;
+  const qtd = state.feriasSelecionadas.size;
+  const elQtd = document.getElementById('qtdFeriasSelecionadas');
+  if (elQtd) elQtd.textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirFeriasSelecionadas() {
+  const ids = Array.from(state.feriasSelecionadas);
+  if (ids.length === 0) return;
+  if (!confirm(`Deseja realmente excluir as ${ids.length} coberturas de férias selecionadas?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'ferias', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`${json.count} coberturas de férias excluídas com sucesso!`);
+      carregarPainelFerias();
+    } else {
+      alert('Erro ao excluir: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao excluir em massa: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 5. SETOR DE BENEFÍCIOS (VT & VA COM DESCONTO DE FALTAS & CALENDÁRIO)
+// -------------------------------------------------------------
+async function carregarBeneficios() {
+  const mes = document.getElementById('benefAnoMes')?.value || state.mesAtual;
+  const tbody = document.getElementById('tabelaBeneficiosBody');
+  tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Calculando folha de benefícios com períodos de apuração e faltas integradas...</td></tr>`;
+
+  state.benefSelecionados.clear();
+  atualizarBarraAcoesBeneficios();
+  const chkMasterBenef = document.getElementById('chkTodosBeneficios');
+  if (chkMasterBenef) chkMasterBenef.checked = false;
+
+  try {
+    const res = await fetch(`/api/beneficios/fechamento?ano_mes=${mes}`);
+    const data = await res.json();
+
+    document.getElementById('cardTotalVT').textContent = formatarMoeda(data.total_geral_vt);
+    document.getElementById('cardTotalVA').textContent = formatarMoeda(data.total_geral_va);
+    document.getElementById('cardTotalEconomiaFaltas').textContent = `${data.total_faltas_descontadas} faltas abatidas`;
+
+    if (data.configDias) {
+      document.getElementById('benefDias5x2').value = data.configDias.dias_uteis_5x2;
+      document.getElementById('benefDias6x1').value = data.configDias.dias_uteis_6x1;
+      document.getElementById('benefDias12x36').value = data.configDias.dias_uteis_12x36;
+    }
+
+    if (!data.itens || data.itens.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-slate-400 font-medium">Nenhum colaborador com apuração nesta competência.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = '';
+    data.itens.forEach(item => {
+      const totalGeralColab = (item.total_vt_final || 0) + (item.total_va_final || 0);
+
+      // Badge de período de apuração
+      let periodoBadge = '';
+      const inicioFormatado = formatarData(item.data_inicio_beneficio);
+      const fimFormatado = formatarData(item.data_fim_beneficio);
+
+      if (item.customizado) {
+        periodoBadge = `<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200" title="${item.observacoes || 'Ajuste manual customizado'}"><i class="fa-solid fa-pen-to-square text-[9px]"></i>Customizado</span>`;
+      } else if (item.eh_proporcional) {
+        periodoBadge = `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200" title="${item.motivo_proporcional}"><i class="fa-solid fa-clock-rotate-left text-[9px]"></i>${item.motivo_proporcional || 'Proporcional'}</span>`;
+      } else {
+        periodoBadge = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-full">Mês Integral</span>`;
+      }
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <td class="px-3 py-3 text-center">
+            <input type="checkbox" class="chk-benef" value="${item.colaborador_id}" onchange="aoAlternarChkBeneficios(this)">
+          </td>
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-900 leading-snug">${item.nome}</div>
+            <div class="text-[11px] font-mono text-slate-400">${item.cpf || 'Sem CPF'}</div>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-600">
+            <span class="font-medium text-slate-800">${item.cliente_nome}</span>
+            <span class="block text-[11px] text-slate-400 truncate">${item.nome_posto}</span>
+          </td>
+          <td class="px-4 py-3 font-mono text-xs">
+            <span class="bg-slate-100 px-1.5 py-0.5 rounded font-semibold text-slate-700">${item.escala}</span>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-700">
+            <div class="font-semibold text-slate-800 flex items-center gap-1">
+              <i class="fa-regular fa-calendar text-slate-400"></i>
+              <span>${inicioFormatado} até ${fimFormatado}</span>
+            </div>
+            <div class="mt-0.5">${periodoBadge}</div>
+          </td>
+          <td class="px-3 py-3 text-center text-xs font-bold text-slate-700">${item.dias_vt}d</td>
+          <td class="px-4 py-3 text-right font-black text-emerald-700 whitespace-nowrap">${formatarMoeda(item.total_vt_final)}</td>
+          <td class="px-3 py-3 text-center text-xs font-bold text-slate-700">${item.dias_va}d</td>
+          <td class="px-4 py-3 text-right font-black text-blue-700 whitespace-nowrap">${formatarMoeda(item.total_va_final)}</td>
+          <td class="px-4 py-3 text-right font-black text-slate-900 whitespace-nowrap">${formatarMoeda(totalGeralColab)}</td>
+          <td class="px-4 py-3 text-center whitespace-nowrap">
+            <button type="button" onclick="abrirModalAjustarBeneficio(${item.colaborador_id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 shadow-2xs transition" title="Ajustar Período, Tarifas e Calendário do Mês">
+              <i class="fa-solid fa-calendar-days text-emerald-600"></i>
+              <span>Ajustar</span>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar benefícios:', err);
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-red-500 font-bold">Erro ao carregar folha de benefícios: ${err.message}</td></tr>`;
+  }
+}
+
+function aoAlternarChkBeneficios(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.benefSelecionados.add(id);
+  else state.benefSelecionados.delete(id);
+  atualizarBarraAcoesBeneficios();
+}
+
+function alternarTodosBeneficios(master) {
+  const chks = document.querySelectorAll('.chk-benef');
+  chks.forEach(chk => {
+    chk.checked = master.checked;
+    const id = parseInt(chk.value, 10);
+    if (master.checked) state.benefSelecionados.add(id);
+    else state.benefSelecionados.delete(id);
+  });
+  atualizarBarraAcoesBeneficios();
+}
+
+function atualizarBarraAcoesBeneficios() {
+  const barra = document.getElementById('barraAcoesBeneficios');
+  if (!barra) return;
+  const qtd = state.benefSelecionados.size;
+  const elQtd = document.getElementById('qtdBenefSelecionados');
+  if (elQtd) elQtd.textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirBeneficiosSelecionados() {
+  const ids = Array.from(state.benefSelecionados);
+  if (ids.length === 0) return;
+  if (!confirm(`Deseja realmente zerar/remover o benefício (VT/VA) dos ${ids.length} colaboradores selecionados?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'beneficios', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`Benefícios zerados/removidos para ${json.count} colaboradores!`);
+      carregarBeneficios();
+    } else {
+      alert('Erro ao atualizar: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao excluir em massa: ' + err.message);
+  }
+}
+
+async function salvarConfigDiasBeneficios() {
+  const payload = {
+    ano_mes: document.getElementById('benefAnoMes').value || state.mesAtual,
+    dias_uteis_5x2: parseInt(document.getElementById('benefDias5x2').value, 10),
+    dias_uteis_6x1: parseInt(document.getElementById('benefDias6x1').value, 10),
+    dias_uteis_12x36: parseInt(document.getElementById('benefDias12x36').value, 10)
+  };
+
+  try {
+    await fetch('/api/beneficios/config-mes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    carregarBeneficios();
+  } catch (err) {
+    console.error('Erro ao salvar dias:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// MODAL DE AJUSTE DE BENEFÍCIOS & CALENDÁRIO INTERATIVO DO MÊS
+// -------------------------------------------------------------
+async function abrirModalAjustarBeneficio(colabId) {
+  const anoMes = document.getElementById('benefAnoMes')?.value || state.mesAtual;
+
+  try {
+    const res = await fetch(`/api/beneficios/colaborador/${colabId}?ano_mes=${anoMes}`);
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      alert('Erro ao carregar dados do colaborador: ' + (data.message || 'Desconhecido'));
+      return;
+    }
+
+    const col = data.colaborador;
+    const b = data.beneficio;
+
+    // Identificação
+    document.getElementById('modalBenefColabId').value = col.id;
+    document.getElementById('modalBenefAnoMes').value = data.ano_mes;
+    document.getElementById('modalBenefColabNome').textContent = col.nome;
+    document.getElementById('modalBenefColabCpf').textContent = col.cpf || 'Não informado';
+    document.getElementById('modalBenefColabLocal').textContent = `${col.cliente_nome} - ${col.nome_posto}`;
+    document.getElementById('modalBenefColabEscala').textContent = col.escala;
+    document.getElementById('modalBenefLinhasOnibus').textContent = col.linhas_onibus || 'Municipal';
+
+    // Status
+    const elStatus = document.getElementById('modalBenefBadgeStatus');
+    elStatus.textContent = col.status_colaborador || 'Ativo';
+    if (col.status_colaborador === 'Demitido') {
+      elStatus.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-800';
+    } else {
+      elStatus.className = 'px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
+    }
+
+    const elCustom = document.getElementById('modalBenefBadgeCustom');
+    if (b.customizado) {
+      elCustom.classList.remove('hidden');
+    } else {
+      elCustom.classList.add('hidden');
+    }
+
+    // Datas admissão / demissão
+    const admStr = col.data_admissao ? formatarData(col.data_admissao) : 'Não inf.';
+    const demStr = col.data_demissao ? ` | Demitido em: ${formatarData(col.data_demissao)}` : '';
+    document.getElementById('modalBenefColabDatas').textContent = `Adm: ${admStr}${demStr}`;
+
+    // Alerta Proporcional
+    const alertaProporcional = document.getElementById('modalBenefAlertaProporcional');
+    const alertaTexto = document.getElementById('modalBenefAlertaProporcionalTexto');
+    if (data.eh_proporcional) {
+      let mot = [];
+      if (data.default_inicio !== data.data_inicio_mes) mot.push(`Admissão no mês em ${formatarData(data.default_inicio)}`);
+      if (data.default_fim !== data.data_fim_mes) mot.push(`Demissão no mês em ${formatarData(data.default_fim)}`);
+      alertaTexto.innerHTML = `<b>Período Proporcional Detectado:</b> ${mot.join('; ')}. O sistema sugeriu o período de <b>${formatarData(data.default_inicio)} até ${formatarData(data.default_fim)}</b>.`;
+      alertaProporcional.classList.remove('hidden');
+    } else {
+      alertaProporcional.classList.add('hidden');
+    }
+
+    // Período de apuração (A partir de / Até)
+    document.getElementById('modalBenefDataInicio').value = b.data_inicio_beneficio || data.default_inicio;
+    document.getElementById('modalBenefDataFim').value = b.data_fim_beneficio || data.default_fim;
+
+    // Valores e inputs
+    document.getElementById('modalBenefDiasVT').value = b.dias_vt;
+    document.getElementById('modalBenefTarifaVT').value = (b.tarifa_vt !== undefined && b.tarifa_vt !== null) ? Number(b.tarifa_vt).toFixed(2) : '4.40';
+    document.getElementById('modalBenefPassagensDia').value = b.passagens_dia || 2;
+
+    document.getElementById('modalBenefDiasVA').value = b.dias_va;
+    document.getElementById('modalBenefDiariaVA').value = (b.diaria_va !== undefined && b.diaria_va !== null) ? Number(b.diaria_va).toFixed(2) : '28.00';
+    document.getElementById('modalBenefFaltas').value = b.faltas_descontadas || 0;
+
+    document.getElementById('modalBenefObservacoes').value = b.observacoes || '';
+
+    // Salvar no state local para manipulação interativa do calendário
+    state.beneficioModal = {
+      colabId: col.id,
+      anoMes: data.ano_mes,
+      escala: col.escala,
+      dias: data.dias_calendario || [],
+      faltasRegistradas: data.faltas_registradas || [],
+      dataInicioMes: data.data_inicio_mes,
+      dataFimMes: data.data_fim_mes,
+      defaultInicio: data.default_inicio,
+      defaultFim: data.default_fim
+    };
+
+    renderizarGradeCalendario();
+    recalcularTotaisModalBeneficio();
+
+    document.getElementById('modalEditarBeneficioMes').classList.remove('hidden');
+  } catch (err) {
+    console.error('Erro ao abrir modal de benefícios:', err);
+    alert('Erro ao carregar dados do benefício: ' + err.message);
+  }
+}
+
+function renderizarGradeCalendario() {
+  const container = document.getElementById('gradeCalendarioDias');
+  if (!container || !state.beneficioModal) return;
+
+  const dias = state.beneficioModal.dias;
+  container.innerHTML = '';
+
+  if (dias.length === 0) {
+    container.innerHTML = '<div class="col-span-7 text-center text-slate-400 py-4">Nenhum dia para este mês.</div>';
+    return;
+  }
+
+  // Obter o primeiro dia da semana (0: Dom, 1: Seg, ..., 6: Sáb)
+  const primeiroDiaSemana = dias[0].dia_semana;
+  for (let i = 0; i < primeiroDiaSemana; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'h-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-200';
+    container.appendChild(empty);
+  }
+
+  let totalAtivos = 0;
+  let totalFaltas = 0;
+
+  dias.forEach(d => {
+    if (d.ativo) totalAtivos++;
+    if (d.eh_falta) totalFaltas++;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.onclick = () => aoAlternarDiaCalendario(d.data);
+
+    let classes = 'h-12 p-1 rounded-lg border flex flex-col items-center justify-between text-xs transition cursor-pointer ';
+    let badgeText = '';
+
+    if (d.eh_falta) {
+      classes += d.ativo 
+        ? 'bg-red-50 border-red-500 text-red-700 hover:bg-red-100 ring-2 ring-red-400' 
+        : 'bg-red-50/60 border-red-300 text-red-500 hover:bg-red-100 line-through';
+      badgeText = '<span class="text-[9px] font-bold text-red-600 uppercase">Falta</span>';
+    } else if (d.ativo) {
+      classes += 'bg-emerald-600 border-emerald-700 text-white font-bold hover:bg-emerald-700 shadow-xs';
+      badgeText = '<i class="fa-solid fa-check text-[10px] text-emerald-100"></i>';
+    } else {
+      if (!d.eh_util_escala) {
+        classes += 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200';
+        badgeText = '<span class="text-[9px] text-slate-400">Folga</span>';
+      } else {
+        classes += 'bg-slate-50 border-slate-300 text-slate-600 hover:bg-emerald-50 hover:border-emerald-300';
+        badgeText = '<span class="text-[9px] text-slate-400">-</span>';
+      }
+    }
+
+    btn.className = classes;
+    btn.innerHTML = `
+      <div class="w-full flex justify-between items-center text-[10px] leading-none">
+        <span class="font-black text-xs">${d.dia}</span>
+        <span class="text-[9px] opacity-75">${obterDiaSemanaAbrev(d.dia_semana)}</span>
+      </div>
+      <div class="leading-none pb-0.5">${badgeText}</div>
+    `;
+
+    container.appendChild(btn);
+  });
+
+  const txtQtd = document.getElementById('txtQtdDiasCalendario');
+  if (txtQtd) txtQtd.textContent = totalAtivos;
+
+  const txtFaltas = document.getElementById('txtFaltasCalendarioInfo');
+  if (txtFaltas) {
+    txtFaltas.textContent = `${totalFaltas} falta(s) integradas do RH`;
+  }
+}
+
+function obterDiaSemanaAbrev(diaSemana) {
+  const nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  return nomes[diaSemana] || '';
+}
+
+function aoAlternarDiaCalendario(dataStr) {
+  if (!state.beneficioModal) return;
+  const diaObj = state.beneficioModal.dias.find(d => d.data === dataStr);
+  if (!diaObj) return;
+
+  diaObj.ativo = !diaObj.ativo;
+
+  // Recalcular quantidade de dias ativos e sincronizar com os inputs de VT e VA
+  const totalAtivos = state.beneficioModal.dias.filter(d => d.ativo).length;
+  document.getElementById('modalBenefDiasVT').value = totalAtivos;
+  document.getElementById('modalBenefDiasVA').value = totalAtivos;
+
+  renderizarGradeCalendario();
+  recalcularTotaisModalBeneficio();
+}
+
+function aplicarPeriodoAoCalendario() {
+  if (!state.beneficioModal) return;
+  const inicio = document.getElementById('modalBenefDataInicio')?.value;
+  const fim = document.getElementById('modalBenefDataFim')?.value;
+
+  if (!inicio || !fim) {
+    alert('Por favor, informe as datas de Início e Fim do período.');
+    return;
+  }
+
+  if (inicio > fim) {
+    alert('A data de início não pode ser posterior à data final.');
+    return;
+  }
+
+  // Ativa apenas os dias que:
+  // 1. Estão dentro do intervalo [inicio, fim]
+  // 2. São dias úteis de trabalho na escala do colaborador
+  // 3. NÃO são faltas registradas no RH
+  state.beneficioModal.dias.forEach(d => {
+    const dentroPeriodo = (d.data >= inicio && d.data <= fim);
+    d.ativo = (dentroPeriodo && d.eh_util_escala && !d.eh_falta);
+  });
+
+  const totalAtivos = state.beneficioModal.dias.filter(d => d.ativo).length;
+  document.getElementById('modalBenefDiasVT').value = totalAtivos;
+  document.getElementById('modalBenefDiasVA').value = totalAtivos;
+
+  renderizarGradeCalendario();
+  recalcularTotaisModalBeneficio();
+}
+
+function selecionarTodosDiasUteisCalendario() {
+  if (!state.beneficioModal) return;
+  const inicio = document.getElementById('modalBenefDataInicio')?.value || state.beneficioModal.dataInicioMes;
+  const fim = document.getElementById('modalBenefDataFim')?.value || state.beneficioModal.dataFimMes;
+
+  state.beneficioModal.dias.forEach(d => {
+    const dentro = (d.data >= inicio && d.data <= fim);
+    d.ativo = (dentro && d.eh_util_escala && !d.eh_falta);
+  });
+
+  const totalAtivos = state.beneficioModal.dias.filter(d => d.ativo).length;
+  document.getElementById('modalBenefDiasVT').value = totalAtivos;
+  document.getElementById('modalBenefDiasVA').value = totalAtivos;
+
+  renderizarGradeCalendario();
+  recalcularTotaisModalBeneficio();
+}
+
+function limparTodosDiasCalendario() {
+  if (!state.beneficioModal) return;
+  state.beneficioModal.dias.forEach(d => d.ativo = false);
+
+  document.getElementById('modalBenefDiasVT').value = 0;
+  document.getElementById('modalBenefDiasVA').value = 0;
+
+  renderizarGradeCalendario();
+  recalcularTotaisModalBeneficio();
+}
+
+function recalcularTotaisModalBeneficio() {
+  const diasVT = parseFloat(document.getElementById('modalBenefDiasVT')?.value) || 0;
+  const tarifaVT = parseFloat(document.getElementById('modalBenefTarifaVT')?.value) || 0;
+  const passagensDia = parseFloat(document.getElementById('modalBenefPassagensDia')?.value) || 0;
+  const subtotalVT = diasVT * tarifaVT * passagensDia;
+
+  const diasVA = parseFloat(document.getElementById('modalBenefDiasVA')?.value) || 0;
+  const diariaVA = parseFloat(document.getElementById('modalBenefDiariaVA')?.value) || 0;
+  const subtotalVA = diasVA * diariaVA;
+
+  const totalGeral = subtotalVT + subtotalVA;
+
+  const elLiveVT = document.getElementById('modalBenefLiveVT');
+  if (elLiveVT) elLiveVT.textContent = formatarMoeda(subtotalVT);
+
+  const elLiveVA = document.getElementById('modalBenefLiveVA');
+  if (elLiveVA) elLiveVA.textContent = formatarMoeda(subtotalVA);
+
+  const elLiveTotal = document.getElementById('modalBenefLiveTotalGeral');
+  if (elLiveTotal) elLiveTotal.textContent = formatarMoeda(totalGeral);
+}
+
+async function salvarAjusteBeneficioColaborador(e) {
+  e.preventDefault();
+  const colabId = document.getElementById('modalBenefColabId')?.value;
+  const anoMes = document.getElementById('modalBenefAnoMes')?.value;
+
+  if (!colabId || !anoMes) {
+    alert('Identificação do colaborador ou competência inválida.');
+    return;
+  }
+
+  const diasAtivosArray = (state.beneficioModal?.dias || []).filter(d => d.ativo).map(d => d.data);
+
+  const payload = {
+    ano_mes: anoMes,
+    data_inicio_beneficio: document.getElementById('modalBenefDataInicio')?.value || null,
+    data_fim_beneficio: document.getElementById('modalBenefDataFim')?.value || null,
+    dias_vt: parseInt(document.getElementById('modalBenefDiasVT')?.value, 10) || 0,
+    dias_va: parseInt(document.getElementById('modalBenefDiasVA')?.value, 10) || 0,
+    tarifa_vt: parseFloat(document.getElementById('modalBenefTarifaVT')?.value) || 0,
+    passagens_dia: parseInt(document.getElementById('modalBenefPassagensDia')?.value, 10) || 0,
+    diaria_va: parseFloat(document.getElementById('modalBenefDiariaVA')?.value) || 0,
+    faltas_descontadas: parseInt(document.getElementById('modalBenefFaltas')?.value, 10) || 0,
+    dias_selecionados_json: JSON.stringify(diasAtivosArray),
+    observacoes: document.getElementById('modalBenefObservacoes')?.value || ''
+  };
+
+  const btnSalvar = document.getElementById('btnSalvarAjusteBeneficio');
+  if (btnSalvar) {
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Salvando...';
+  }
+
+  try {
+    const res = await fetch(`/api/beneficios/colaborador/${colabId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      fecharModal('modalEditarBeneficioMes');
+      await carregarBeneficios();
+      alert('Ajustes do benefício salvos com sucesso!');
+    } else {
+      alert('Erro ao salvar benefício: ' + (json.message || 'Desconhecido'));
+    }
+  } catch (err) {
+    console.error('Erro ao salvar ajuste de benefícios:', err);
+    alert('Erro de comunicação: ' + err.message);
+  } finally {
+    if (btnSalvar) {
+      btnSalvar.disabled = false;
+      btnSalvar.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Ajustes do Benefício';
+    }
+  }
+}
+
+async function restaurarPadraoBeneficioColaborador() {
+  const colabId = document.getElementById('modalBenefColabId')?.value;
+  const anoMes = document.getElementById('modalBenefAnoMes')?.value;
+  const colabNome = document.getElementById('modalBenefColabNome')?.textContent || 'este colaborador';
+
+  if (!confirm(`Deseja restaurar o cálculo padrão do sistema para ${colabNome} na competência ${anoMes}?\n\nIsso cancelará todas as customizações manuais e retornará aos valores automáticos da escala e faltas.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/beneficios/colaborador/${colabId}?ano_mes=${anoMes}`, {
+      method: 'DELETE'
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      fecharModal('modalEditarBeneficioMes');
+      await carregarBeneficios();
+      alert('Padrão do sistema restaurado com sucesso!');
+    } else {
+      alert('Erro ao restaurar padrão: ' + (json.message || 'Desconhecido'));
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+function exportarBeneficiosExcel() {
+  const tabela = document.getElementById('tabelaBeneficiosBody');
+  const rows = [];
+  tabela.querySelectorAll('tr').forEach(tr => {
+    const cols = tr.querySelectorAll('td');
+    if (cols.length >= 10) {
+      rows.push({
+        'Colaborador': cols[1].querySelector('div')?.innerText.trim() || cols[1].innerText.trim(),
+        'Cliente / Posto': cols[2].innerText.replace(/\n/g, ' - ').trim(),
+        'Escala': cols[3].innerText.trim(),
+        'Período de Apuração': cols[4].innerText.replace(/\n/g, ' ').trim(),
+        'Dias VT': cols[5].innerText.trim(),
+        'Total VT (R$)': cols[6].innerText.trim(),
+        'Dias VA': cols[7].innerText.trim(),
+        'Total VA (R$)': cols[8].innerText.trim(),
+        'Total Geral (R$)': cols[9].innerText.trim()
+      });
+    }
+  });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Folha_Beneficios');
+  XLSX.writeFile(wb, `SISFAC_Beneficios_VT_VA_${state.mesAtual}.xlsx`);
+}
+
+// -------------------------------------------------------------
+// 6. COMPRAS: ORÇAMENTOS E APROVAÇÃO DA DIRETORIA
+// -------------------------------------------------------------
+// -------------------------------------------------------------
+// 6. COMPRAS: ORÇAMENTOS, CONDIÇÕES DE PAGAMENTO & CALENDÁRIO
+// -------------------------------------------------------------
+async function carregarOrcamentosCompras() {
+  try {
+    const params = new URLSearchParams();
+    const filtroForma = document.getElementById('filtroOrcamentosFormaPagamento')?.value;
+    if (filtroForma && filtroForma !== 'todos') params.append('forma_pagamento', filtroForma);
+
+    const filtroCondicao = document.getElementById('filtroOrcamentosCondicao')?.value;
+    if (filtroCondicao && filtroCondicao !== 'todos') params.append('condicao_pagamento', filtroCondicao);
+
+    const filtroStatus = document.getElementById('filtroOrcamentosStatus')?.value;
+    if (filtroStatus && filtroStatus !== 'todos') params.append('status_aprovacao', filtroStatus);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`/api/compras/orcamentos${query}`);
+    const orcs = await res.json();
+    state.orcamentos = orcs;
+
+    const tbody = document.getElementById('tabelaOrcamentosBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(orcs) || orcs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhum orçamento encontrado com os filtros selecionados.</td></tr>`;
+      return;
+    }
+
+    const podeAprovar = temPermissao('compras', 'aprovar') || state.usuarioLogado?.setor === 'diretoria' || isUsuarioAdminMaster();
+
+    orcs.forEach(o => {
+      // 1. Badge de Status de Aprovação
+      let statusBadge = '';
+      if (o.status_aprovacao === 'Aguardando Aprovação Diretoria/Admin') {
+        statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full animate-pulse flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-clock"></i> Aguardando Autorização</span>`;
+      } else if (o.status_aprovacao === 'Aprovado') {
+        statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-check-double"></i> Aprovado</span>`;
+      } else {
+        statusBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-ban"></i> Rejeitado</span>`;
+      }
+
+      // 2. Badge do Financeiro
+      let financeiroBadge = '';
+      const stFinan = o.status_financeiro || 'Pendente';
+      if (stFinan === 'Pago') {
+        financeiroBadge = `<span class="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-check-circle"></i> Quitado</span>`;
+      } else if (stFinan === 'Parcialmente Pago') {
+        financeiroBadge = `<span class="bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-hourglass-half"></i> Parcial</span>`;
+      } else if (stFinan === 'Em Aberto' || stFinan === 'Pendente') {
+        financeiroBadge = `<span class="bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-regular fa-clock"></i> Programado</span>`;
+      } else {
+        financeiroBadge = `<span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full w-max mx-auto">${stFinan}</span>`;
+      }
+
+      // 3. Resumo Visual de Condições e Prazos
+      let condicaoHtml = '';
+      const modo = o.condicao_pagamento || 'adiantamento_prazo';
+      if (modo === 'adiantamento_prazo') {
+        condicaoHtml = `
+          <div class="text-xs space-y-0.5">
+            <div class="flex items-center gap-1 text-slate-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+              <span class="font-bold">Entrada:</span> ${formatarMoeda(o.valor_adiantamento || 0)} 
+              <span class="text-slate-400 text-[10px]">(${formatarData(o.data_adiantamento)})</span>
+            </div>
+            <div class="flex items-center gap-1 text-slate-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <span class="font-bold">Restante:</span> ${formatarMoeda(o.valor_restante || 0)}
+              <span class="text-teal-700 font-bold text-[10px] bg-teal-50 px-1 rounded">${o.prazo_restante_dias || 30}d</span>
+              <span class="text-slate-400 text-[10px]">(${formatarData(o.data_vencimento_restante)})</span>
+            </div>
+          </div>
+        `;
+      } else if (modo === 'multiplas_datas') {
+        const qtdParc = o.parcelas && o.parcelas.length > 0 ? o.parcelas.length : 2;
+        condicaoHtml = `
+          <div class="text-xs">
+            <span class="bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold px-1.5 py-0.5 rounded text-[11px]">
+              <i class="fa-solid fa-layer-group mr-1"></i>${qtdParc}x Parcelas
+            </span>
+            <div class="text-[10px] text-slate-500 mt-1">
+              ${(o.parcelas || []).map(p => `${formatarData(p.data_vencimento)}: ${formatarMoeda(p.valor)}`).slice(0, 2).join(' | ')}
+              ${(o.parcelas || []).length > 2 ? ' ...' : ''}
+            </div>
+          </div>
+        `;
+      } else if (modo === 'a_vista') {
+        condicaoHtml = `
+          <div class="text-xs text-slate-700">
+            <span class="bg-emerald-50 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[11px]">
+              <i class="fa-solid fa-bolt mr-1"></i>À Vista
+            </span>
+            <div class="text-[10px] text-slate-400 mt-0.5">Vencimento: ${formatarData(o.data_vencimento_restante || o.data_adiantamento)}</div>
+          </div>
+        `;
+      } else {
+        condicaoHtml = `<div class="text-xs text-slate-500">${modo}</div>`;
+      }
+
+      // 4. Forma de Pagamento com Ícone
+      let formaHtml = '';
+      const forma = o.forma_pagamento || 'PIX';
+      if (forma === 'PIX') {
+        formaHtml = `<span class="bg-teal-50 text-teal-800 border border-teal-200 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-brands fa-pix text-teal-600"></i> PIX</span>`;
+      } else if (forma === 'Boleto Bancário') {
+        formaHtml = `<span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-barcode text-slate-600"></i> Boleto</span>`;
+      } else if (forma.includes('TED') || forma.includes('Transferência')) {
+        formaHtml = `<span class="bg-blue-50 text-blue-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-money-bill-transfer text-blue-600"></i> TED</span>`;
+      } else {
+        formaHtml = `<span class="bg-purple-50 text-purple-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-credit-card text-purple-600"></i> Cartão</span>`;
+      }
+
+      // 5. Ações Disponíveis
+      let acoesHtml = `
+        <div class="flex items-center justify-end gap-1">
+          <button onclick="abrirEspelhoPedido(${o.id})" class="text-slate-600 hover:text-teal-700 bg-slate-100 hover:bg-teal-50 p-1.5 rounded transition" title="Visualizar & Imprimir Pedido Oficial">
+            <i class="fa-solid fa-file-invoice"></i>
+          </button>
+          <button onclick="abrirModalCondicoesPagamento(${o.id})" class="text-slate-600 hover:text-amber-700 bg-slate-100 hover:bg-amber-50 p-1.5 rounded transition" title="Ajustar Condições de Pagamento & Prazos">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+      `;
+
+      if (o.status_aprovacao === 'Aguardando Aprovação Diretoria/Admin' && podeAprovar) {
+        acoesHtml += `
+          <button onclick="autorizarOrcamento(${o.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-2 py-1 rounded shadow-xs ml-1" title="Autorizar Pedido de Compra">
+            <i class="fa-solid fa-check"></i>
+          </button>
+          <button onclick="rejeitarOrcamento(${o.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1 rounded shadow-xs" title="Rejeitar Pedido">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+      }
+      acoesHtml += `</div>`;
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-900">${o.titulo_orcamento}</div>
+            <div class="text-[11px] text-slate-400">${o.ano_mes} ${o.detalhes_itens ? '• ' + o.detalhes_itens.slice(0, 40) + '...' : ''}</div>
+          </td>
+          <td class="px-4 py-3"><span class="bg-teal-50 text-teal-700 border border-teal-200 text-xs px-2 py-0.5 rounded font-bold">${o.categoria_compra}</span></td>
+          <td class="px-4 py-3">
+            <div class="font-semibold text-slate-800">${o.fornecedor_nome || 'Distribuidor'}</div>
+            <div class="text-slate-400 text-[11px]">Destino: ${o.cliente_nome || 'Geral'}</div>
+          </td>
+          <td class="px-4 py-3 text-right font-black text-slate-900 text-sm">${formatarMoeda(o.valor_total)}</td>
+          <td class="px-4 py-3">${condicaoHtml}</td>
+          <td class="px-4 py-3 text-center">${formaHtml}</td>
+          <td class="px-4 py-3 text-center">${statusBadge}</td>
+          <td class="px-4 py-3 text-center">${financeiroBadge}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">${acoesHtml}</td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar orçamentos:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// LÓGICA DE CÁLCULO E CONDIÇÕES DE PAGAMENTO (COMPRAS)
+// -------------------------------------------------------------
+function trocarModoCondicaoPagamento(prefix) {
+  const radio = document.querySelector(`input[name="orcModoCondicao${prefix === 'edit' ? '_edit' : ''}"]:checked`);
+  const modo = radio ? radio.value : 'adiantamento_prazo';
+
+  const blocoAdiantamento = document.getElementById(`blocoAdiantamentoPrazo_${prefix}`);
+  const blocoMultiplas = document.getElementById(`blocoMultiplasDatas_${prefix}`);
+  const blocoAVista = document.getElementById(`blocoAVista_${prefix}`);
+
+  if (blocoAdiantamento) blocoAdiantamento.classList.toggle('hidden', modo !== 'adiantamento_prazo');
+  if (blocoMultiplas) blocoMultiplas.classList.toggle('hidden', modo !== 'multiplas_datas');
+  if (blocoAVista) blocoAVista.classList.toggle('hidden', modo !== 'a_vista');
+
+  recalcularCondicoesPagamento(prefix);
+}
+
+function recalcularCondicoesPagamento(prefix) {
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const radio = document.querySelector(`input[name="orcModoCondicao${prefix === 'edit' ? '_edit' : ''}"]:checked`);
+  const modo = radio ? radio.value : 'adiantamento_prazo';
+
+  if (modo === 'adiantamento_prazo') {
+    const inputAdiant = document.getElementById(`orcValorAdiantamento_${prefix}`);
+    if (inputAdiant) {
+      if (!inputAdiant.value || parseFloat(inputAdiant.value) === 0) {
+        inputAdiant.value = (Math.round(total * 0.5 * 100) / 100).toFixed(2);
+      }
+    }
+    recalcularSaldoRestante(prefix);
+
+    // Se a data de adiantamento estiver vazia, sugerir hoje
+    const elDataAdiant = document.getElementById(`orcDataAdiantamento_${prefix}`);
+    if (elDataAdiant && !elDataAdiant.value) {
+      elDataAdiant.value = new Date().toISOString().split('T')[0];
+    }
+    // Se a data de vencimento restante estiver vazia, calcular +30 dias
+    const elDataRest = document.getElementById(`orcDataVencimentoRestante_${prefix}`);
+    if (elDataRest && !elDataRest.value) {
+      aplicarPrazoRestante(prefix, 30);
+    }
+  } else if (modo === 'multiplas_datas') {
+    const arr = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+    if (!arr || arr.length === 0) {
+      gerarGradeParcelasPredefinida(prefix, 'entrada_30d');
+    } else {
+      recalcularSomaParcelas(prefix);
+    }
+  } else if (modo === 'a_vista') {
+    const inputAVista = document.getElementById(`orcValorAVista_${prefix}`);
+    if (inputAVista) inputAVista.value = formatarMoeda(total);
+    const elDataAVista = document.getElementById(`orcDataAVista_${prefix}`);
+    if (elDataAVista && !elDataAVista.value) {
+      elDataAVista.value = new Date().toISOString().split('T')[0];
+    }
+  }
+}
+
+function aplicarPercentualAdiantamento(prefix, pct) {
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const adiant = Math.round(total * pct * 100) / 100;
+  const inputAdiant = document.getElementById(`orcValorAdiantamento_${prefix}`);
+  if (inputAdiant) inputAdiant.value = adiant.toFixed(2);
+  recalcularSaldoRestante(prefix);
+}
+
+function recalcularSaldoRestante(prefix) {
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const inputAdiant = document.getElementById(`orcValorAdiantamento_${prefix}`);
+  const adiant = parseFloat(inputAdiant?.value) || 0;
+  const saldo = Math.max(0, Math.round((total - adiant) * 100) / 100);
+
+  const inputRestante = document.getElementById(`orcValorRestante_${prefix}`);
+  if (inputRestante) inputRestante.value = saldo.toFixed(2);
+
+  const labelPct = document.getElementById(`labelPercentualRestante_${prefix}`);
+  if (labelPct) {
+    const pct = total > 0 ? Math.round((saldo / total) * 100) : 0;
+    labelPct.textContent = `${pct}%`;
+  }
+}
+
+function aoMudarDataAdiantamento(prefix) {
+  const elDataAdiant = document.getElementById(`orcDataAdiantamento_${prefix}`);
+  const dtAdiant = elDataAdiant?.value;
+  if (!dtAdiant) return;
+
+  const badgePrazo = document.getElementById(`badgePrazoRestante_${prefix}`);
+  const dias = parseInt(badgePrazo?.dataset?.dias, 10) || 30;
+  aplicarPrazoRestante(prefix, dias);
+}
+
+function aplicarPrazoRestante(prefix, dias) {
+  const badgePrazo = document.getElementById(`badgePrazoRestante_${prefix}`);
+  if (badgePrazo) {
+    badgePrazo.dataset.dias = dias;
+    badgePrazo.textContent = `${dias} dias`;
+  }
+
+  const elDataAdiant = document.getElementById(`orcDataAdiantamento_${prefix}`);
+  const baseStr = elDataAdiant?.value || new Date().toISOString().split('T')[0];
+
+  const d = new Date(baseStr + 'T12:00:00');
+  d.setDate(d.getDate() + dias);
+  const dataFinal = d.toISOString().split('T')[0];
+
+  const elDataRest = document.getElementById(`orcDataVencimentoRestante_${prefix}`);
+  if (elDataRest) elDataRest.value = dataFinal;
+}
+
+function gerarGradeParcelasPredefinida(prefix, tipo) {
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const parcelas = [];
+
+  function somarDias(baseStr, dias) {
+    const d = new Date(baseStr + 'T12:00:00');
+    d.setDate(d.getDate() + dias);
+    return d.toISOString().split('T')[0];
+  }
+
+  if (tipo === 'entrada_30d') {
+    const p1 = Math.round(total * 0.5 * 100) / 100;
+    const p2 = Math.round((total - p1) * 100) / 100;
+    parcelas.push({ numero: 1, descricao: '1ª Entrada / Adiantamento', valor: p1, data_vencimento: hoje });
+    parcelas.push({ numero: 2, descricao: '2ª Parcela (+30 dias)', valor: p2, data_vencimento: somarDias(hoje, 30) });
+  } else if (tipo === 'entrada_30_60d') {
+    const valorPadrao = Math.floor((total / 3) * 100) / 100;
+    const p3 = Math.round((total - valorPadrao * 2) * 100) / 100;
+    parcelas.push({ numero: 1, descricao: '1ª Entrada', valor: valorPadrao, data_vencimento: hoje });
+    parcelas.push({ numero: 2, descricao: '2ª Parcela (+30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 3, descricao: '3ª Parcela (+60 dias)', valor: p3, data_vencimento: somarDias(hoje, 60) });
+  } else if (tipo === 'entrada_30_60_90d') {
+    const valorPadrao = Math.floor((total / 4) * 100) / 100;
+    const p4 = Math.round((total - valorPadrao * 3) * 100) / 100;
+    parcelas.push({ numero: 1, descricao: '1ª Entrada', valor: valorPadrao, data_vencimento: hoje });
+    parcelas.push({ numero: 2, descricao: '2ª Parcela (+30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 3, descricao: '3ª Parcela (+60 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 60) });
+    parcelas.push({ numero: 4, descricao: '4ª Parcela (+90 dias)', valor: p4, data_vencimento: somarDias(hoje, 90) });
+  } else if (tipo === '30_45_60_90d') {
+    const valorPadrao = Math.floor((total / 4) * 100) / 100;
+    const p4 = Math.round((total - valorPadrao * 3) * 100) / 100;
+    parcelas.push({ numero: 1, descricao: '1ª Parcela (30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 2, descricao: '2ª Parcela (45 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 45) });
+    parcelas.push({ numero: 3, descricao: '3ª Parcela (60 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 60) });
+    parcelas.push({ numero: 4, descricao: '4ª Parcela (90 dias)', valor: p4, data_vencimento: somarDias(hoje, 90) });
+  }
+
+  if (prefix === 'novo') {
+    state.comprasParcelasTemp = parcelas;
+  } else {
+    state.comprasParcelasEditTemp = parcelas;
+  }
+
+  renderizarGradeParcelas(prefix);
+}
+
+function renderizarGradeParcelas(prefix) {
+  const container = document.getElementById(`containerParcelasGrade_${prefix}`);
+  if (!container) return;
+  const parcelas = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+
+  container.innerHTML = '';
+  parcelas.forEach((p, idx) => {
+    container.innerHTML += `
+      <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
+        <span class="w-6 h-6 rounded-full bg-teal-100 text-teal-800 font-black text-[10px] flex items-center justify-center shrink-0">
+          ${idx + 1}
+        </span>
+        <input type="text" value="${escapeJsString(p.descricao || `Parcela ${idx + 1}`)}" onchange="atualizarCampoParcela('${prefix}', ${idx}, 'descricao', this.value)" placeholder="Descrição da parcela" class="flex-1 border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none">
+        <div class="flex items-center gap-1">
+          <span class="text-slate-400 font-bold">R$</span>
+          <input type="number" step="0.01" value="${p.valor || 0}" oninput="atualizarCampoParcela('${prefix}', ${idx}, 'valor', parseFloat(this.value) || 0)" class="w-24 border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none text-right">
+        </div>
+        <input type="date" value="${p.data_vencimento || ''}" onchange="atualizarCampoParcela('${prefix}', ${idx}, 'data_vencimento', this.value)" class="border border-slate-300 rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
+        <button type="button" onclick="removerLinhaParcelaManual('${prefix}', ${idx})" class="text-slate-400 hover:text-red-600 p-1 transition" title="Remover parcela">
+          <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>
+      </div>
+    `;
+  });
+
+  recalcularSomaParcelas(prefix);
+}
+
+function atualizarCampoParcela(prefix, index, campo, valor) {
+  const arr = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+  if (arr[index]) {
+    arr[index][campo] = valor;
+  }
+  if (campo === 'valor') {
+    recalcularSomaParcelas(prefix);
+  }
+}
+
+function adicionarLinhaParcelaManual(prefix) {
+  const arr = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const somaAtual = arr.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
+  const restante = Math.max(0, Math.round((total - somaAtual) * 100) / 100);
+
+  const hoje = new Date();
+  hoje.setDate(hoje.getDate() + (arr.length + 1) * 30);
+  const dataSugerida = hoje.toISOString().split('T')[0];
+
+  arr.push({
+    numero: arr.length + 1,
+    descricao: `Parcela ${arr.length + 1}`,
+    valor: restante,
+    data_vencimento: dataSugerida
+  });
+
+  renderizarGradeParcelas(prefix);
+}
+
+function removerLinhaParcelaManual(prefix, index) {
+  const arr = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+  arr.splice(index, 1);
+  renderizarGradeParcelas(prefix);
+}
+
+function recalcularSomaParcelas(prefix) {
+  const arr = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const soma = Math.round(arr.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0) * 100) / 100;
+  const dif = Math.round((total - soma) * 100) / 100;
+
+  const elSoma = document.getElementById(`validadorSomaParcelas_${prefix}`);
+  if (elSoma) {
+    if (Math.abs(dif) <= 0.02) {
+      elSoma.innerHTML = `<span class="text-emerald-700 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Soma: ${formatarMoeda(soma)} (100% Conferido)</span>`;
+    } else {
+      elSoma.innerHTML = `<span class="text-amber-700 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Soma: ${formatarMoeda(soma)} (Diferença: ${formatarMoeda(dif)})</span>`;
+    }
+  }
+}
+
+function dividirSaldoIgualmente(prefix) {
+  const arr = prefix === 'novo' ? state.comprasParcelasTemp : state.comprasParcelasEditTemp;
+  if (!arr || arr.length === 0) return;
+
+  let total = 0;
+  if (prefix === 'novo') {
+    total = parseFloat(document.getElementById('orcValorTotal')?.value) || 0;
+  } else {
+    total = parseFloat(document.getElementById('editCondicoesValorTotal')?.value) || 0;
+  }
+
+  const valorUnit = Math.floor((total / arr.length) * 100) / 100;
+  const sobra = Math.round((total - valorUnit * (arr.length - 1)) * 100) / 100;
+
+  arr.forEach((p, i) => {
+    p.valor = (i === arr.length - 1) ? sobra : valorUnit;
+  });
+
+  renderizarGradeParcelas(prefix);
+}
+
+function aoSelecionarFornecedorOrcamento(prefix) {
+  const elForn = document.getElementById(prefix === 'novo' ? 'orcFornecedorId' : 'editCondicoesFornecedorId');
+  if (!elForn || !elForn.value) return;
+
+  const fornId = parseInt(elForn.value, 10);
+  const forn = (state.fornecedores || []).find(f => f.id === fornId);
+  if (!forn) return;
+
+  const elDados = document.getElementById(prefix === 'novo' ? 'orcDadosPagamento_novo' : 'orcDadosPagamento_edit');
+  const elForma = document.getElementById(prefix === 'novo' ? 'orcFormaPagamento_novo' : 'orcFormaPagamento_edit');
+
+  if (forn.chave_pix) {
+    if (elForma) elForma.value = 'PIX';
+    if (elDados) elDados.value = forn.chave_pix;
+  } else if (forn.dados_bancarios) {
+    if (elForma) elForma.value = 'Transferência Bancária (TED)';
+    if (elDados) elDados.value = forn.dados_bancarios;
+  }
+}
+
+// -------------------------------------------------------------
+// CRUD DE ORÇAMENTOS E AUTORIZAÇÕES
+// -------------------------------------------------------------
+function abrirModalNovoOrcamento() {
+  popularSelectsGlobais();
+  const hoje = new Date().toISOString().split('T')[0];
+
+  const elAdiant = document.getElementById('orcDataAdiantamento_novo');
+  if (elAdiant) elAdiant.value = hoje;
+  const elAVista = document.getElementById('orcDataAVista_novo');
+  if (elAVista) elAVista.value = hoje;
+
+  // Resetar modo para adiantamento_prazo
+  const radio = document.querySelector('input[name="orcModoCondicao"][value="adiantamento_prazo"]');
+  if (radio) radio.checked = true;
+  trocarModoCondicaoPagamento('novo');
+
+  state.comprasParcelasTemp = [];
+  document.getElementById('modalNovoOrcamento').classList.remove('hidden');
+}
+
+async function salvarNovoOrcamento(e) {
+  e.preventDefault();
+  const valorTotal = parseFloat(document.getElementById('orcValorTotal').value) || 0;
+  if (valorTotal <= 0) {
+    alert('Por favor, informe um valor total válido para a compra.');
+    return;
+  }
+
+  const radioModo = document.querySelector('input[name="orcModoCondicao"]:checked');
+  const modo = radioModo ? radioModo.value : 'adiantamento_prazo';
+
+  const formaPagamento = document.getElementById('orcFormaPagamento_novo')?.value || 'PIX';
+  const dadosPagamento = document.getElementById('orcDadosPagamento_novo')?.value || '';
+
+  let valorAdiantamento = 0;
+  let dataAdiantamento = null;
+  let valorRestante = 0;
+  let dataVencRestante = null;
+  let prazoRestanteDias = 30;
+  let parcelasJson = null;
+
+  if (modo === 'adiantamento_prazo') {
+    valorAdiantamento = parseFloat(document.getElementById('orcValorAdiantamento_novo').value) || 0;
+    dataAdiantamento = document.getElementById('orcDataAdiantamento_novo').value;
+    valorRestante = parseFloat(document.getElementById('orcValorRestante_novo').value) || 0;
+    dataVencRestante = document.getElementById('orcDataVencimentoRestante_novo').value;
+    prazoRestanteDias = parseInt(document.getElementById('badgePrazoRestante_novo')?.dataset?.dias, 10) || 30;
+
+    if (!dataAdiantamento || !dataVencRestante) {
+      alert('Por favor, informe a data do adiantamento e a data do vencimento restante.');
+      return;
+    }
+  } else if (modo === 'multiplas_datas') {
+    if (!state.comprasParcelasTemp || state.comprasParcelasTemp.length === 0) {
+      alert('Gere ou adicione pelo menos uma parcela na grade de múltiplas datas.');
+      return;
+    }
+    const soma = state.comprasParcelasTemp.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
+    if (Math.abs(soma - valorTotal) > 0.05) {
+      alert(`A soma das parcelas (R$ ${soma.toFixed(2)}) deve ser igual ao valor total do orçamento (R$ ${valorTotal.toFixed(2)}).`);
+      return;
+    }
+    parcelasJson = JSON.stringify(state.comprasParcelasTemp);
+    valorAdiantamento = state.comprasParcelasTemp[0]?.valor || 0;
+    dataAdiantamento = state.comprasParcelasTemp[0]?.data_vencimento || null;
+    dataVencRestante = state.comprasParcelasTemp[state.comprasParcelasTemp.length - 1]?.data_vencimento || null;
+  } else if (modo === 'a_vista') {
+    valorAdiantamento = valorTotal;
+    dataAdiantamento = document.getElementById('orcDataAVista_novo').value || new Date().toISOString().split('T')[0];
+    valorRestante = 0;
+    dataVencRestante = dataAdiantamento;
+    prazoRestanteDias = 0;
+  }
+
+  const payload = {
+    titulo_orcamento: document.getElementById('orcTitulo').value.trim(),
+    categoria_compra: document.getElementById('orcCategoria').value,
+    fornecedor_id: document.getElementById('orcFornecedorId').value ? parseInt(document.getElementById('orcFornecedorId').value, 10) : null,
+    cliente_id: document.getElementById('orcClienteId').value ? parseInt(document.getElementById('orcClienteId').value, 10) : null,
+    valor_total: valorTotal,
+    detalhes_itens: document.getElementById('orcDetalhes').value.trim(),
+    condicao_pagamento: modo,
+    prazo_restante_dias: prazoRestanteDias,
+    valor_adiantamento: valorAdiantamento,
+    data_adiantamento: dataAdiantamento,
+    valor_restante: valorRestante,
+    data_vencimento_restante: dataVencRestante,
+    parcelas_json: parcelasJson,
+    forma_pagamento: formaPagamento,
+    dados_pagamento: dadosPagamento
+  };
+
+  try {
+    const res = await fetch('/api/compras/orcamentos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoOrcamento');
+      trocarSubAbaCompras('sub-orcamentos-aprovacao');
+      carregarOrcamentosCompras();
+      atualizarBadgeFinanceiro();
+      alert('Orçamento criado com sucesso e programação de pagamentos gerada para o Financeiro!');
+    } else {
+      alert('Erro ao salvar orçamento: ' + (json.error || 'Falha na gravação.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão: ' + err.message);
+  }
+}
+
+async function abrirModalCondicoesPagamento(id) {
+  try {
+    const res = await fetch(`/api/compras/orcamentos/${id}`);
+    const o = await res.json();
+
+    document.getElementById('editCondicoesPedidoId').value = o.id;
+    document.getElementById('editCondicoesValorTotal').value = o.valor_total;
+    document.getElementById('editCondicoesValorTotalDisplay').textContent = formatarMoeda(o.valor_total);
+    document.getElementById('editCondicoesFornecedorNome').textContent = o.fornecedor_nome || 'Distribuidor';
+    document.getElementById('editCondicoesSubtitulo').textContent = `Pedido #${o.id} - ${o.titulo_orcamento}`;
+
+    const modo = o.condicao_pagamento || 'adiantamento_prazo';
+    const radio = document.querySelector(`input[name="orcModoCondicao_edit"][value="${modo}"]`);
+    if (radio) radio.checked = true;
+
+    document.getElementById('orcValorAdiantamento_edit').value = (o.valor_adiantamento || 0).toFixed(2);
+    document.getElementById('orcDataAdiantamento_edit').value = o.data_adiantamento || '';
+    document.getElementById('orcValorRestante_edit').value = (o.valor_restante || 0).toFixed(2);
+    document.getElementById('orcDataVencimentoRestante_edit').value = o.data_vencimento_restante || '';
+
+    const badgePrazo = document.getElementById('badgePrazoRestante_edit');
+    if (badgePrazo) {
+      badgePrazo.dataset.dias = o.prazo_restante_dias || 30;
+      badgePrazo.textContent = `${o.prazo_restante_dias || 30} dias`;
+    }
+
+    document.getElementById('orcDataAVista_edit').value = o.data_vencimento_restante || o.data_adiantamento || '';
+    document.getElementById('orcFormaPagamento_edit').value = o.forma_pagamento || 'PIX';
+    document.getElementById('orcDadosPagamento_edit').value = o.dados_pagamento || '';
+
+    if (modo === 'multiplas_datas') {
+      try {
+        state.comprasParcelasEditTemp = o.parcelas_json ? JSON.parse(o.parcelas_json) : (o.parcelas || []);
+      } catch (e) {
+        state.comprasParcelasEditTemp = o.parcelas || [];
+      }
+      renderizarGradeParcelas('edit');
+    } else {
+      state.comprasParcelasEditTemp = [];
+    }
+
+    trocarModoCondicaoPagamento('edit');
+    document.getElementById('modalEditarCondicoesPagamento').classList.remove('hidden');
+  } catch (err) {
+    alert('Erro ao carregar dados do pedido: ' + err.message);
+  }
+}
+
+async function salvarEdicaoCondicoesPagamento(e) {
+  e.preventDefault();
+  const id = document.getElementById('editCondicoesPedidoId').value;
+  const valorTotal = parseFloat(document.getElementById('editCondicoesValorTotal').value) || 0;
+
+  const radioModo = document.querySelector('input[name="orcModoCondicao_edit"]:checked');
+  const modo = radioModo ? radioModo.value : 'adiantamento_prazo';
+
+  const formaPagamento = document.getElementById('orcFormaPagamento_edit')?.value || 'PIX';
+  const dadosPagamento = document.getElementById('orcDadosPagamento_edit')?.value || '';
+
+  let valorAdiantamento = 0;
+  let dataAdiantamento = null;
+  let valorRestante = 0;
+  let dataVencRestante = null;
+  let prazoRestanteDias = 30;
+  let parcelasJson = null;
+
+  if (modo === 'adiantamento_prazo') {
+    valorAdiantamento = parseFloat(document.getElementById('orcValorAdiantamento_edit').value) || 0;
+    dataAdiantamento = document.getElementById('orcDataAdiantamento_edit').value;
+    valorRestante = parseFloat(document.getElementById('orcValorRestante_edit').value) || 0;
+    dataVencRestante = document.getElementById('orcDataVencimentoRestante_edit').value;
+    prazoRestanteDias = parseInt(document.getElementById('badgePrazoRestante_edit')?.dataset?.dias, 10) || 30;
+  } else if (modo === 'multiplas_datas') {
+    parcelasJson = JSON.stringify(state.comprasParcelasEditTemp);
+    valorAdiantamento = state.comprasParcelasEditTemp[0]?.valor || 0;
+    dataAdiantamento = state.comprasParcelasEditTemp[0]?.data_vencimento || null;
+    dataVencRestante = state.comprasParcelasEditTemp[state.comprasParcelasEditTemp.length - 1]?.data_vencimento || null;
+  } else if (modo === 'a_vista') {
+    valorAdiantamento = valorTotal;
+    dataAdiantamento = document.getElementById('orcDataAVista_edit').value;
+    valorRestante = 0;
+    dataVencRestante = dataAdiantamento;
+    prazoRestanteDias = 0;
+  }
+
+  const payload = {
+    condicao_pagamento: modo,
+    prazo_restante_dias: prazoRestanteDias,
+    valor_adiantamento: valorAdiantamento,
+    data_adiantamento: dataAdiantamento,
+    valor_restante: valorRestante,
+    data_vencimento_restante: dataVencRestante,
+    parcelas_json: parcelasJson,
+    forma_pagamento: formaPagamento,
+    dados_pagamento: dadosPagamento
+  };
+
+  try {
+    const res = await fetch(`/api/compras/orcamentos/${id}/condicoes-pagamento`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarCondicoesPagamento');
+      carregarOrcamentosCompras();
+      if (state.abaAtiva === 'financeiro') carregarFinanceiro();
+      atualizarBadgeFinanceiro();
+      alert('Condições e datas de vencimento sincronizadas com sucesso com o Financeiro!');
+    } else {
+      alert('Erro ao atualizar: ' + (json.error || 'Falha'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function autorizarOrcamento(id) {
+  if (!confirm('Confirmar autorização desta compra? Seu nome e data serão gravados digitalmente no pedido e as parcelas liberadas no Financeiro.')) return;
+  try {
+    const res = await fetch(`/api/compras/orcamentos/${id}/autorizar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario_nome: state.usuarioLogado.nome,
+        usuario_id: state.usuarioLogado.id
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`Compra autorizada com sucesso por ${state.usuarioLogado.nome}!`);
+      carregarOrcamentosCompras();
+      atualizarBadgeFinanceiro();
+    }
+  } catch (err) {
+    alert('Erro ao autorizar: ' + err.message);
+  }
+}
+
+async function rejeitarOrcamento(id) {
+  const motivo = prompt('Digite a justificativa para rejeição do orçamento:');
+  if (!motivo) return;
+  try {
+    await fetch(`/api/compras/orcamentos/${id}/rejeitar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        motivo_rejeicao: motivo,
+        usuario_nome: state.usuarioLogado.nome
+      })
+    });
+    carregarOrcamentosCompras();
+    atualizarBadgeFinanceiro();
+  } catch (err) {
+    alert('Erro ao rejeitar: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// ESPELHO OFICIAL DO PEDIDO DE COMPRA (DOCUMENTO DE IMPRESSÃO)
+// -------------------------------------------------------------
+async function abrirEspelhoPedido(id) {
+  try {
+    const res = await fetch(`/api/compras/orcamentos/${id}`);
+    const o = await res.json();
+
+    const container = document.getElementById('conteudoEspelhoPedido');
+    if (!container) return;
+
+    const parcelas = o.parcelas && o.parcelas.length > 0 ? o.parcelas : [];
+
+    container.innerHTML = `
+      <div class="border-b-2 border-slate-900 pb-4 mb-4 flex justify-between items-start">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl font-black tracking-wider text-slate-900">SISFAC 2.0</span>
+            <span class="bg-teal-100 text-teal-900 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Ordem de Compra</span>
+          </div>
+          <p class="text-slate-500 text-xs">Sistema Integrado de Terceirização, Facilities & Suprimentos</p>
+        </div>
+        <div class="text-right">
+          <div class="text-base font-black text-slate-900">PEDIDO Nº ${String(o.id).padStart(5, '0')}</div>
+          <div class="text-xs text-slate-500">Emissão: ${new Date(o.data_criacao || Date.now()).toLocaleDateString('pt-BR')}</div>
+          <div class="mt-1">
+            <span class="px-2 py-0.5 rounded-full text-xs font-bold ${o.status_aprovacao === 'Aprovado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+              ${o.status_aprovacao}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+        <div>
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fornecedor / Distribuidor:</span>
+          <div class="font-bold text-sm text-slate-800">${o.fornecedor_nome || 'Distribuidor Padrão'}</div>
+          <div class="text-slate-600">${o.fornecedor_tipo ? `Ramo: ${o.fornecedor_tipo}` : ''}</div>
+          <div class="text-slate-600 font-mono text-[11px] mt-1">Forma de Pagamento: <b>${o.forma_pagamento || 'PIX'}</b></div>
+          <div class="text-slate-500 font-mono text-[11px]">Dados: <b>${o.dados_pagamento || 'Conforme cadastro'}</b></div>
+        </div>
+        <div>
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cliente / Destino da Compra:</span>
+          <div class="font-bold text-sm text-slate-800">${o.cliente_nome || 'Alocação Operacional Geral'}</div>
+          <div class="text-slate-600">Categoria: <span class="font-bold text-teal-800">${o.categoria_compra}</span></div>
+          <div class="text-slate-600">Competência: <b>${o.ano_mes}</b></div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">Descrição & Detalhamento dos Itens Solicitados</h4>
+        <div class="p-3 border border-slate-200 rounded-lg bg-white whitespace-pre-wrap font-mono text-slate-700">
+          ${escapeJsString(o.detalhes_itens || o.titulo_orcamento)}
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">Programação Financeira & Cronograma de Vencimentos</h4>
+        <table class="w-full text-left border border-slate-200 rounded-lg overflow-hidden">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[10px]">
+            <tr>
+              <th class="p-2">Parcela / Descrição</th>
+              <th class="p-2">Data Vencimento</th>
+              <th class="p-2 text-right">Valor (R$)</th>
+              <th class="p-2 text-center">Situação Financeira</th>
+              <th class="p-2">Data / Autenticação Quitação</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-xs">
+            ${parcelas.length > 0 ? parcelas.map(p => `
+              <tr>
+                <td class="p-2 font-semibold text-slate-800">${p.descricao || `Parcela ${p.numero_parcela}`}</td>
+                <td class="p-2 font-mono font-bold">${formatarData(p.data_vencimento)}</td>
+                <td class="p-2 text-right font-black text-slate-900">${formatarMoeda(p.valor)}</td>
+                <td class="p-2 text-center">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'Pago' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                    ${p.status}
+                  </span>
+                </td>
+                <td class="p-2 text-[11px] font-mono text-slate-500">
+                  ${p.data_pagamento ? `${formatarData(p.data_pagamento)} ${p.comprovante ? '• ' + p.comprovante : ''}` : '-'}
+                </td>
+              </tr>
+            `).join('') : `
+              <tr>
+                <td class="p-2">Total à Pagar</td>
+                <td class="p-2 font-mono font-bold">${formatarData(o.data_vencimento_restante || o.data_adiantamento)}</td>
+                <td class="p-2 text-right font-black text-slate-900">${formatarMoeda(o.valor_total)}</td>
+                <td class="p-2 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">${o.status_financeiro || 'Pendente'}</span></td>
+                <td class="p-2 text-[11px] text-slate-400">-</td>
+              </tr>
+            `}
+          </tbody>
+          <tfoot class="bg-slate-50 font-bold border-t border-slate-200">
+            <tr>
+              <td colspan="2" class="p-2 text-right uppercase text-[11px]">Valor Total da Operação:</td>
+              <td class="p-2 text-right text-sm font-black text-teal-900">${formatarMoeda(o.valor_total)}</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="pt-8 grid grid-cols-3 gap-6 text-center text-xs border-t border-slate-200 mt-6">
+        <div>
+          <div class="border-b border-slate-300 pb-1 font-bold text-slate-700">Setor de Suprimentos & Compras</div>
+          <div class="text-[10px] text-slate-400 mt-1">Solicitado digitalmente</div>
+        </div>
+        <div>
+          <div class="border-b border-slate-300 pb-1 font-bold text-slate-700">
+            ${o.autorizado_por_nome || 'Diretoria / Administrador'}
+          </div>
+          <div class="text-[10px] text-emerald-700 font-semibold mt-1">
+            ${o.data_autorizacao ? `Autorizado em ${new Date(o.data_autorizacao).toLocaleDateString('pt-BR')}` : 'Aguardando autorização'}
+          </div>
+        </div>
+        <div>
+          <div class="border-b border-slate-300 pb-1 font-bold text-slate-700">Tesouraria & Financeiro</div>
+          <div class="text-[10px] text-slate-400 mt-1">Quitação & Baixa Digital</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('modalEspelhoPedido').classList.remove('hidden');
+  } catch (err) {
+    alert('Erro ao carregar pedido oficial: ' + err.message);
+  }
+}
+
+// =============================================================
+// NOVO MÓDULO: FINANCEIRO, CONTAS A PAGAR & VENCIMENTOS
+// =============================================================
+let timerBuscaFinanceiro = null;
+
+async function carregarFinanceiro() {
+  try {
+    const params = new URLSearchParams();
+    const mes = document.getElementById('filtroFinanceiroMes')?.value;
+    if (mes) params.append('ano_mes', mes);
+
+    const st = state.financeiro.filtroStatus;
+    if (st && st !== 'todos') params.append('status', st);
+
+    const forma = document.getElementById('filtroFinanceiroForma')?.value;
+    if (forma && forma !== 'todos') params.append('forma_pagamento', forma);
+
+    const fornId = document.getElementById('filtroFinanceiroFornecedor')?.value;
+    if (fornId && fornId !== 'todos') params.append('fornecedor_id', fornId);
+
+    const busca = document.getElementById('filtroFinanceiroBusca')?.value?.trim();
+    if (busca) params.append('busca', busca);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`/api/financeiro/contas-pagar${query}`);
+    const data = await res.json();
+
+    state.financeiro.contas = data.contas || [];
+    state.financeiro.kpis = data.kpis || {};
+
+    atualizarCardsKPIFinanceiro(data.kpis || {});
+    renderizarTabelaFinanceiro(data.contas || [], data.kpis || {});
+    atualizarBadgeFinanceiro();
+  } catch (err) {
+    console.error('Erro ao carregar Financeiro:', err);
+  }
+}
+
+async function atualizarBadgeFinanceiro() {
+  try {
+    const mes = state.mesAtual;
+    const res = await fetch(`/api/financeiro/contas-pagar?ano_mes=${mes}`);
+    const data = await res.json();
+    const kpis = data.kpis || {};
+    const pendenciasUrgentes = (kpis.qtd_vencido || 0) + (kpis.qtd_hoje || 0);
+
+    const badge = document.getElementById('navBadgeFinanceiro');
+    if (badge) {
+      if (pendenciasUrgentes > 0) {
+        badge.textContent = pendenciasUrgentes;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+  } catch (e) {}
+}
+
+function atualizarCardsKPIFinanceiro(kpis) {
+  const elVencidoVal = document.getElementById('kpiFinanceiroVencidoValor');
+  const elVencidoQtd = document.getElementById('kpiFinanceiroVencidoQtd');
+  if (elVencidoVal) elVencidoVal.textContent = formatarMoeda(kpis.total_vencido || 0);
+  if (elVencidoQtd) elVencidoQtd.textContent = kpis.qtd_vencido || 0;
+
+  const elHojeVal = document.getElementById('kpiFinanceiroHojeValor');
+  const elHojeQtd = document.getElementById('kpiFinanceiroHojeQtd');
+  if (elHojeVal) elHojeVal.textContent = formatarMoeda(kpis.total_hoje || 0);
+  if (elHojeQtd) elHojeQtd.textContent = kpis.qtd_hoje || 0;
+
+  const el7DiasVal = document.getElementById('kpiFinanceiro7DiasValor');
+  const el7DiasQtd = document.getElementById('kpiFinanceiro7DiasQtd');
+  if (el7DiasVal) el7DiasVal.textContent = formatarMoeda(kpis.total_7dias || 0);
+  if (el7DiasQtd) el7DiasQtd.textContent = kpis.qtd_7dias || 0;
+
+  const elMesPendVal = document.getElementById('kpiFinanceiroMesPendenteValor');
+  const elMesTotVal = document.getElementById('kpiFinanceiroMesTotalValor');
+  if (elMesPendVal) elMesPendVal.textContent = formatarMoeda(kpis.total_mes_pendente || 0);
+  if (elMesTotVal) elMesTotVal.textContent = formatarMoeda(kpis.total_mes || 0);
+
+  const elPagoVal = document.getElementById('kpiFinanceiroPagoValor');
+  if (elPagoVal) elPagoVal.textContent = formatarMoeda(kpis.total_mes_pago || 0);
+}
+
+function renderizarTabelaFinanceiro(contas, kpis) {
+  const tbody = document.getElementById('tabelaFinanceiroBody');
+  const tfoot = document.getElementById('tabelaFinanceiroFoot');
+  if (!tbody) return;
+
+  tbody.innerHTML = '';
+
+  if (!contas || contas.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-12 text-slate-400">
+          <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300 block"></i>
+          Nenhuma obrigação financeira a pagar encontrada com os filtros atuais.
+        </td>
+      </tr>
+    `;
+    if (tfoot) tfoot.innerHTML = '';
+    return;
+  }
+
+  const hojeStr = new Date().toISOString().split('T')[0];
+  const hojeDt = new Date(hojeStr + 'T12:00:00');
+
+  let totalGeral = 0;
+  let totalPendente = 0;
+  let totalPago = 0;
+
+  contas.forEach(c => {
+    totalGeral += (parseFloat(c.valor) || 0);
+    if (c.status === 'Pago') {
+      totalPago += (parseFloat(c.valor) || 0);
+    } else {
+      totalPendente += (parseFloat(c.valor) || 0);
+    }
+
+    // Cálculo de dias até vencimento
+    const dtVenc = new Date(c.data_vencimento + 'T12:00:00');
+    const diffDias = Math.round((dtVenc - hojeDt) / (1000 * 60 * 60 * 24));
+
+    let situacaoBadge = '';
+    let linhaBg = '';
+
+    if (c.status === 'Pago') {
+      situacaoBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-check"></i> Pago</span>`;
+      linhaBg = 'bg-emerald-50/20';
+    } else if (diffDias < 0) {
+      situacaoBadge = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> Atrasado (${Math.abs(diffDias)}d)</span>`;
+      linhaBg = 'bg-red-50/30';
+    } else if (diffDias === 0) {
+      situacaoBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto shadow-2xs"><i class="fa-solid fa-bell text-amber-600 animate-bounce"></i> VENCE HOJE</span>`;
+      linhaBg = 'bg-amber-50/40';
+    } else if (diffDias <= 7) {
+      situacaoBadge = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-clock"></i> Em ${diffDias} dias</span>`;
+    } else {
+      situacaoBadge = `<span class="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-full w-max mx-auto">Em ${diffDias} dias</span>`;
+    }
+
+    // Forma de Pagamento com Botão de Copiar
+    let formaHtml = '';
+    const forma = c.forma_pagamento || 'PIX';
+    if (forma === 'PIX') {
+      formaHtml = `<span class="font-bold text-teal-800 flex items-center gap-1"><i class="fa-brands fa-pix text-teal-600"></i> PIX</span>`;
+    } else if (forma === 'Boleto Bancário') {
+      formaHtml = `<span class="font-bold text-slate-800 flex items-center gap-1"><i class="fa-solid fa-barcode text-slate-600"></i> Boleto</span>`;
+    } else if (forma.includes('TED') || forma.includes('Transferência')) {
+      formaHtml = `<span class="font-bold text-blue-800 flex items-center gap-1"><i class="fa-solid fa-money-bill-transfer text-blue-600"></i> TED</span>`;
+    } else {
+      formaHtml = `<span class="font-bold text-purple-800 flex items-center gap-1"><i class="fa-solid fa-credit-card text-purple-600"></i> Cartão</span>`;
+    }
+
+    if (c.dados_pagamento) {
+      formaHtml += `
+        <div class="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5" title="${escapeJsString(c.dados_pagamento)}">
+          <span class="truncate max-w-[140px]">${c.dados_pagamento}</span>
+          <button type="button" onclick="copiarTexto('${escapeJsString(c.dados_pagamento)}', 'Chave ou código de barras copiado!')" class="text-slate-400 hover:text-teal-700 transition" title="Copiar Chave/Código">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    // Ações
+    let acoesHtml = `<div class="flex items-center justify-end gap-1.5">`;
+    if (c.status === 'Pago') {
+      acoesHtml += `
+        <button type="button" onclick="estornarPagamentoFinanceiro(${c.id})" class="text-slate-500 hover:text-amber-700 bg-white hover:bg-amber-50 border border-slate-200 px-2 py-1 rounded text-xs font-semibold transition" title="Estornar Quitação">
+          <i class="fa-solid fa-rotate-left mr-1"></i>Estornar
+        </button>
+      `;
+    } else {
+      acoesHtml += `
+        <button type="button" onclick="abrirModalBaixaPagamento(${c.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1 rounded shadow-xs transition flex items-center gap-1">
+          <i class="fa-solid fa-hand-holding-dollar"></i> Baixar
+        </button>
+      `;
+    }
+
+    if (c.pedido_compra_id) {
+      acoesHtml += `
+        <button type="button" onclick="abrirEspelhoPedido(${c.pedido_compra_id})" class="text-slate-500 hover:text-teal-700 bg-white hover:bg-teal-50 border border-slate-200 p-1.5 rounded transition" title="Ver Pedido de Compra">
+          <i class="fa-solid fa-file-invoice"></i>
+        </button>
+      `;
+    } else {
+      acoesHtml += `
+        <button type="button" onclick="excluirContaAvulsa(${c.id})" class="text-slate-400 hover:text-red-600 p-1.5 transition" title="Excluir Lançamento Avulso">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      `;
+    }
+    acoesHtml += `</div>`;
+
+    tbody.innerHTML += `
+      <tr class="${linhaBg} hover:bg-slate-50 transition text-xs">
+        <td class="px-4 py-3">
+          <div class="font-mono font-black text-slate-900 text-sm">${formatarData(c.data_vencimento)}</div>
+          <div class="text-[10px] text-slate-400">Emissão: ${formatarData(c.data_emissao)}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-800">${c.fornecedor_nome || 'Geral'}</div>
+          <div class="text-[11px] text-slate-400">${c.categoria || 'Suprimentos'}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-semibold text-slate-800">${c.descricao}</div>
+          <div class="text-[11px] text-slate-400">
+            ${c.pedido_compra_id ? `<span class="text-teal-700 font-bold">Pedido #${c.pedido_compra_id}</span>` : '<span class="text-amber-700">Despesa Avulsa</span>'}
+            ${c.numero_parcela ? `• Parcela ${c.numero_parcela}/${c.total_parcelas}` : ''}
+          </div>
+        </td>
+        <td class="px-4 py-3">${formaHtml}</td>
+        <td class="px-4 py-3 text-right font-black text-slate-900 text-sm">${formatarMoeda(c.valor)}</td>
+        <td class="px-4 py-3 text-center">${situacaoBadge}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">${acoesHtml}</td>
+      </tr>
+    `;
+  });
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr>
+        <td colspan="4" class="px-4 py-3 text-right uppercase tracking-wider text-[11px]">
+          Total (${contas.length} lançamentos):
+        </td>
+        <td class="px-4 py-3 text-right text-sm font-black">${formatarMoeda(totalGeral)}</td>
+        <td colspan="2" class="px-4 py-3 text-right text-[11px] font-medium text-slate-300">
+          A Pagar: <b class="text-amber-400">${formatarMoeda(totalPendente)}</b> | Quitado: <b class="text-emerald-400">${formatarMoeda(totalPago)}</b>
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function filtrarFinanceiroPorStatus(status) {
+  state.financeiro.filtroStatus = status;
+
+  ['btnFiltroFinanTodos', 'btnFiltroFinanVencidos', 'btnFiltroFinanHoje', 'btnFiltroFinan7Dias', 'btnFiltroFinanPagos'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('bg-white', 'text-slate-800', 'shadow-2xs');
+    }
+  });
+
+  const btnMap = {
+    'todos': 'btnFiltroFinanTodos',
+    'vencido': 'btnFiltroFinanVencidos',
+    'hoje': 'btnFiltroFinanHoje',
+    'proximos_7_dias': 'btnFiltroFinan7Dias',
+    'pago': 'btnFiltroFinanPagos'
+  };
+
+  const ativo = document.getElementById(btnMap[status]);
+  if (ativo) {
+    ativo.classList.add('bg-white', 'text-slate-800', 'shadow-2xs');
+  }
+
+  carregarFinanceiro();
+}
+
+function limparFiltroMesFinanceiro() {
+  const el = document.getElementById('filtroFinanceiroMes');
+  if (el) el.value = '';
+  carregarFinanceiro();
+}
+
+function debounceFinanceiroBusca() {
+  if (timerBuscaFinanceiro) clearTimeout(timerBuscaFinanceiro);
+  timerBuscaFinanceiro = setTimeout(() => {
+    carregarFinanceiro();
+  }, 350);
+}
+
+function abrirModalBaixaPagamento(id) {
+  const c = (state.financeiro.contas || []).find(item => item.id === id);
+  if (!c) return;
+
+  document.getElementById('baixaContaId').value = c.id;
+  document.getElementById('baixaFornecedorNome').textContent = c.fornecedor_nome || 'Favorecido';
+  document.getElementById('baixaValor').textContent = formatarMoeda(c.valor);
+  document.getElementById('baixaDescricao').textContent = `${c.descricao} (Vencimento: ${formatarData(c.data_vencimento)})`;
+
+  const elDados = document.getElementById('baixaDadosPagamento');
+  if (elDados) {
+    elDados.textContent = c.dados_pagamento ? `${c.forma_pagamento || 'PIX'}: ${c.dados_pagamento}` : (c.forma_pagamento || 'PIX');
+  }
+
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('baixaDataPagamento').value = hoje;
+  document.getElementById('baixaComprovante').value = '';
+  document.getElementById('baixaObservacoes').value = '';
+
+  document.getElementById('modalBaixaPagamento').classList.remove('hidden');
+}
+
+async function salvarBaixaPagamento(e) {
+  e.preventDefault();
+  const id = document.getElementById('baixaContaId').value;
+  const payload = {
+    data_pagamento: document.getElementById('baixaDataPagamento').value,
+    comprovante: document.getElementById('baixaComprovante').value.trim(),
+    observacoes: document.getElementById('baixaObservacoes').value.trim(),
+    usuario_nome: state.usuarioLogado?.nome || 'Financeiro'
+  };
+
+  try {
+    const res = await fetch(`/api/financeiro/contas-pagar/${id}/pagar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalBaixaPagamento');
+      carregarFinanceiro();
+      carregarOrcamentosCompras();
+      atualizarBadgeFinanceiro();
+      alert('Quitação registrada com sucesso no Financeiro!');
+    } else {
+      alert('Erro ao registrar baixa: ' + (json.error || 'Falha'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function estornarPagamentoFinanceiro(id) {
+  if (!confirm('Deseja realmente estornar a quitação desta conta? Ela voltará para a situação pendente.')) return;
+  try {
+    const res = await fetch(`/api/financeiro/contas-pagar/${id}/estornar`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario_nome: state.usuarioLogado?.nome || 'Financeiro' })
+    });
+    const json = await res.json();
+    if (json.success) {
+      carregarFinanceiro();
+      carregarOrcamentosCompras();
+      atualizarBadgeFinanceiro();
+      alert('Pagamento estornado com sucesso!');
+    } else {
+      alert('Erro: ' + (json.error || 'Falha'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function abrirModalNovaContaAvulsa() {
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('avulsaDescricao').value = '';
+  document.getElementById('avulsaFornecedorNome').value = '';
+  document.getElementById('avulsaValor').value = '';
+  document.getElementById('avulsaDataVencimento').value = hoje;
+  document.getElementById('avulsaDadosPagamento').value = '';
+  document.getElementById('modalNovaContaAvulsa').classList.remove('hidden');
+}
+
+async function salvarNovaContaAvulsa(e) {
+  e.preventDefault();
+  const valor = parseFloat(document.getElementById('avulsaValor').value) || 0;
+  if (valor <= 0) {
+    alert('Informe um valor válido.');
+    return;
+  }
+
+  const payload = {
+    descricao: document.getElementById('avulsaDescricao').value.trim(),
+    fornecedor_nome: document.getElementById('avulsaFornecedorNome').value.trim(),
+    categoria: document.getElementById('avulsaCategoria').value,
+    valor: valor,
+    data_vencimento: document.getElementById('avulsaDataVencimento').value,
+    forma_pagamento: document.getElementById('avulsaFormaPagamento').value,
+    dados_pagamento: document.getElementById('avulsaDadosPagamento').value.trim()
+  };
+
+  try {
+    const res = await fetch('/api/financeiro/contas-pagar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovaContaAvulsa');
+      carregarFinanceiro();
+      atualizarBadgeFinanceiro();
+      alert('Lançamento avulso cadastrado com sucesso no Financeiro!');
+    } else {
+      alert('Erro: ' + (json.error || 'Falha'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function excluirContaAvulsa(id) {
+  if (!confirm('Deseja excluir este lançamento financeiro avulso?')) return;
+  try {
+    const res = await fetch(`/api/financeiro/contas-pagar/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      carregarFinanceiro();
+      atualizarBadgeFinanceiro();
+    } else {
+      alert('Erro: ' + (json.error || 'Não é possível excluir esta obrigação'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function copiarTexto(texto, mensagemSucesso) {
+  if (!texto) return;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto).then(() => {
+      alert(mensagemSucesso || 'Copiado para a área de transferência!');
+    }).catch(() => {
+      prompt('Copie o texto abaixo:', texto);
+    });
+  } else {
+    prompt('Copie o texto abaixo:', texto);
+  }
+}
+
+function exportarExcelFinanceiro() {
+  const contas = state.financeiro.contas || [];
+  if (contas.length === 0) {
+    alert('Não há dados para exportar com os filtros atuais.');
+    return;
+  }
+
+  const rows = contas.map(c => ({
+    'Data de Vencimento': formatarData(c.data_vencimento),
+    'Fornecedor / Favorecido': c.fornecedor_nome || 'Geral',
+    'Descrição da Obrigação': c.descricao,
+    'Categoria': c.categoria || 'Suprimentos',
+    'Parcela': c.numero_parcela ? `${c.numero_parcela}/${c.total_parcelas}` : 'Única',
+    'Forma de Pagamento': c.forma_pagamento || 'PIX',
+    'Dados Pagamento (PIX/Boleto)': c.dados_pagamento || '',
+    'Valor (R$)': parseFloat(c.valor) || 0,
+    'Situação': c.status,
+    'Data da Quitação': c.data_pagamento ? formatarData(c.data_pagamento) : '',
+    'Nº Comprovante / Autenticação': c.comprovante || '',
+    'Pedido de Compra Vinculado': c.pedido_compra_id ? `#${c.pedido_compra_id}` : 'Avulso'
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Contas_a_Pagar');
+  const mesRef = document.getElementById('filtroFinanceiroMes')?.value || 'Geral';
+  XLSX.writeFile(wb, `SISFAC_Contas_a_Pagar_${mesRef}.xlsx`);
+}
+
+function imprimirCronogramaFinanceiro() {
+  window.print();
+}
+
+// -------------------------------------------------------------
+// 7. IMPORTAÇÃO EM MASSA POR PLANILHA (CLIENTES & COLABORADORES)
+// -------------------------------------------------------------
+function abrirModalImportarColaboradores() {
+  state.tipoImportacaoAtual = 'colaboradores';
+  document.getElementById('modalImportarTitulo').innerHTML = '<i class="fa-solid fa-file-excel text-emerald-400"></i> Importar Colaboradores por Planilha';
+  document.getElementById('inputArquivoPlanilha').value = '';
+  document.getElementById('previewImportacao').classList.add('hidden');
+  
+  const blocoIds = document.getElementById('blocoGuiaIdsImportacao');
+  if (blocoIds) blocoIds.classList.remove('hidden');
+  
+  renderizarGuiaIdsImportacao();
+  document.getElementById('modalImportarPlanilha').classList.remove('hidden');
+}
+
+function abrirModalImportarClientes() {
+  state.tipoImportacaoAtual = 'clientes';
+  document.getElementById('modalImportarTitulo').innerHTML = '<i class="fa-solid fa-file-excel text-emerald-400"></i> Importar Clientes por Planilha';
+  document.getElementById('inputArquivoPlanilha').value = '';
+  document.getElementById('previewImportacao').classList.add('hidden');
+  
+  const blocoIds = document.getElementById('blocoGuiaIdsImportacao');
+  if (blocoIds) blocoIds.classList.add('hidden');
+  
+  document.getElementById('modalImportarPlanilha').classList.remove('hidden');
+}
+
+function renderizarGuiaIdsImportacao(filtroCliente = '', filtroPosto = '') {
+  // 1. Cargos
+  const containerCargos = document.getElementById('listaGuiaCargosIds');
+  const elQtdCargos = document.getElementById('qtdGuiaCargos');
+  if (containerCargos) {
+    if (!state.cargos || state.cargos.length === 0) {
+      containerCargos.innerHTML = '<div class="text-slate-400 text-center py-2 font-sans">Nenhuma função cadastrada.</div>';
+      if (elQtdCargos) elQtdCargos.textContent = '0';
+    } else {
+      if (elQtdCargos) elQtdCargos.textContent = `${state.cargos.length} funções`;
+      containerCargos.innerHTML = state.cargos.map(c => `
+        <div class="flex items-center justify-between py-1 px-1.5 bg-slate-50 hover:bg-indigo-50/60 rounded border border-slate-100 transition">
+          <span class="text-slate-800 truncate font-sans text-xs" title="${c.nome_cargo}">${c.nome_cargo}</span>
+          <span class="bg-indigo-700 text-white font-mono font-bold text-[10px] px-1.5 py-0.5 rounded shadow-2xs ml-1 flex-shrink-0">ID: ${c.id}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 2. Clientes
+  const containerClientes = document.getElementById('listaGuiaClientesIds');
+  const elQtdClientes = document.getElementById('qtdGuiaClientes');
+  if (containerClientes) {
+    const termo = (filtroCliente || '').toLowerCase().trim();
+    const clientesFiltrados = (state.clientes || []).filter(c => {
+      if (!termo) return true;
+      const nf = (c.nome_fantasia || '').toLowerCase();
+      const rz = (c.nome_razao_social || '').toLowerCase();
+      const cnpj = (c.cnpj || '').toLowerCase();
+      return nf.includes(termo) || rz.includes(termo) || cnpj.includes(termo) || String(c.id) === termo;
+    });
+
+    if (elQtdClientes) elQtdClientes.textContent = `${clientesFiltrados.length} clientes`;
+    if (clientesFiltrados.length === 0) {
+      containerClientes.innerHTML = '<div class="text-slate-400 text-center py-2 font-sans">Nenhum cliente encontrado.</div>';
+    } else {
+      containerClientes.innerHTML = clientesFiltrados.map(c => `
+        <div class="flex items-center justify-between py-1 px-1.5 bg-slate-50 hover:bg-violet-50/60 rounded border border-slate-100 transition">
+          <span class="text-slate-800 truncate font-sans text-xs" title="${c.nome_fantasia || c.nome_razao_social}">${c.nome_fantasia || c.nome_razao_social}</span>
+          <span class="bg-violet-700 text-white font-mono font-bold text-[10px] px-1.5 py-0.5 rounded shadow-2xs ml-1 flex-shrink-0">ID: ${c.id}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 3. Postos de Trabalho
+  const containerPostos = document.getElementById('listaGuiaPostosIds');
+  const elQtdPostos = document.getElementById('qtdGuiaPostos');
+  if (containerPostos) {
+    const termoP = (filtroPosto || '').toLowerCase().trim();
+    const postosFiltrados = (state.postos || []).filter(p => {
+      if (!termoP) return true;
+      const np = (p.nome_posto || '').toLowerCase();
+      const nc = (p.cliente_nome || '').toLowerCase();
+      return np.includes(termoP) || nc.includes(termoP) || String(p.id) === termoP;
+    });
+
+    if (elQtdPostos) elQtdPostos.textContent = `${postosFiltrados.length} postos`;
+    if (postosFiltrados.length === 0) {
+      containerPostos.innerHTML = '<div class="text-slate-400 text-center py-2 font-sans">Nenhum posto encontrado.</div>';
+    } else {
+      containerPostos.innerHTML = postosFiltrados.map(p => `
+        <div class="flex items-center justify-between py-1 px-1.5 bg-slate-50 hover:bg-emerald-50/60 rounded border border-slate-100 transition">
+          <div class="truncate font-sans text-xs pr-1">
+            <span class="text-slate-800 font-medium block truncate" title="${p.nome_posto}">${p.nome_posto}</span>
+            <span class="text-[10px] text-slate-400 block truncate">${p.cliente_nome || ''}</span>
+          </div>
+          <span class="bg-emerald-700 text-white font-mono font-bold text-[10px] px-1.5 py-0.5 rounded shadow-2xs ml-1 flex-shrink-0">ID: ${p.id}</span>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+function filtrarGuiaClientesIds(val) {
+  const buscaPosto = document.getElementById('buscaGuiaPostoId');
+  renderizarGuiaIdsImportacao(val, buscaPosto ? buscaPosto.value : '');
+}
+
+function filtrarGuiaPostosIds(val) {
+  const buscaCliente = document.getElementById('buscaGuiaClienteId');
+  renderizarGuiaIdsImportacao(buscaCliente ? buscaCliente.value : '', val);
+}
+
+function extrairCampoPlanilha(row, chavesPossiveis, padrao = null) {
+  if (!row || typeof row !== 'object') return padrao;
+  const chavesRow = Object.keys(row);
+  
+  const normalizar = (s) => String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+
+  const alvosNormalizados = chavesPossiveis.map(normalizar);
+
+  // 1. Busca exata de chave após normalização
+  for (const chave of chavesRow) {
+    const chaveNorm = normalizar(chave);
+    if (alvosNormalizados.includes(chaveNorm)) {
+      const val = row[chave];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        return val;
+      }
+    }
+  }
+
+  // 2. Busca por substring se o alvo tiver 4 ou mais caracteres
+  for (const chave of chavesRow) {
+    const chaveNorm = normalizar(chave);
+    for (const alvo of alvosNormalizados) {
+      if (alvo.length >= 4 && (chaveNorm.includes(alvo) || alvo.includes(chaveNorm))) {
+        const val = row[chave];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return val;
+        }
+      }
+    }
+  }
+
+  return padrao;
+}
+
+function normalizarDataImportacao(val) {
+  if (!val) return null;
+  if (typeof val === 'number') {
+    if (val > 1000 && val < 100000) {
+      const d = new Date((val - 25569) * 86400 * 1000);
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    }
+  }
+  const str = String(val).trim();
+  if (!str) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+    const p = str.split('/');
+    return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+  }
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    try {
+      return d.toISOString().split('T')[0];
+    } catch (e) {}
+  }
+  return str;
+}
+
+function baixarModeloPlanilha() {
+  const wb = XLSX.utils.book_new();
+  if (state.tipoImportacaoAtual === 'colaboradores') {
+    const primeiroCargoId = state.cargos && state.cargos.length > 0 ? state.cargos[0].id : 1;
+    const primeiroClienteId = state.clientes && state.clientes.length > 0 ? state.clientes[0].id : 1;
+    const primeiroPostoId = state.postos && state.postos.length > 0 ? state.postos[0].id : 1;
+
+    // Aba 1: Modelo Principal com exemplos práticos
+    const dadosModelo = [
+      {
+        'Nome': 'Carlos Eduardo da Silva',
+        'CPF': '123.456.789-00',
+        'Cliente': primeiroClienteId,
+        'Posto': primeiroPostoId,
+        'Cargo': primeiroCargoId,
+        'Escala': '5x2',
+        'DataAdmissao': '2024-05-10',
+        'Telefone': '(11) 98888-1111',
+        'LinhaOnibus': '107T-10',
+        'QtdPassagens': 2,
+        'ValorPassagem': 4.40,
+        'ValorVA': 28.00
+      },
+      {
+        'Nome': 'Mariana Souza Santos',
+        'CPF': '234.567.890-11',
+        'Cliente': primeiroClienteId,
+        'Posto': primeiroPostoId,
+        'Cargo': primeiroCargoId,
+        'Escala': '12x36 Diurno',
+        'DataAdmissao': '2025-01-15',
+        'Telefone': '(11) 98888-2222',
+        'LinhaOnibus': '175P-10',
+        'QtdPassagens': 2,
+        'ValorPassagem': 4.40,
+        'ValorVA': 28.00
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(dadosModelo);
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo_Colaboradores');
+
+    // Aba 2: Guia de Clientes e IDs do sistema
+    const dadosClientes = (state.clientes || []).map(c => ({
+      'ClienteID': c.id,
+      'Nome_Fantasia': c.nome_fantasia || '',
+      'Razao_Social': c.nome_razao_social || '',
+      'CNPJ': c.cnpj || ''
+    }));
+    const wsClientes = XLSX.utils.json_to_sheet(dadosClientes.length > 0 ? dadosClientes : [{ 'ClienteID': 1, 'Nome_Fantasia': 'Cliente Padrão' }]);
+    XLSX.utils.book_append_sheet(wb, wsClientes, 'Guia_Clientes_IDs');
+
+    // Aba 3: Guia de Postos de Trabalho e IDs
+    const dadosPostos = (state.postos || []).map(p => ({
+      'PostoID': p.id,
+      'Nome_Posto': p.nome_posto,
+      'ClienteID': p.cliente_id,
+      'Nome_Cliente': p.cliente_nome || '',
+      'CargoID': p.cargo_id,
+      'Nome_Cargo': p.nome_cargo || '',
+      'Escala': p.escala || '5x2',
+      'Vagas_Contratadas': p.quantidade_vagas_limite || 1
+    }));
+    const wsPostos = XLSX.utils.json_to_sheet(dadosPostos.length > 0 ? dadosPostos : [{ 'PostoID': 1, 'Nome_Posto': 'Posto Principal', 'ClienteID': 1 }]);
+    XLSX.utils.book_append_sheet(wb, wsPostos, 'Guia_Postos_IDs');
+
+    // Aba 4: Guia de Cargos e IDs do sistema
+    const dadosCargos = (state.cargos || []).map(c => ({
+      'CargoID': c.id,
+      'Nome_Funcao_Cargo': c.nome_cargo,
+      'Valor_Diaria_Ref': c.valor_diaria_referencia || 0,
+      'Descricao': c.descricao || ''
+    }));
+    const wsCargos = XLSX.utils.json_to_sheet(dadosCargos.length > 0 ? dadosCargos : [{ 'CargoID': 1, 'Nome_Funcao_Cargo': 'Portaria 12x36' }]);
+    XLSX.utils.book_append_sheet(wb, wsCargos, 'Guia_Cargos_IDs');
+
+    XLSX.writeFile(wb, 'Modelo_Importacao_Colaboradores.xlsx');
+  } else {
+    const dadosModelo = [
+      {
+        'RazaoSocial': 'Condomínio Residencial Parque das Flores',
+        'NomeFantasia': 'Condomínio Parque das Flores',
+        'CNPJ': '12.345.678/0001-99',
+        'Contato': 'Síndico Marcos',
+        'Telefone': '(11) 3333-4444',
+        'Email': 'sindico@parquedasflores.com.br',
+        'CotaInsumos': 5000.00
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(dadosModelo);
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo_Clientes');
+    XLSX.writeFile(wb, 'Modelo_Importacao_Clientes.xlsx');
+  }
+}
+
+async function processarImportacaoPlanilha() {
+  const fileInput = document.getElementById('inputArquivoPlanilha');
+  if (!fileInput.files || fileInput.files.length === 0) {
+    return alert('Por favor, selecione um arquivo de planilha (.xlsx ou .csv).');
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+      if (rows.length === 0) return alert('A planilha selecionada está vazia.');
+
+      if (state.tipoImportacaoAtual === 'colaboradores') {
+        const payload = rows.map(r => ({
+          id: extrairCampoPlanilha(r, ['id_colaborador', 'idcolaborador', 'colaborador_id', 'id', 'id_funcionario', 'matricula', 'matricula_id'], null),
+          nome: extrairCampoPlanilha(r, ['nome', 'colaborador', 'funcionario', 'nomedofuncionario', 'nomedocolaborador', 'nomecompleto']),
+          cpf: extrairCampoPlanilha(r, ['cpf', 'cpfdocolaborador', 'documento', 'cpfcolaborador']),
+          cargo_id: extrairCampoPlanilha(r, ['cargo_id', 'cargoid', 'idcargo', 'id_cargo', 'cargo', 'funcao', 'funcaocargo', 'nomedafuncao', 'nomecargo', 'ocupacao'], 1),
+          cliente_id: extrairCampoPlanilha(r, ['cliente_id', 'clienteid', 'idcliente', 'id_cliente', 'id_do_cliente', 'iddocliente', 'cliente', 'nomedocliente', 'nome_cliente', 'empresa', 'cnpj', 'cnpjdocliente', 'razaosocial', 'razao_social', 'fantasia', 'nomefantasia'], null),
+          posto_id: extrairCampoPlanilha(r, ['posto_id', 'postoid', 'idposto', 'id_posto', 'posto', 'postodetrabalho', 'nome_posto', 'local_posto', 'estacao'], null),
+          escala: extrairCampoPlanilha(r, ['escala', 'jornada', 'turno'], '5x2'),
+          data_admissao: normalizarDataImportacao(extrairCampoPlanilha(r, ['data_admissao', 'dataadmissao', 'admissao', 'dtadmissao', 'dt_admissao', 'data_de_admissao', 'datadeadmissao', 'inicio', 'contratacao'])),
+          telefone: extrairCampoPlanilha(r, ['telefone', 'celular', 'contato', 'fone', 'tel'], ''),
+          linhas_onibus: extrairCampoPlanilha(r, ['linhas_transporte_resumo', 'linhaonibus', 'linhas_onibus', 'linha_onibus', 'linha', 'itinerario', 'transporte'], 'Municipal'),
+          quantidade_passagens_dia: parseInt(extrairCampoPlanilha(r, ['qtd_passagens_dia', 'quantidadepassagens', 'qtdpassagens', 'passagensdia', 'passagens', 'qtd_passagens'], 2), 10) || 2,
+          valor_passagem_unitaria: parseFloat(extrairCampoPlanilha(r, ['valor_passagem_vt', 'valorpassagem', 'valor_passagem', 'tarifa', 'tarifavt', 'vt', 'valortransporte'], 4.40)) || 4.40,
+          valor_diario_va: parseFloat(extrairCampoPlanilha(r, ['valor_diario_va', 'valorva', 'valor_va', 'va', 'diariava', 'valealimentacao', 'alimentacao'], 28.00)) || 28.00,
+          total_diario_vt: parseFloat(extrairCampoPlanilha(r, ['total_diario_vt', 'totalvt', 'total_vt', 'total_diario'], null)) || null,
+          linhas_transporte_json: extrairCampoPlanilha(r, ['linhas_transporte_json', 'linhas_transporte', 'linhasjson'], null)
+        })).filter(col => col.nome && String(col.nome).trim() !== '');
+
+        if (payload.length === 0) {
+          return alert('Nenhum colaborador válido com coluna "Nome" foi identificado na planilha.');
+        }
+
+        // Abre a tela de conferência, validação de cliente/posto e criação imediata de postos
+        await iniciarConferenciaImportacaoColaboradores(payload);
+      } else {
+        const payload = rows.map(r => ({
+          nome_razao_social: extrairCampoPlanilha(r, ['razaosocial', 'razao_social', 'nome_razao_social', 'razao', 'empresa']),
+          nome_fantasia: extrairCampoPlanilha(r, ['nomefantasia', 'nome_fantasia', 'fantasia', 'cliente', 'nome']),
+          cnpj: extrairCampoPlanilha(r, ['cnpj', 'documento']),
+          contato_responsavel: extrairCampoPlanilha(r, ['contato', 'responsavel', 'contato_responsavel']),
+          telefone: extrairCampoPlanilha(r, ['telefone', 'celular', 'fone']),
+          email: extrairCampoPlanilha(r, ['email', 'correioeletronico']),
+          cota_mensal_insumos: parseFloat(extrairCampoPlanilha(r, ['cotainsumos', 'cota_insumos', 'cota', 'cotamensal'], 0)) || 0
+        })).filter(cli => cli.nome_razao_social || cli.nome_fantasia);
+
+        if (payload.length === 0) {
+          return alert('Nenhum cliente válido identificado na planilha.');
+        }
+
+        const res = await fetch('/api/importar/clientes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientes: payload })
+        });
+        const json = await res.json();
+        if (json.success) {
+          fecharModal('modalImportarPlanilha');
+          alert(`${json.inseridos} clientes importados com sucesso a partir da planilha!`);
+          await carregarDadosBase();
+          carregarClientes();
+        } else {
+          alert('Erro ao importar: ' + (json.message || 'Falha desconhecida.'));
+        }
+      }
+    } catch (err) {
+      alert('Erro ao processar arquivo: ' + err.message);
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+// -------------------------------------------------------------
+// CONFERÊNCIA, VALIDAÇÃO & CRIAÇÃO DE POSTOS ANTES DE IMPORTAR
+// -------------------------------------------------------------
+
+function normalizarTextoPrevia(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function resolverClientePrevia(rawCli) {
+  if (rawCli === undefined || rawCli === null || String(rawCli).trim() === '') return null;
+  const str = String(rawCli).trim();
+  const num = parseInt(str, 10);
+
+  // 1. Match numérico por ID
+  if (!isNaN(num) && /^\d+$/.test(str)) {
+    const cli = (state.clientes || []).find(c => c.id === num);
+    if (cli) return cli;
+  }
+
+  // 2. Match por CNPJ
+  const cnpjLimpo = str.replace(/\D/g, '');
+  if (cnpjLimpo.length >= 8) {
+    const cli = (state.clientes || []).find(c => {
+      const cCnpj = String(c.cnpj || '').replace(/\D/g, '');
+      return cCnpj.includes(cnpjLimpo) || cnpjLimpo.includes(cCnpj);
+    });
+    if (cli) return cli;
+  }
+
+  // 3. Match exato por Nome Fantasia ou Razão Social
+  const strNorm = normalizarTextoPrevia(str);
+  let cli = (state.clientes || []).find(c => {
+    const fNorm = normalizarTextoPrevia(c.nome_fantasia);
+    const rNorm = normalizarTextoPrevia(c.nome_razao_social);
+    return fNorm === strNorm || rNorm === strNorm;
+  });
+  if (cli) return cli;
+
+  // 4. Substring match
+  cli = (state.clientes || []).find(c => {
+    const fNorm = normalizarTextoPrevia(c.nome_fantasia);
+    const rNorm = normalizarTextoPrevia(c.nome_razao_social);
+    return (strNorm.length >= 4 && (fNorm.includes(strNorm) || rNorm.includes(strNorm))) ||
+           (fNorm.length >= 4 && strNorm.includes(fNorm));
+  });
+  return cli || null;
+}
+
+function resolverCargoPrevia(rawCargo) {
+  if (rawCargo === undefined || rawCargo === null || String(rawCargo).trim() === '') {
+    return (state.cargos && state.cargos.length > 0) ? state.cargos[0] : null;
+  }
+  const str = String(rawCargo).trim();
+  const num = parseInt(str, 10);
+
+  // Match por ID
+  if (!isNaN(num) && /^\d+$/.test(str)) {
+    const cg = (state.cargos || []).find(c => c.id === num);
+    if (cg) return cg;
+  }
+
+  // Match por nome
+  const strNorm = normalizarTextoPrevia(str);
+  let cg = (state.cargos || []).find(c => normalizarTextoPrevia(c.nome_cargo) === strNorm);
+  if (cg) return cg;
+
+  cg = (state.cargos || []).find(c => {
+    const cNorm = normalizarTextoPrevia(c.nome_cargo);
+    return cNorm.includes(strNorm) || (strNorm.length >= 4 && strNorm.includes(cNorm));
+  });
+  return cg || (state.cargos && state.cargos.length > 0 ? state.cargos[0] : null);
+}
+
+function resolverPostoPrevia(clienteId, cargoId, rawPosto) {
+  if (!clienteId) return null;
+  const postosCli = (state.postos || []).filter(p => p.cliente_id === clienteId);
+  if (postosCli.length === 0) return null;
+
+  if (rawPosto !== undefined && rawPosto !== null && String(rawPosto).trim() !== '') {
+    const str = String(rawPosto).trim();
+    const num = parseInt(str, 10);
+    if (!isNaN(num) && /^\d+$/.test(str)) {
+      const p = postosCli.find(p => p.id === num);
+      if (p) return p;
+    }
+    const strNorm = normalizarTextoPrevia(str);
+    const pNome = postosCli.find(p => normalizarTextoPrevia(p.nome_posto) === strNorm || normalizarTextoPrevia(p.nome_posto).includes(strNorm));
+    if (pNome) return pNome;
+  }
+
+  // Tenta achar posto do mesmo cargo
+  if (cargoId) {
+    const pCargo = postosCli.find(p => p.cargo_id === cargoId);
+    if (pCargo) return pCargo;
+  }
+
+  // Se o cliente tem apenas 1 posto cadastrado
+  if (postosCli.length === 1) {
+    return postosCli[0];
+  }
+
+  return null;
+}
+
+function normalizarEscalaPrevia(esc) {
+  if (!esc) return '12x36';
+  const s = String(esc).trim();
+  if (s.toLowerCase().includes('12x36')) return '12x36';
+  if (s.toLowerCase().includes('6x1')) return '6x1';
+  if (s.toLowerCase().includes('5x2')) return '5x2';
+  return s;
+}
+
+async function iniciarConferenciaImportacaoColaboradores(colaboradoresBrutos) {
+  if (!state.clientes || state.clientes.length === 0 || !state.postos || !state.cargos || state.cargos.length === 0) {
+    await carregarDadosBase();
+  }
+
+  state.previaImportacao = colaboradoresBrutos.map((col, idx) => {
+    const cli = resolverClientePrevia(col.cliente_id);
+    const cg = resolverCargoPrevia(col.cargo_id);
+    const cargoId = cg ? cg.id : (state.cargos[0]?.id || 1);
+    const clienteId = cli ? cli.id : null;
+    const posto = clienteId ? resolverPostoPrevia(clienteId, cargoId, col.posto_id) : null;
+    const escalaLimpa = normalizarEscalaPrevia(col.escala);
+
+    return {
+      id: col.id ? parseInt(col.id, 10) : null,
+      uid: Date.now() + '_' + idx,
+      nome: String(col.nome || '').trim(),
+      cpf: String(col.cpf || '').trim(),
+      cargo_id: cargoId,
+      cargo_nome: cg ? cg.nome_cargo : 'Cargo Padrão',
+      cliente_id: clienteId,
+      cliente_nome_original: col.cliente_id ? String(col.cliente_id) : '',
+      posto_id: posto ? posto.id : null,
+      posto_nome_original: col.posto_id ? String(col.posto_id) : '',
+      escala: escalaLimpa,
+      data_admissao: col.data_admissao || '',
+      telefone: col.telefone || '',
+      linhas_onibus: col.linhas_onibus || 'Municipal',
+      quantidade_passagens_dia: col.quantidade_passagens_dia || 2,
+      valor_passagem_unitaria: col.valor_passagem_unitaria || 4.40,
+      valor_diario_va: col.valor_diario_va || 28.00,
+      total_diario_vt: col.total_diario_vt || null,
+      linhas_transporte_json: col.linhas_transporte_json || null
+    };
+  });
+
+  state.termoBuscaPrevia = '';
+  const inputBusca = document.getElementById('buscaTabelaPrevia');
+  if (inputBusca) inputBusca.value = '';
+
+  fecharModal('modalImportarPlanilha');
+  abrirModal('modalConfirmarImportacaoColab');
+  renderizarTabelaPreviaImportacao();
+}
+
+function renderizarTabelaPreviaImportacao() {
+  const container = document.getElementById('corpoTabelaPreviaImportacao');
+  if (!container) return;
+
+  const total = state.previaImportacao.length;
+  const clientesOk = state.previaImportacao.filter(l => l.cliente_id).length;
+  const postosOk = state.previaImportacao.filter(l => l.posto_id).length;
+  const pendentes = state.previaImportacao.filter(l => !l.cliente_id || !l.posto_id).length;
+
+  const kpiTotal = document.getElementById('kpiPreviaTotal');
+  const kpiCli = document.getElementById('kpiPreviaClientesOk');
+  const kpiPosto = document.getElementById('kpiPreviaPostosOk');
+  const kpiPend = document.getElementById('kpiPreviaPendentes');
+
+  if (kpiTotal) kpiTotal.textContent = total;
+  if (kpiCli) kpiCli.textContent = clientesOk;
+  if (kpiPosto) kpiPosto.textContent = postosOk;
+  if (kpiPend) kpiPend.textContent = pendentes;
+
+  if (total === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-12 text-slate-400">
+          <i class="fa-solid fa-folder-open text-3xl block mb-2 text-slate-300"></i>
+          Nenhum colaborador carregado para conferência.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  const termo = state.termoBuscaPrevia;
+  const filtradas = state.previaImportacao
+    .map((linha, realIdx) => ({ linha, realIdx }))
+    .filter(({ linha }) => {
+      if (!termo) return true;
+      const nome = normalizarTextoPrevia(linha.nome);
+      const cpf = normalizarTextoPrevia(linha.cpf);
+      const cargo = normalizarTextoPrevia(linha.cargo_nome);
+      const cliObj = (state.clientes || []).find(c => c.id === linha.cliente_id);
+      const cliNome = cliObj ? normalizarTextoPrevia((cliObj.nome_fantasia || '') + ' ' + (cliObj.nome_razao_social || '')) : '';
+      const cliOrig = normalizarTextoPrevia(linha.cliente_nome_original);
+      return nome.includes(termo) || cpf.includes(termo) || cargo.includes(termo) || cliNome.includes(termo) || cliOrig.includes(termo);
+    });
+
+  if (filtradas.length === 0) {
+    container.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-8 text-slate-400">
+          Nenhum colaborador encontrado para o filtro digitado.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtradas.map(({ linha, realIdx }) => {
+    // 1. Posto de trabalho HTML
+    let htmlPosto = '';
+    const postoAtualObj = (state.postos || []).find(p => p.id === linha.posto_id);
+    const estaLotado = postoAtualObj && (postoAtualObj.total_ocupados >= postoAtualObj.quantidade_vagas_limite);
+
+    if (linha.cliente_id) {
+      const postosCli = (state.postos || []).filter(p => p.cliente_id === linha.cliente_id);
+      if (postosCli.length > 0) {
+        htmlPosto = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5">
+              <select onchange="aoMudarPostoPrevia(${realIdx}, this.value)" class="flex-1 ${linha.posto_id ? (estaLotado ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold' : 'bg-white border-slate-300 text-slate-800') : 'bg-amber-50 border-amber-300 text-amber-800 font-bold'} border rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">-- Selecione o Posto --</option>
+                ${postosCli.map(p => {
+                  const pLotado = p.total_ocupados >= p.quantidade_vagas_limite;
+                  return `
+                    <option value="${p.id}" ${p.id === linha.posto_id ? 'selected' : ''} class="${pLotado ? 'text-red-600 font-bold bg-red-50' : ''}">
+                      ${p.nome_posto} (${p.total_ocupados}/${p.quantidade_vagas_limite} vagas) ${pLotado ? '⚠️ LOTADO' : ''}
+                    </option>
+                  `;
+                }).join('')}
+              </select>
+              <button type="button" title="Criar outro posto para este cliente" onclick="abrirModalCriarPostoPrevia(${realIdx})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1.5 rounded-lg text-xs font-bold shrink-0 transition flex items-center gap-1">
+                <i class="fa-solid fa-plus text-[10px]"></i> Novo
+              </button>
+            </div>
+            ${estaLotado ? `
+              <div class="p-1 bg-rose-50 border border-rose-300 rounded text-[10px] text-rose-800 font-bold flex items-center justify-between gap-1 shadow-2xs">
+                <span class="truncate"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Setor Lotado (${postoAtualObj.total_ocupados}/${postoAtualObj.quantidade_vagas_limite})</span>
+                <button type="button" onclick="abrirModalTrocarSetorPrevia(${realIdx})" class="px-1.5 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[9px] font-bold shrink-0 transition">Trocar Setor</button>
+              </div>
+            ` : ''}
+            ${!linha.posto_id && linha.posto_nome_original ? `
+              <span class="text-[10px] text-amber-600 block truncate" title="Texto original na planilha: ${escapeJsString(linha.posto_nome_original)}">
+                <i class="fa-solid fa-file-excel mr-1 text-slate-400"></i>Planilha: "${linha.posto_nome_original}"
+              </span>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        htmlPosto = `
+          <div class="p-1.5 bg-amber-50 border border-amber-300 rounded-lg flex items-center justify-between gap-2">
+            <div class="leading-tight">
+              <span class="text-[10px] text-amber-800 font-bold block flex items-center gap-1">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Sem Postos
+              </span>
+              <span class="text-[9px] text-amber-600">Cliente sem posto</span>
+            </div>
+            <button type="button" onclick="abrirModalCriarPostoPrevia(${realIdx})" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 text-[10px] rounded-md shadow-2xs shrink-0 flex items-center gap-1 transition">
+              <i class="fa-solid fa-plus"></i> Criar Posto
+            </button>
+          </div>
+        `;
+      }
+    } else {
+      htmlPosto = `
+        <div class="text-slate-400 italic text-[11px] py-1 flex items-center gap-1">
+          <i class="fa-solid fa-arrow-left text-slate-300"></i> Selecione o cliente primeiro
+        </div>
+      `;
+    }
+
+    // 2. Status Badge
+    let statusBadge = '';
+    if (linha.cliente_id && linha.posto_id && estaLotado) {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Setor Lotado</span>';
+    } else if (linha.cliente_id && linha.posto_id) {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"><i class="fa-solid fa-circle-check text-emerald-600"></i> Posto OK</span>';
+    } else if (linha.cliente_id && !linha.posto_id) {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Sem Posto</span>';
+    } else {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200"><i class="fa-solid fa-circle-xmark text-rose-600"></i> Sem Cliente</span>';
+    }
+
+    return `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+        <td class="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">
+          ${realIdx + 1}
+        </td>
+        <td class="py-2.5 px-3">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="font-bold text-slate-800 text-xs">${linha.nome}</span>
+            ${linha.id ? `<span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs" title="Atualizará colaborador existente ID #${linha.id} sem criar duplicidade"><i class="fa-solid fa-arrows-rotate text-[9px]"></i>#${linha.id} ATUALIZAÇÃO</span>` : ''}
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+            <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${linha.cpf || 'Sem CPF'}</span>
+            ${linha.telefone ? `<span><i class="fa-solid fa-phone text-[9px] text-slate-400 mr-0.5"></i>${linha.telefone}</span>` : ''}
+          </div>
+          ${linha.data_admissao ? `<div class="text-[9px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>Admissão: ${linha.data_admissao.split('-').reverse().join('/')}</div>` : ''}
+        </td>
+        <td class="py-2.5 px-3">
+          <div class="space-y-1">
+            <select onchange="aoMudarCargoPrevia(${realIdx}, this.value)" class="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-[11px] font-semibold text-slate-700 focus:bg-white focus:outline-none focus:border-indigo-500">
+              ${(state.cargos || []).map(cg => `<option value="${cg.id}" ${cg.id === linha.cargo_id ? 'selected' : ''}>${cg.nome_cargo}</option>`).join('')}
+            </select>
+            <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 font-mono">
+              ${linha.escala || '12x36'}
+            </span>
+          </div>
+        </td>
+        <td class="py-2.5 px-3">
+          <div>
+            <select onchange="aoMudarClientePrevia(${realIdx}, this.value)" class="w-full ${linha.cliente_id ? 'bg-white border-slate-300 text-slate-800' : 'bg-red-50 border-red-300 text-red-700 font-bold'} border rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">-- Selecione o Cliente --</option>
+              ${(state.clientes || []).map(c => `
+                <option value="${c.id}" ${c.id === linha.cliente_id ? 'selected' : ''}>
+                  ${c.nome_fantasia || c.nome_razao_social}
+                </option>
+              `).join('')}
+            </select>
+            ${!linha.cliente_id && linha.cliente_nome_original ? `
+              <span class="text-[10px] text-red-500 font-semibold block mt-0.5 truncate" title="Texto original na planilha: ${escapeJsString(linha.cliente_nome_original)}">
+                <i class="fa-solid fa-file-excel mr-1 text-slate-400"></i>Planilha: "${linha.cliente_nome_original}"
+              </span>
+            ` : ''}
+          </div>
+        </td>
+        <td class="py-2.5 px-3">
+          ${htmlPosto}
+        </td>
+        <td class="py-2.5 px-3">
+          <div class="space-y-1">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] font-bold text-emerald-800">
+                VT: ${linha.quantidade_passagens_dia || 2}x R$ ${Number(linha.valor_passagem_unitaria || 0).toFixed(2).replace('.', ',')}
+              </span>
+              <button type="button" onclick="abrirModalEditarBeneficiosPrevia(${realIdx})" class="px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0 transition flex items-center gap-1" title="Editar Vale Transporte e Alimentação deste colaborador">
+                <i class="fa-solid fa-pen-to-square text-[9px]"></i> Editar
+              </button>
+            </div>
+            <div class="text-[11px] font-bold text-blue-800">
+              VA: R$ ${Number(linha.valor_diario_va || 0).toFixed(2).replace('.', ',')}/dia
+            </div>
+            <div class="text-[10px] text-slate-400 truncate max-w-[140px]" title="${escapeJsString(linha.linhas_onibus || '')}">
+              <i class="fa-solid fa-bus text-[9px] mr-1 text-slate-400"></i>${linha.linhas_onibus || 'Municipal'}
+            </div>
+          </div>
+        </td>
+        <td class="py-2.5 px-3 text-center">
+          ${statusBadge}
+        </td>
+        <td class="py-2.5 px-3 text-center">
+          <button type="button" title="Remover esta linha da importação" onclick="removerLinhaPrevia(${realIdx})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function aoMudarCargoPrevia(realIdx, novoCargoIdStr) {
+  const cId = parseInt(novoCargoIdStr, 10);
+  const cg = (state.cargos || []).find(c => c.id === cId);
+  if (cg && state.previaImportacao[realIdx]) {
+    state.previaImportacao[realIdx].cargo_id = cg.id;
+    state.previaImportacao[realIdx].cargo_nome = cg.nome_cargo;
+    if (state.previaImportacao[realIdx].cliente_id) {
+      const postos = (state.postos || []).filter(p => p.cliente_id === state.previaImportacao[realIdx].cliente_id);
+      const matchCargo = postos.find(p => p.cargo_id === cg.id);
+      if (matchCargo) {
+        state.previaImportacao[realIdx].posto_id = matchCargo.id;
+      }
+    }
+    renderizarTabelaPreviaImportacao();
+  }
+}
+
+function aoMudarClientePrevia(realIdx, novoClienteIdStr) {
+  const cliId = novoClienteIdStr ? parseInt(novoClienteIdStr, 10) : null;
+  if (!state.previaImportacao[realIdx]) return;
+
+  state.previaImportacao[realIdx].cliente_id = cliId;
+
+  if (cliId) {
+    const postos = (state.postos || []).filter(p => p.cliente_id === cliId);
+    const cargoId = state.previaImportacao[realIdx].cargo_id;
+    const matchCargo = postos.find(p => p.cargo_id === cargoId);
+    if (matchCargo) {
+      state.previaImportacao[realIdx].posto_id = matchCargo.id;
+    } else if (postos.length === 1) {
+      state.previaImportacao[realIdx].posto_id = postos[0].id;
+    } else {
+      state.previaImportacao[realIdx].posto_id = null;
+    }
+  } else {
+    state.previaImportacao[realIdx].posto_id = null;
+  }
+  renderizarTabelaPreviaImportacao();
+}
+
+let linhaTrocaSetorPreviaIdx = null;
+
+function aoMudarPostoPrevia(realIdx, novoPostoIdStr) {
+  if (!state.previaImportacao[realIdx]) return;
+  const pId = novoPostoIdStr ? parseInt(novoPostoIdStr, 10) : null;
+  state.previaImportacao[realIdx].posto_id = pId;
+
+  if (pId) {
+    const p = (state.postos || []).find(x => x.id === pId);
+    if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
+      const outrosComVagas = (state.postos || []).filter(x => x.cliente_id === p.cliente_id && x.id !== p.id && x.total_ocupados < x.quantidade_vagas_limite);
+      let msg = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO NESTE SETOR!\n\n` +
+        `O setor "${p.nome_posto}" já possui a quantidade total de ${p.quantidade_vagas_limite} colaboradores alocados (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
+
+      if (outrosComVagas.length > 0) {
+        msg += `Outros setores deste mesmo cliente com vagas disponíveis:\n` +
+          outrosComVagas.map(o => ` • ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
+          `\n\nDeseja vincular este colaborador em outro setor disponível ou criar um novo posto?`;
+      } else {
+        msg += `Não há outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
+      }
+
+      const trocar = confirm(msg + `\n\nClique em [OK] para escolher outro setor ou criar um novo posto.\nClique em [CANCELAR] para manter a seleção.`);
+      if (trocar) {
+        state.previaImportacao[realIdx].posto_id = null;
+        renderizarTabelaPreviaImportacao();
+        abrirModalTrocarSetorPrevia(realIdx);
+        return;
+      }
+    }
+  }
+
+  renderizarTabelaPreviaImportacao();
+}
+
+function abrirModalTrocarSetorPrevia(realIdx) {
+  linhaTrocaSetorPreviaIdx = realIdx;
+  const linha = state.previaImportacao[realIdx];
+  if (!linha) return;
+
+  const cli = (state.clientes || []).find(c => c.id === linha.cliente_id);
+  const nomeCli = cli ? (cli.nome_fantasia || cli.nome_razao_social) : 'Cliente Contratante';
+
+  const postoAtual = (state.postos || []).find(p => p.id === linha.posto_id);
+  const nomePostoAtual = postoAtual ? `${postoAtual.nome_posto} (${postoAtual.total_ocupados}/${postoAtual.quantidade_vagas_limite} vagas - LOTADO)` : 'Sem posto definido';
+
+  const elNome = document.getElementById('trocarSetorPreviaColabNome');
+  const elCli = document.getElementById('trocarSetorPreviaClienteNome');
+  const elAtual = document.getElementById('trocarSetorPreviaSetorAtual');
+  if (elNome) elNome.textContent = linha.nome;
+  if (elCli) elCli.textContent = nomeCli;
+  if (elAtual) elAtual.textContent = nomePostoAtual;
+
+  const container = document.getElementById('listaOutrosSetoresPrevia');
+  if (container) {
+    const postosCli = (state.postos || []).filter(p => p.cliente_id === linha.cliente_id);
+    if (postosCli.length === 0) {
+      container.innerHTML = `<div class="p-4 text-center text-slate-400">Nenhum setor cadastrado para este cliente.</div>`;
+    } else {
+      container.innerHTML = postosCli.map(p => {
+        const vagasLivres = Math.max(0, p.quantidade_vagas_limite - p.total_ocupados);
+        const ehLotado = p.total_ocupados >= p.quantidade_vagas_limite;
+        const ehAtual = p.id === linha.posto_id;
+        return `
+          <label class="flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer select-none ${ehLotado ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/50'}">
+            <div class="flex items-center gap-2.5">
+              <input type="radio" name="radioTrocarSetorPrevia" value="${p.id}" ${ehAtual ? 'checked' : ''} class="w-4 h-4 text-indigo-600">
+              <div>
+                <span class="font-bold text-slate-800 text-xs block">${p.nome_posto}</span>
+                <span class="text-[11px] text-slate-500">${p.nome_cargo || 'Geral'} • Escala: ${p.escala || '12x36'}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ehLotado ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}">
+                ${ehLotado ? '⚠️ Lotado' : `${vagasLivres} vaga(s) livre(s)`}
+              </span>
+              <span class="block text-[10px] text-slate-400 font-mono mt-0.5">${p.total_ocupados}/${p.quantidade_vagas_limite} ocupadas</span>
+            </div>
+          </label>
+        `;
+      }).join('');
+    }
+  }
+
+  abrirModal('modalTrocarSetorPrevia');
+}
+
+function acionarCriarPostoDeTrocarSetor() {
+  fecharModal('modalTrocarSetorPrevia');
+  if (linhaTrocaSetorPreviaIdx !== null) {
+    abrirModalCriarPostoPrevia(linhaTrocaSetorPreviaIdx);
+  }
+}
+
+function confirmarTrocaSetorPrevia() {
+  const radios = document.getElementsByName('radioTrocarSetorPrevia');
+  let selecionadoId = null;
+  for (const r of radios) {
+    if (r.checked) {
+      selecionadoId = parseInt(r.value, 10);
+      break;
+    }
+  }
+
+  if (!selecionadoId) {
+    alert('Por favor, selecione um setor na lista ou clique em Novo Posto.');
+    return;
+  }
+
+  if (linhaTrocaSetorPreviaIdx !== null && state.previaImportacao[linhaTrocaSetorPreviaIdx]) {
+    state.previaImportacao[linhaTrocaSetorPreviaIdx].posto_id = selecionadoId;
+    fecharModal('modalTrocarSetorPrevia');
+    renderizarTabelaPreviaImportacao();
+    const p = (state.postos || []).find(x => x.id === selecionadoId);
+    if (p) {
+      alert(`Colaborador vinculado com sucesso ao setor "${p.nome_posto}"!`);
+    }
+  }
+}
+
+function abrirModalCriarPostoPrevia(realIdx) {
+  state.linhaCriarPostoPreviaIdx = realIdx;
+  const linha = state.previaImportacao[realIdx];
+  if (!linha) return;
+
+  if (!linha.cliente_id) {
+    return alert('Por favor, selecione primeiro o Cliente Contratante para este colaborador antes de criar o posto.');
+  }
+
+  const cli = (state.clientes || []).find(c => c.id === linha.cliente_id);
+  const nomeCli = cli ? (cli.nome_fantasia || cli.nome_razao_social) : 'Cliente';
+
+  document.getElementById('postoPreviaLinhaIdx').value = realIdx;
+  document.getElementById('postoPreviaClienteId').value = linha.cliente_id;
+  document.getElementById('postoPreviaClienteNome').value = nomeCli;
+
+  const selCargo = document.getElementById('postoPreviaCargoId');
+  if (selCargo) {
+    selCargo.innerHTML = (state.cargos || []).map(c => `
+      <option value="${c.id}" ${c.id === linha.cargo_id ? 'selected' : ''}>${c.nome_cargo}</option>
+    `).join('');
+  }
+
+  const cargo = (state.cargos || []).find(c => c.id === linha.cargo_id);
+  const nomeCargo = cargo ? cargo.nome_cargo : 'Operacional';
+  document.getElementById('postoPreviaNome').value = `${nomeCargo} - ${linha.escala || '12x36'}`;
+  document.getElementById('postoPreviaVagas').value = '5';
+  document.getElementById('postoPreviaEscala').value = linha.escala || '12x36';
+  document.getElementById('postoPreviaTurno').value = 'Diurno';
+
+  abrirModal('modalCriarPostoImportacao');
+}
+
+async function salvarPostoCriadoPrevia(e) {
+  e.preventDefault();
+  const realIdx = parseInt(document.getElementById('postoPreviaLinhaIdx').value, 10);
+  const cliente_id = parseInt(document.getElementById('postoPreviaClienteId').value, 10);
+  const nome_posto = document.getElementById('postoPreviaNome').value.trim();
+  const cargo_id = parseInt(document.getElementById('postoPreviaCargoId').value, 10);
+  const quantidade_vagas_limite = parseInt(document.getElementById('postoPreviaVagas').value, 10) || 5;
+  const escala = document.getElementById('postoPreviaEscala').value;
+  const turno = document.getElementById('postoPreviaTurno').value;
+
+  if (!cliente_id || !nome_posto || !cargo_id) {
+    return alert('Preencha os campos obrigatórios do posto.');
+  }
+
+  try {
+    const res = await fetch('/api/postos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente_id,
+        nome_posto,
+        cargo_id,
+        quantidade_vagas_limite,
+        escala,
+        turno,
+        observacoes: 'Criado via Assistente de Importação de Planilha'
+      })
+    });
+    const json = await res.json();
+    if (!json.success) {
+      return alert('Erro ao criar posto: ' + (json.message || 'Falha ao salvar.'));
+    }
+
+    const novoPostoId = json.id;
+
+    // Recarrega postos e dados base
+    await carregarDadosBase();
+
+    // Vincula à linha atual
+    if (state.previaImportacao[realIdx]) {
+      state.previaImportacao[realIdx].posto_id = novoPostoId;
+      state.previaImportacao[realIdx].cargo_id = cargo_id;
+    }
+
+    // Vincula automaticamente outras linhas do mesmo cliente e mesmo cargo sem posto
+    let extrasVinculados = 0;
+    state.previaImportacao.forEach((l, idx) => {
+      if (idx !== realIdx && l.cliente_id === cliente_id && !l.posto_id && l.cargo_id === cargo_id) {
+        l.posto_id = novoPostoId;
+        extrasVinculados++;
+      }
+    });
+
+    fecharModal('modalCriarPostoImportacao');
+    renderizarTabelaPreviaImportacao();
+
+    let msg = `Posto "${nome_posto}" criado e vinculado com sucesso!`;
+    if (extrasVinculados > 0) {
+      msg += `\nAlém disso, mais ${extrasVinculados} colaborador(es) deste mesmo cliente e função foram vinculados automaticamente.`;
+    }
+    alert(msg);
+  } catch (err) {
+    alert('Erro de conexão ao criar posto: ' + err.message);
+  }
+}
+
+async function criarPostosAutomaticosPrevia() {
+  const semPostoComCliente = state.previaImportacao.filter(l => l.cliente_id && !l.posto_id);
+  if (semPostoComCliente.length === 0) {
+    return alert('Todos os colaboradores com cliente selecionado já possuem um posto de trabalho vinculado!');
+  }
+
+  const pares = new Map();
+  semPostoComCliente.forEach(l => {
+    const key = `${l.cliente_id}_${l.cargo_id}`;
+    if (!pares.has(key)) {
+      pares.set(key, { cliente_id: l.cliente_id, cargo_id: l.cargo_id, escala: l.escala || '12x36' });
+    }
+  });
+
+  const confirmou = confirm(`Foram identificados ${semPostoComCliente.length} colaboradores sem posto vinculado.\n\nDeseja criar automaticamente ${pares.size} novo(s) posto(s) operacional(is) para atendê-los agora?`);
+  if (!confirmou) return;
+
+  let criados = 0;
+  for (const [key, item] of pares.entries()) {
+    const cg = (state.cargos || []).find(c => c.id === item.cargo_id);
+    const nomeCargo = cg ? cg.nome_cargo : 'Operacional';
+    const nomePosto = `${nomeCargo} - Posto Geral (${item.escala})`;
+
+    try {
+      const res = await fetch('/api/postos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente_id: item.cliente_id,
+          nome_posto: nomePosto,
+          cargo_id: item.cargo_id,
+          quantidade_vagas_limite: 10,
+          escala: item.escala,
+          turno: 'Diurno',
+          observacoes: 'Criado em lote automaticamente via Assistente de Importação'
+        })
+      });
+      const json = await res.json();
+      if (json.success && json.id) {
+        criados++;
+        state.previaImportacao.forEach(l => {
+          if (l.cliente_id === item.cliente_id && l.cargo_id === item.cargo_id && !l.posto_id) {
+            l.posto_id = json.id;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao auto-criar posto:', err);
+    }
+  }
+
+  await carregarDadosBase();
+  renderizarTabelaPreviaImportacao();
+  alert(`${criados} novo(s) posto(s) de trabalho criado(s) e vinculado(s) com sucesso aos colaboradores!`);
+}
+
+function removerLinhaPrevia(realIdx) {
+  if (confirm('Deseja realmente remover esta linha da lista de importação?')) {
+    state.previaImportacao.splice(realIdx, 1);
+    renderizarTabelaPreviaImportacao();
+  }
+}
+
+function filtrarTabelaPrevia(termo) {
+  state.termoBuscaPrevia = normalizarTextoPrevia(termo);
+  renderizarTabelaPreviaImportacao();
+}
+
+async function executarImportacaoConfirmada() {
+  if (!state.previaImportacao || state.previaImportacao.length === 0) {
+    return alert('Nenhum colaborador na lista para importar.');
+  }
+
+  const semCliente = state.previaImportacao.filter(l => !l.cliente_id);
+  if (semCliente.length > 0) {
+    const c = confirm(`Atenção: Existem ${semCliente.length} colaboradores sem cliente selecionado. Deseja continuar mesmo assim?\n\n(Colaboradores sem cliente não poderão ser vinculados a postos de trabalho até que você os edite).`);
+    if (!c) return;
+  }
+
+  const semPosto = state.previaImportacao.filter(l => l.cliente_id && !l.posto_id);
+  if (semPosto.length > 0) {
+    const c = confirm(`Aviso: Existem ${semPosto.length} colaboradores que possuem cliente mas ainda não têm um posto de trabalho definido.\n\nSe continuar, o sistema vinculará automaticamente ao primeiro posto livre desse cliente ou criará um posto operacional.\n\nDeseja prosseguir com a gravação?`);
+    if (!c) return;
+  }
+
+  // Validação de limite de capacidade contratada dos setores
+  const postosLotados = [];
+  const contagemPorPosto = new Map();
+  state.previaImportacao.forEach(l => {
+    if (l.posto_id) {
+      contagemPorPosto.set(l.posto_id, (contagemPorPosto.get(l.posto_id) || 0) + 1);
+    }
+  });
+
+  for (const [postoId, qtdNovos] of contagemPorPosto.entries()) {
+    const p = (state.postos || []).find(x => x.id === postoId);
+    if (p && (p.total_ocupados + qtdNovos) > p.quantidade_vagas_limite) {
+      postosLotados.push({
+        nome: p.nome_posto,
+        cliente: p.cliente_nome || 'Cliente',
+        ocupados: p.total_ocupados,
+        novos: qtdNovos,
+        totalFinal: p.total_ocupados + qtdNovos,
+        limite: p.quantidade_vagas_limite
+      });
+    }
+  }
+
+  if (postosLotados.length > 0) {
+    let aviso = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO EM SETOR(ES)!\n\n` +
+      `Os seguintes setores atingirão ou já atingiram a quantidade total de colaboradores alocados:\n\n` +
+      postosLotados.map(pl => ` • ${pl.cliente} - ${pl.nome}: ${pl.totalFinal} alocados (Limite Contratual: ${pl.limite} vagas)`).join('\n') +
+      `\n\nDeseja revisar a planilha e vincular os colaboradores a outro setor ou criar novos postos?\n\n` +
+      `[CANCELAR] = Revisar e vincular a outro setor antes de importar\n` +
+      `[OK] = Gravar no banco mesmo assim`;
+
+    const prosseguir = confirm(aviso);
+    if (!prosseguir) return;
+  }
+
+  const btn = document.getElementById('btnExecutarImportacaoConfirmada');
+  const txt = document.getElementById('txtBtnConfirmarImportacao');
+  if (btn) btn.disabled = true;
+  if (txt) txt.textContent = 'Gravando no Banco de Dados...';
+
+  try {
+    const payload = state.previaImportacao.map(l => ({
+      id: l.id || null,
+      nome: l.nome,
+      cpf: l.cpf,
+      cargo_id: l.cargo_id,
+      cliente_id: l.cliente_id,
+      posto_id: l.posto_id,
+      escala: l.escala,
+      data_admissao: l.data_admissao,
+      telefone: l.telefone,
+      linhas_onibus: l.linhas_onibus,
+      quantidade_passagens_dia: l.quantidade_passagens_dia,
+      valor_passagem_unitaria: l.valor_passagem_unitaria,
+      valor_diario_va: l.valor_diario_va,
+      total_diario_vt: l.total_diario_vt || null,
+      linhas_transporte_json: l.linhas_transporte_json || null
+    }));
+
+    const res = await fetch('/api/importar/colaboradores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ colaboradores: payload })
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      fecharModal('modalConfirmarImportacaoColab');
+      state.previaImportacao = [];
+      const msg = json.atualizados > 0 
+        ? `Importação Concluída com Sucesso!\n\n• Total processados: ${json.total}\n• Novos cadastrados: ${json.inseridos}\n• Atualizados e vinculados: ${json.atualizados}`
+        : `Importação Concluída!\n\n${json.inseridos} colaboradores importados e vinculados aos respectivos postos de trabalho com sucesso!`;
+      alert(msg);
+      await carregarDadosBase();
+      if (typeof carregarColaboradores === 'function') carregarColaboradores();
+      if (typeof carregarClientesComPostos === 'function') carregarClientesComPostos();
+      if (typeof carregarPostosTrabalho === 'function') carregarPostosTrabalho();
+    } else {
+      alert('Erro ao concluir importação: ' + (json.message || 'Falha desconhecida.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão durante importação: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (txt) txt.textContent = 'Confirmar e Concluir Importação';
+  }
+}
+
+// -------------------------------------------------------------
+// EDIÇÃO DE BENEFÍCIOS (VT E VA) NA PRÉVIA DA PLANILHA E PÓS-IMPORTAÇÃO
+// -------------------------------------------------------------
+
+function abrirModalEditarBeneficiosPrevia(realIdx) {
+  const linha = state.previaImportacao[realIdx];
+  if (!linha) return;
+
+  document.getElementById('benefPreviaLinhaIdx').value = realIdx;
+  document.getElementById('benefPreviaColabNome').value = linha.nome;
+  document.getElementById('benefPreviaLinhasOnibus').value = linha.linhas_onibus || 'Municipal';
+  document.getElementById('benefPreviaQtdPassagens').value = (linha.quantidade_passagens_dia !== undefined && linha.quantidade_passagens_dia !== null) ? linha.quantidade_passagens_dia : 2;
+  document.getElementById('benefPreviaValorPassagem').value = Number(linha.valor_passagem_unitaria || 4.40).toFixed(2);
+  document.getElementById('benefPreviaValorVA').value = Number(linha.valor_diario_va || 28.00).toFixed(2);
+
+  const spanCargo = document.getElementById('benefPreviaCargoNome');
+  if (spanCargo) spanCargo.textContent = `"${linha.cargo_nome || 'Mesmo Cargo'}"`;
+  const chkReplicar = document.getElementById('benefPreviaReplicarMesmoCargo');
+  if (chkReplicar) chkReplicar.checked = false;
+
+  calcularPreviaAoVivoBeneficios();
+  abrirModal('modalEditarBeneficiosPrevia');
+}
+
+function calcularPreviaAoVivoBeneficios() {
+  const qtd = parseInt(document.getElementById('benefPreviaQtdPassagens')?.value, 10) || 0;
+  const tarifa = parseFloat(document.getElementById('benefPreviaValorPassagem')?.value) || 0;
+  const va = parseFloat(document.getElementById('benefPreviaValorVA')?.value) || 0;
+  const totalVT = qtd * tarifa;
+  const totalGeral = totalVT + va;
+
+  const txtCalcVT = document.getElementById('txtPreviaCalculoVT');
+  if (txtCalcVT) txtCalcVT.textContent = `${qtd}x R$ ${tarifa.toFixed(2).replace('.', ',')}`;
+
+  const txtTotalVT = document.getElementById('txtPreviaTotalVTDiario');
+  if (txtTotalVT) txtTotalVT.textContent = `R$ ${totalVT.toFixed(2).replace('.', ',')}`;
+
+  const txtTotalVA = document.getElementById('txtPreviaTotalVADiario');
+  if (txtTotalVA) txtTotalVA.textContent = `R$ ${va.toFixed(2).replace('.', ',')}`;
+
+  const txtTotalGeral = document.getElementById('txtPreviaTotalGeralDiario');
+  if (txtTotalGeral) txtTotalGeral.textContent = `R$ ${totalGeral.toFixed(2).replace('.', ',')} / dia`;
+}
+
+function salvarBeneficiosEditadosPrevia(e) {
+  e.preventDefault();
+  const realIdx = parseInt(document.getElementById('benefPreviaLinhaIdx').value, 10);
+  const linha = state.previaImportacao[realIdx];
+  if (!linha) return;
+
+  const linhasOnibus = document.getElementById('benefPreviaLinhasOnibus').value.trim() || 'Municipal';
+  const qtdPassagens = parseInt(document.getElementById('benefPreviaQtdPassagens').value, 10) || 2;
+  const valorPassagem = parseFloat(document.getElementById('benefPreviaValorPassagem').value) || 4.40;
+  const valorVA = parseFloat(document.getElementById('benefPreviaValorVA').value) || 28.00;
+  const replicar = document.getElementById('benefPreviaReplicarMesmoCargo')?.checked;
+
+  linha.linhas_onibus = linhasOnibus;
+  linha.quantidade_passagens_dia = qtdPassagens;
+  linha.valor_passagem_unitaria = valorPassagem;
+  linha.valor_diario_va = valorVA;
+
+  let replicados = 0;
+  if (replicar) {
+    state.previaImportacao.forEach((l, idx) => {
+      if (idx !== realIdx && l.cargo_id === linha.cargo_id) {
+        l.linhas_onibus = linhasOnibus;
+        l.quantidade_passagens_dia = qtdPassagens;
+        l.valor_passagem_unitaria = valorPassagem;
+        l.valor_diario_va = valorVA;
+        replicados++;
+      }
+    });
+  }
+
+  fecharModal('modalEditarBeneficiosPrevia');
+  renderizarTabelaPreviaImportacao();
+
+  let msg = `Benefícios de ${linha.nome} atualizados com sucesso!`;
+  if (replicados > 0) {
+    msg += `\nEstes mesmos valores foram replicados para mais ${replicados} colaborador(es) com a função "${linha.cargo_nome}".`;
+  }
+  alert(msg);
+}
+
+async function abrirModalEditarBeneficiosRapido(colabId) {
+  try {
+    let colab = (state.colaboradores || []).find(c => c.id === colabId);
+    if (!colab) {
+      const res = await fetch(`/api/colaboradores/${colabId}`);
+      if (res.ok) colab = await res.json();
+    }
+    if (!colab) return alert('Colaborador não encontrado.');
+
+    document.getElementById('rapidoBenefColabId').value = colab.id;
+    document.getElementById('rapidoBenefColabNome').textContent = colab.nome;
+    document.getElementById('rapidoBenefColabCpf').textContent = colab.cpf || 'Sem CPF';
+    document.getElementById('rapidoBenefColabCargo').textContent = colab.nome_cargo || 'Função Padrão';
+    document.getElementById('rapidoBenefColabLocal').textContent = `${colab.cliente_nome || 'Sem Cliente'} • ${colab.nome_posto || 'Sem Posto'}`;
+
+    document.getElementById('rapidoBenefLinhasOnibus').value = colab.linhas_onibus || 'Municipal';
+    document.getElementById('rapidoBenefQtdPassagens').value = (colab.quantidade_passagens_dia !== undefined && colab.quantidade_passagens_dia !== null) ? colab.quantidade_passagens_dia : 2;
+    document.getElementById('rapidoBenefValorPassagem').value = Number(colab.valor_passagem_unitaria || 4.40).toFixed(2);
+    document.getElementById('rapidoBenefValorVA').value = Number(colab.valor_diario_va || 28.00).toFixed(2);
+
+    calcularRapidoAoVivoBeneficios();
+    abrirModal('modalEditarBeneficiosRapido');
+  } catch (err) {
+    alert('Erro ao abrir edição de benefícios: ' + err.message);
+  }
+}
+
+function calcularRapidoAoVivoBeneficios() {
+  const qtd = parseInt(document.getElementById('rapidoBenefQtdPassagens')?.value, 10) || 0;
+  const tarifa = parseFloat(document.getElementById('rapidoBenefValorPassagem')?.value) || 0;
+  const va = parseFloat(document.getElementById('rapidoBenefValorVA')?.value) || 0;
+  const totalVT = qtd * tarifa;
+  const totalGeral = totalVT + va;
+
+  const txtCalcVT = document.getElementById('txtRapidoCalculoVT');
+  if (txtCalcVT) txtCalcVT.textContent = `${qtd}x R$ ${tarifa.toFixed(2).replace('.', ',')}`;
+
+  const txtTotalVT = document.getElementById('txtRapidoTotalVTDiario');
+  if (txtTotalVT) txtTotalVT.textContent = `R$ ${totalVT.toFixed(2).replace('.', ',')}`;
+
+  const txtTotalVA = document.getElementById('txtRapidoTotalVADiario');
+  if (txtTotalVA) txtTotalVA.textContent = `R$ ${va.toFixed(2).replace('.', ',')}`;
+
+  const txtTotalGeral = document.getElementById('txtRapidoTotalGeralDiario');
+  if (txtTotalGeral) txtTotalGeral.textContent = `R$ ${totalGeral.toFixed(2).replace('.', ',')} / dia`;
+}
+
+async function salvarEdicaoBeneficiosRapido(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('rapidoBenefColabId').value, 10);
+  if (!id) return;
+
+  let colab = (state.colaboradores || []).find(c => c.id === id);
+  if (!colab) {
+    try {
+      const res = await fetch(`/api/colaboradores/${id}`);
+      if (res.ok) colab = await res.json();
+    } catch (err) {}
+  }
+  if (!colab) return alert('Colaborador não encontrado.');
+
+  const linhas_onibus = document.getElementById('rapidoBenefLinhasOnibus').value.trim() || 'Municipal';
+  const quantidade_passagens_dia = parseInt(document.getElementById('rapidoBenefQtdPassagens').value, 10) || 2;
+  const valor_passagem_unitaria = parseFloat(document.getElementById('rapidoBenefValorPassagem').value) || 4.40;
+  const valor_diario_va = parseFloat(document.getElementById('rapidoBenefValorVA').value) || 28.00;
+  const sincMesAtual = document.getElementById('rapidoBenefSincronizarMesAtual')?.checked;
+
+  const payload = {
+    nome: colab.nome,
+    cpf: colab.cpf,
+    cargo_id: colab.cargo_id,
+    cliente_id: colab.cliente_id,
+    unidade_id: colab.unidade_id,
+    posto_trabalho_id: colab.posto_trabalho_id,
+    escala: colab.escala,
+    data_admissao: colab.data_admissao,
+    telefone: colab.telefone,
+    email: colab.email,
+    linhas_onibus: linhas_onibus,
+    quantidade_passagens_dia: quantidade_passagens_dia,
+    valor_passagem_unitaria: valor_passagem_unitaria,
+    valor_diario_va: valor_diario_va,
+    ativo: colab.ativo !== undefined ? colab.ativo : 1
+  };
+
+  try {
+    const res = await fetch(`/api/colaboradores/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!json.success) {
+      return alert('Erro ao atualizar benefícios: ' + (json.message || 'Falha na gravação'));
+    }
+
+    // Se solicitado sincronizar com o mês atual da folha de benefícios
+    if (sincMesAtual) {
+      try {
+        await fetch(`/api/beneficios/colaborador/${id}?ano_mes=${state.mesAtual}`, {
+          method: 'DELETE'
+        });
+      } catch (errSync) {
+        console.warn('Aviso ao sincronizar folha:', errSync);
+      }
+    }
+
+    fecharModal('modalEditarBeneficiosRapido');
+    await carregarDadosBase();
+    if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+    if (state.abaAtiva === 'beneficios') carregarBeneficios();
+
+    alert(`Benefícios de ${colab.nome} atualizados com sucesso!\n\n• Passagens/dia: ${quantidade_passagens_dia}\n• Tarifa VT: R$ ${valor_passagem_unitaria.toFixed(2).replace('.', ',')}\n• Diária VA: R$ ${valor_diario_va.toFixed(2).replace('.', ',')}\n• Linhas: ${linhas_onibus}`);
+  } catch (err) {
+    alert('Erro de conexão ao salvar benefícios: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 8. ADMIN: GESTÃO DE USUÁRIOS, SUPERVISORES DE CAMPO E SETORES
+// -------------------------------------------------------------
+
+async function carregarPainelAdminMaster() {
+  await Promise.all([
+    carregarUsuarios(),
+    carregarSupervisoresAdmin(),
+    carregarSetoresAdmin()
+  ]);
+  await popularSelectSetores();
+}
+
+function mudarSubAbaAdmin(subAba) {
+  state.subAbaAdminAtiva = subAba;
+
+  const botoes = {
+    usuarios: document.getElementById('subTabBtn-usuarios'),
+    supervisores: document.getElementById('subTabBtn-supervisores'),
+    setores: document.getElementById('subTabBtn-setores')
+  };
+
+  const conteudos = {
+    usuarios: document.getElementById('subAbaConteudo-usuarios'),
+    supervisores: document.getElementById('subAbaConteudo-supervisores'),
+    setores: document.getElementById('subAbaConteudo-setores')
+  };
+
+  Object.keys(botoes).forEach(k => {
+    if (botoes[k]) {
+      if (k === subAba) {
+        botoes[k].className = 'subtab-admin-btn px-4 py-2 rounded-lg bg-red-600 text-white flex items-center gap-2 shadow-xs transition';
+      } else {
+        botoes[k].className = 'subtab-admin-btn px-4 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-2 transition';
+      }
+    }
+    if (conteudos[k]) {
+      if (k === subAba) {
+        conteudos[k].classList.remove('hidden');
+      } else {
+        conteudos[k].classList.add('hidden');
+      }
+    }
+  });
+
+  if (subAba === 'usuarios') carregarUsuarios();
+  if (subAba === 'supervisores') carregarSupervisoresAdmin();
+  if (subAba === 'setores') carregarSetoresAdmin();
+}
+
+// -------------------------------------------------------------
+// 8.1 GESTÃO DE USUÁRIOS OPERACIONAIS & PERMISSÕES
+// -------------------------------------------------------------
+async function carregarUsuarios() {
+  const tbody = document.getElementById('tabelaUsuariosBody');
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando operadores...</td></tr>`;
+
+  try {
+    const res = await fetch('/api/usuarios');
+    const usuarios = await res.json();
+    state.usuarios = Array.isArray(usuarios) ? usuarios : [];
+
+    const kpi = document.getElementById('kpiTotalUsuariosAdmin');
+    if (kpi) kpi.textContent = state.usuarios.length;
+
+    renderizarTabelaUsuariosAdmin(state.usuarios);
+  } catch (err) {
+    console.error('Erro ao carregar usuários:', err);
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-500 font-medium">Erro ao carregar usuários: ${err.message}</td></tr>`;
+  }
+}
+
+function obterBadgeSetor(setorTexto) {
+  if (!setorTexto) return '<span class="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded">Geral</span>';
+  const s = setorTexto.toLowerCase().trim();
+  
+  if (s.includes('rh') || s.includes('recursos')) {
+    return `<span class="bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-users mr-1"></i>${setorTexto}</span>`;
+  } else if (s.includes('fat') || s.includes('glosa')) {
+    return `<span class="bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-money-bill-wave mr-1"></i>${setorTexto}</span>`;
+  } else if (s.includes('comp') || s.includes('supri')) {
+    return `<span class="bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-box mr-1"></i>${setorTexto}</span>`;
+  } else if (s.includes('benef')) {
+    return `<span class="bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-bus mr-1"></i>${setorTexto}</span>`;
+  } else if (s.includes('superv')) {
+    return `<span class="bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-user-tie mr-1"></i>${setorTexto}</span>`;
+  } else if (s.includes('dir')) {
+    return `<span class="bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-chart-pie mr-1"></i>${setorTexto}</span>`;
+  } else if (s.includes('admin')) {
+    return `<span class="bg-red-100 text-red-800 border border-red-200 text-xs font-bold px-2 py-0.5 rounded"><i class="fa-solid fa-shield-halved mr-1"></i>${setorTexto}</span>`;
+  } else {
+    return `<span class="bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold px-2 py-0.5 rounded">${setorTexto}</span>`;
+  }
+}
+
+function renderizarTabelaUsuariosAdmin(lista) {
+  const tbody = document.getElementById('tabelaUsuariosBody');
+  if (!tbody) return;
+
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Nenhum operador encontrado com os critérios de busca.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  lista.forEach(u => {
+    let permissoesBadges = '';
+    (u.permissoes || []).forEach(p => {
+      if (p.pode_visualizar === 1) {
+        permissoesBadges += `<span class="bg-slate-100 text-slate-700 text-[10px] font-bold px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${p.modulo}</span>`;
+      }
+    });
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-900">${u.nome}</div>
+          <div class="text-[11px] text-slate-400">${u.email || 'Sem e-mail cadastrado'}</div>
+        </td>
+        <td class="px-4 py-3">
+          <span class="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">${u.login}</span>
+        </td>
+        <td class="px-4 py-3">${obterBadgeSetor(u.setor)}</td>
+        <td class="px-4 py-3 max-w-xs">${permissoesBadges || '<span class="text-slate-400 text-xs italic">Sem permissões específicas</span>'}</td>
+        <td class="px-4 py-3 text-center">
+          <span class="${u.ativo ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800 border border-red-200'} text-xs font-bold px-2.5 py-0.5 rounded-full">
+            ${u.ativo ? 'Ativo' : 'Inativo'}
+          </span>
+        </td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <button onclick="editarUsuario(${u.id})" class="text-slate-500 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition mr-1" title="Editar Operador">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          ${u.id !== 1 ? `
+          <button onclick="excluirUsuarioAdmin(${u.id}, '${(u.nome || '').replace(/'/g, "\\'")}')" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition" title="Excluir Operador">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>` : ''}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function filtrarTabelaUsuariosAdmin() {
+  const busca = (document.getElementById('buscaUsuariosAdmin')?.value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!busca) {
+    renderizarTabelaUsuariosAdmin(state.usuarios || []);
+    return;
+  }
+  const filtrados = (state.usuarios || []).filter(u => {
+    const nome = (u.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const login = (u.login || '').toLowerCase();
+    const setor = (u.setor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return nome.includes(busca) || login.includes(busca) || setor.includes(busca);
+  });
+  renderizarTabelaUsuariosAdmin(filtrados);
+}
+
+async function abrirModalNovoUsuario() {
+  const form = document.getElementById('formNovoUsuario');
+  if (form) form.reset();
+  await popularSelectSetores('usrSetor');
+  document.getElementById('usrEditId').value = '';
+  document.getElementById('usrNome').value = '';
+  document.getElementById('usrLogin').value = '';
+  const inputSenha = document.getElementById('usrSenha');
+  if (inputSenha) {
+    inputSenha.value = '';
+    inputSenha.setAttribute('required', 'required');
+    inputSenha.placeholder = 'Digite a senha de acesso...';
+  }
+  document.getElementById('usrEmail').value = '';
+  document.querySelectorAll('input[name="permModulo"]').forEach(cb => {
+    cb.checked = true;
+  });
+  const chkComunicados = document.getElementById('usrPodeEnviarComunicados');
+  if (chkComunicados) chkComunicados.checked = false;
+  document.getElementById('modalNovoUsuario').classList.remove('hidden');
+}
+
+async function editarUsuario(id) {
+  try {
+    const res = await fetch('/api/usuarios');
+    const usuarios = await res.json();
+    const u = (usuarios || []).find(x => Number(x.id) === Number(id));
+    if (!u) return alert('Usuário não encontrado');
+
+    await popularSelectSetores('usrSetor', u.setor);
+
+    document.getElementById('usrEditId').value = u.id;
+    document.getElementById('usrNome').value = u.nome || '';
+    document.getElementById('usrLogin').value = u.login || '';
+    const inputSenha = document.getElementById('usrSenha');
+    if (inputSenha) {
+      inputSenha.value = '';
+      inputSenha.removeAttribute('required');
+      inputSenha.placeholder = 'Deixe em branco para manter a senha atual';
+    }
+    document.getElementById('usrEmail').value = u.email || '';
+    if (document.getElementById('usrSetor') && u.setor) {
+      document.getElementById('usrSetor').value = u.setor;
+    }
+
+    const modulosPermitidos = new Set((u.permissoes || []).filter(p => p.pode_visualizar === 1).map(p => p.modulo));
+    document.querySelectorAll('input[name="permModulo"]').forEach(cb => {
+      cb.checked = modulosPermitidos.has(cb.value);
+    });
+
+    const chkComunicados = document.getElementById('usrPodeEnviarComunicados');
+    if (chkComunicados) chkComunicados.checked = (u.pode_enviar_comunicados === 1);
+
+    document.getElementById('modalNovoUsuario').classList.remove('hidden');
+  } catch (err) {
+    alert('Erro ao carregar usuário: ' + err.message);
+  }
+}
+
+async function salvarNovoUsuario(e) {
+  e.preventDefault();
+  const id = document.getElementById('usrEditId').value;
+
+  const checkboxes = document.querySelectorAll('input[name="permModulo"]:checked');
+  const permissoes = Array.from(checkboxes).map(cb => ({
+    modulo: cb.value,
+    pode_visualizar: 1,
+    pode_criar: 1,
+    pode_editar: 1,
+    pode_excluir: 1,
+    pode_aprovar: (cb.value === 'compras' || cb.value === 'faturamento') ? 1 : 0
+  }));
+
+  const senha = document.getElementById('usrSenha').value;
+
+  const payload = {
+    nome: document.getElementById('usrNome').value.trim(),
+    login: document.getElementById('usrLogin').value.trim(),
+    setor: document.getElementById('usrSetor').value,
+    email: document.getElementById('usrEmail').value.trim(),
+    pode_enviar_comunicados: document.getElementById('usrPodeEnviarComunicados')?.checked ? 1 : 0,
+    permissoes
+  };
+
+  if (senha || !id) {
+    payload.senha = senha;
+  }
+
+  try {
+    const url = id ? `/api/usuarios/${id}` : '/api/usuarios';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      const form = document.getElementById('formNovoUsuario');
+      if (form) form.reset();
+      document.getElementById('usrEditId').value = '';
+      fecharModal('modalNovoUsuario');
+      await carregarUsuarios();
+
+      // Se o operador editado for a própria conta em uso, sincronizar a sessão no localStorage
+      if (id && state.usuarioLogado && Number(id) === Number(state.usuarioLogado.id)) {
+        if (json.usuario) {
+          state.usuarioLogado = { ...state.usuarioLogado, ...json.usuario };
+        } else {
+          state.usuarioLogado.nome = payload.nome;
+          state.usuarioLogado.login = payload.login;
+          state.usuarioLogado.setor = payload.setor;
+          state.usuarioLogado.email = payload.email;
+          state.usuarioLogado.pode_enviar_comunicados = payload.pode_enviar_comunicados;
+        }
+        if (json.permissoes) {
+          state.permissoes = json.permissoes;
+        }
+        localStorage.setItem('sisfac_usuario', JSON.stringify({
+          usuario: state.usuarioLogado,
+          permissoes: state.permissoes
+        }));
+
+        const elNome = document.getElementById('headerUsuarioNome');
+        if (elNome) elNome.textContent = state.usuarioLogado.nome;
+        const elSetor = document.getElementById('headerUsuarioSetor');
+        if (elSetor) elSetor.textContent = `Setor: ${(state.usuarioLogado.setor || '').toUpperCase()}`;
+        const elBadge = document.getElementById('headerSetorBadge');
+        if (elBadge) elBadge.textContent = state.usuarioLogado.setor || '';
+
+        aplicarPermissoesUI();
+      }
+
+      alert(id ? 'Usuário e permissões atualizados com sucesso!' : 'Novo usuário cadastrado com sucesso!');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao salvar usuário: ' + err.message);
+  }
+}
+
+async function excluirUsuarioAdmin(id, nome) {
+  if (!confirm(`Deseja realmente excluir o operador "${nome}"?`)) return;
+  try {
+    const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarUsuarios();
+      alert('Usuário removido com sucesso!');
+    } else {
+      alert('Erro ao excluir: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao comunicar com o servidor: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 8.2 GESTÃO DE SUPERVISORES DE CAMPO (APP MÓVEL / EXTERNO)
+// -------------------------------------------------------------
+async function carregarSupervisoresAdmin() {
+  const tbody = document.getElementById('tabelaSupervisoresAdminBody');
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando supervisores...</td></tr>`;
+
+  try {
+    const res = await fetch('/api/supervisores');
+    const data = await res.json();
+    state.supervisores = Array.isArray(data.supervisores) ? data.supervisores : [];
+
+    const kpi = document.getElementById('kpiTotalSupervisoresAdmin');
+    if (kpi) kpi.textContent = state.supervisores.length;
+
+    if (data.url_portal_global) {
+      state.urlPortalGlobalSupervisor = data.url_portal_global;
+      const inGlobal = document.getElementById('inputLinkSupervisorGlobal');
+      if (inGlobal) inGlobal.value = data.url_portal_global;
+      const btnGlobal = document.getElementById('btnLinkSupervisorGlobalOpen');
+      if (btnGlobal) btnGlobal.href = data.url_portal_global;
+    }
+    if (data.url_portal_rede) {
+      state.urlPortalRedeSupervisor = data.url_portal_rede;
+      const inLocal = document.getElementById('inputLinkSupervisorLocal');
+      if (inLocal) inLocal.value = data.url_portal_rede;
+      const btnLocal = document.getElementById('btnLinkSupervisorLocalOpen');
+      if (btnLocal) btnLocal.href = data.url_portal_rede;
+    }
+
+    if (state.supervisores.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-medium">Nenhum supervisor cadastrado. Clique no botão acima para adicionar.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = '';
+    state.supervisores.forEach(s => {
+      const stats = s.stats_mes || { total: 0, cobertos: 0, descobertos: 0 };
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-user-tie text-sky-600"></i>
+              <span>${s.nome}</span>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono">PIN: ${s.pin || '1001'}</div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="font-mono text-xs font-bold text-sky-800 bg-sky-50 px-2 py-1 rounded border border-sky-200">${s.login || '-'}</span>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-1.5 font-mono text-xs text-slate-700 bg-slate-100 px-2 py-1 rounded border border-slate-200 w-fit">
+              <span id="senhaSupSpan-${s.id}">${s.senha || '123'}</span>
+              <button type="button" onclick="copiarTexto('${s.senha || '123'}')" class="text-slate-400 hover:text-slate-600 ml-1" title="Copiar senha">
+                <i class="fa-solid fa-copy text-[11px]"></i>
+              </button>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            ${s.telefone ? `
+              <a href="https://wa.me/55${s.telefone.replace(/\D/g, '')}" target="_blank" class="text-emerald-700 hover:text-emerald-800 font-bold text-xs flex items-center gap-1" title="Conversar no WhatsApp">
+                <i class="fa-brands fa-whatsapp text-emerald-500 text-sm"></i>
+                <span>${s.telefone}</span>
+              </a>
+            ` : '<span class="text-slate-400 text-xs italic">Não informado</span>'}
+          </td>
+          <td class="px-4 py-3 text-center">
+            <div class="font-bold text-xs text-slate-800">${stats.total} lançamento(s)</div>
+            <div class="text-[10px] space-x-1 mt-0.5">
+              <span class="text-emerald-700 font-bold">${stats.cobertos} cobertos</span>
+              <span class="text-slate-300">|</span>
+              <span class="text-amber-700 font-bold">${stats.descobertos} sem cobertura</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-center">
+            <span class="${s.ativo ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800 border border-red-200'} text-xs font-bold px-2.5 py-0.5 rounded-full">
+              ${s.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <button onclick="copiarCredenciaisSupervisor(${s.id})" class="text-emerald-600 hover:text-emerald-800 p-1.5 rounded hover:bg-emerald-50 transition mr-1" title="Copiar WhatsApp com Acesso">
+              <i class="fa-brands fa-whatsapp text-sm"></i>
+            </button>
+            <button onclick="editarSupervisor(${s.id})" class="text-sky-600 hover:text-sky-800 p-1.5 rounded hover:bg-sky-50 transition mr-1" title="Editar Supervisor">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="excluirSupervisor(${s.id}, '${s.nome}')" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition" title="Excluir / Inativar">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar supervisores:', err);
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-red-500 font-medium">Erro ao carregar supervisores: ${err.message}</td></tr>`;
+  }
+}
+
+function abrirModalNovoSupervisor() {
+  document.getElementById('formNovoSupervisor').reset();
+  document.getElementById('supEditId').value = '';
+  document.getElementById('supSenha').value = '123';
+  document.getElementById('supPin').value = '1001';
+  document.getElementById('supAtivo').value = '1';
+  document.getElementById('tituloModalSupervisor').textContent = 'Cadastrar Novo Supervisor de Campo';
+  document.getElementById('modalNovoSupervisor').classList.remove('hidden');
+}
+
+function sugerirLoginSupervisor() {
+  const id = document.getElementById('supEditId').value;
+  if (id) return;
+  const nome = document.getElementById('supNome').value.trim();
+  if (!nome) return;
+  const primeiroNome = nome.split(' ')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  document.getElementById('supLogin').value = primeiroNome;
+}
+
+async function editarSupervisor(id) {
+  const s = (state.supervisores || []).find(x => x.id === id);
+  if (!s) return alert('Supervisor não encontrado');
+
+  document.getElementById('supEditId').value = s.id;
+  document.getElementById('supNome').value = s.nome || '';
+  document.getElementById('supLogin').value = s.login || '';
+  document.getElementById('supSenha').value = s.senha || '123';
+  document.getElementById('supTelefone').value = s.telefone || '';
+  document.getElementById('supPin').value = s.pin || '1001';
+  document.getElementById('supAtivo').value = s.ativo !== undefined ? (s.ativo ? '1' : '0') : '1';
+  document.getElementById('tituloModalSupervisor').textContent = 'Editar Dados do Supervisor';
+  document.getElementById('modalNovoSupervisor').classList.remove('hidden');
+}
+
+async function salvarSupervisorModalAdmin(e) {
+  e.preventDefault();
+  const id = document.getElementById('supEditId').value;
+  const nome = (document.getElementById('supNome').value || '').trim();
+  let login = (document.getElementById('supLogin').value || '').trim().toLowerCase();
+  const senha = (document.getElementById('supSenha').value || '').trim();
+  const telefone = (document.getElementById('supTelefone').value || '').trim();
+  const pin = (document.getElementById('supPin').value || '').trim() || '1001';
+  const ativo = document.getElementById('supAtivo').value === '1';
+
+  if (!nome) {
+    alert('Nome do supervisor é obrigatório.');
+    return;
+  }
+  if (!login) {
+    login = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '_').slice(0, 15);
+  }
+
+  const payload = {
+    nome,
+    login,
+    senha: senha || '123',
+    telefone,
+    pin,
+    ativo
+  };
+
+  try {
+    const url = id ? `/api/supervisores/${id}` : '/api/supervisores';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoSupervisor');
+      await carregarSupervisoresAdmin();
+      if (typeof carregarSupervisoresModal === 'function') {
+        try { await carregarSupervisoresModal(); } catch (e) {}
+      }
+      alert(id ? 'Supervisor atualizado com sucesso!' : 'Novo supervisor cadastrado com sucesso! As credenciais já estão ativas para acesso.');
+    } else {
+      alert('Aviso: ' + (json.message || json.error || 'Erro ao salvar supervisor.'));
+    }
+  } catch (err) {
+    alert('Erro ao salvar supervisor: ' + err.message);
+  }
+}
+window.salvarSupervisorModalAdmin = salvarSupervisorModalAdmin;
+window.salvarSupervisorAdmin = salvarSupervisorModalAdmin;
+
+async function excluirSupervisor(id, nome) {
+  if (!confirm(`Deseja realmente excluir ou inativar o supervisor "${nome}"?`)) return;
+  try {
+    const res = await fetch(`/api/supervisores/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarSupervisoresAdmin();
+      alert(json.message || 'Operação realizada com sucesso!');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao comunicar com o servidor: ' + err.message);
+  }
+}
+
+function copiarCredenciaisSupervisor(id) {
+  const s = (state.supervisores || []).find(x => x.id === id);
+  if (!s) return;
+  const linkApp = state.urlPortalGlobalSupervisor || document.getElementById('inputLinkSupervisorGlobal')?.value || (state.urlTunnelGlobal ? `${state.urlTunnelGlobal}/supervisor` : 'https://melissa-compile-teenage-sapphire.trycloudflare.com/supervisor');
+  const msg = `Olá ${s.nome}!\n\nSegue seu acesso ao aplicativo móvel do SISFAC para lançamento de faltas e coberturas em tempo real:\n\n🔗 Link de Acesso (4G e Wi-Fi): ${linkApp}\n👤 Usuário: ${s.login}\n🔑 Senha: ${s.senha}\n\nAbra o link pelo celular e faça login para começar.`;
+  copiarTexto(msg);
+  alert(`Mensagem com link e credenciais de ${s.nome} copiada para a área de transferência! Cole diretamente no WhatsApp.`);
+}
+
+function copiarInstrucoesSupervisoresWhatsApp() {
+  const linkApp = state.urlPortalGlobalSupervisor || document.getElementById('inputLinkSupervisorGlobal')?.value || (state.urlTunnelGlobal ? `${state.urlTunnelGlobal}/supervisor` : 'https://melissa-compile-teenage-sapphire.trycloudflare.com/supervisor');
+  const msg = `*SISFAC 2.0 - Aplicativo Móvel do Supervisor*\n\nPrezados supervisores, para registrar faltas e coberturas em tempo real pelo celular (4G ou Wi-Fi), acessem o link abaixo:\n\n🔗 ${linkApp}\n\nUtilizem o login e senha individuais fornecidos pela coordenação.`;
+  copiarTexto(msg);
+  alert('Mensagem geral para envio no grupo dos supervisores copiada com sucesso!');
+}
+
+function copiarTextoInput(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.select();
+  copiarTexto(el.value);
+  alert('Link copiado com sucesso!');
+}
+
+function copiarTexto(texto) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto);
+  } else {
+    const textarea = document.createElement('textarea');
+    textarea.value = texto;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+}
+
+// -------------------------------------------------------------
+// 8.3 GESTÃO DE SETORES DA EMPRESA
+// -------------------------------------------------------------
+async function carregarSetoresAdmin() {
+  const tbody = document.getElementById('tabelaSetoresAdminBody');
+  if (!tbody) return;
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando setores...</td></tr>`;
+
+  try {
+    const res = await fetch('/api/setores');
+    const setores = await res.json();
+    state.setores = Array.isArray(setores) ? setores : [];
+
+    const kpi = document.getElementById('kpiTotalSetoresAdmin');
+    if (kpi) kpi.textContent = state.setores.length;
+
+    if (state.setores.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Nenhum setor cadastrado. Clique no botão acima para incluir um novo setor.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = '';
+    state.setores.forEach(st => {
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 font-bold text-slate-900">
+            ${obterBadgeSetor(st.nome_setor)}
+          </td>
+          <td class="px-4 py-3 font-mono font-bold text-xs text-slate-700">${st.sigla || '-'}</td>
+          <td class="px-4 py-3 text-xs text-slate-500">${st.descricao || 'Sem descrição'}</td>
+          <td class="px-4 py-3 text-center font-bold text-slate-800">${st.total_usuarios || 0}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="${st.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} text-xs font-bold px-2 py-0.5 rounded">
+              ${st.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            <button onclick="editarSetor(${st.id})" class="text-slate-500 hover:text-emerald-600 p-1.5 rounded hover:bg-emerald-50 transition mr-1" title="Editar Setor">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="excluirSetor(${st.id}, '${st.nome_setor}')" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition" title="Excluir Setor">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar setores:', err);
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-500 font-medium">Erro ao carregar setores: ${err.message}</td></tr>`;
+  }
+}
+
+async function popularSelectSetores(selectId = 'usrSetor', valorSelecionado = null) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+
+  if (!state.setores || state.setores.length === 0) {
+    try {
+      const res = await fetch('/api/setores');
+      state.setores = await res.json();
+    } catch (e) {}
+  }
+
+  const valAtual = (valorSelecionado !== null && valorSelecionado !== undefined) ? valorSelecionado : el.value;
+  el.innerHTML = '<option value="">Selecione o Setor da Empresa...</option>';
+  (state.setores || []).filter(s => s.ativo !== 0).forEach(s => {
+    el.innerHTML += `<option value="${s.nome_setor}">${s.nome_setor} (${s.sigla || 'SET'})</option>`;
+  });
+
+  if (valAtual && String(valAtual).trim()) {
+    const valTrim = String(valAtual).trim();
+    let opt = Array.from(el.options).find(o => o.value.toLowerCase().trim() === valTrim.toLowerCase());
+    if (opt) {
+      el.value = opt.value;
+    } else {
+      const novaOpt = document.createElement('option');
+      novaOpt.value = valTrim;
+      novaOpt.textContent = valTrim;
+      el.appendChild(novaOpt);
+      el.value = valTrim;
+    }
+  }
+}
+
+function abrirModalNovoSetor(origemSelectId = null) {
+  state.setorSelectOrigem = origemSelectId;
+  document.getElementById('formNovoSetor').reset();
+  document.getElementById('setorEditId').value = '';
+  document.getElementById('tituloModalSetor').textContent = 'Cadastrar Novo Setor da Empresa';
+  document.getElementById('modalNovoSetor').classList.remove('hidden');
+}
+
+async function editarSetor(id) {
+  const st = (state.setores || []).find(x => x.id === id);
+  if (!st) return alert('Setor não encontrado');
+
+  document.getElementById('setorEditId').value = st.id;
+  document.getElementById('setorNome').value = st.nome_setor || '';
+  document.getElementById('setorSigla').value = st.sigla || '';
+  document.getElementById('setorCor').value = st.cor_badge || 'blue';
+  document.getElementById('setorDescricao').value = st.descricao || '';
+  document.getElementById('tituloModalSetor').textContent = 'Editar Dados do Setor';
+  document.getElementById('modalNovoSetor').classList.remove('hidden');
+}
+
+async function salvarSetorAdmin(e) {
+  e.preventDefault();
+  const id = document.getElementById('setorEditId').value;
+  const payload = {
+    nome_setor: document.getElementById('setorNome').value.trim(),
+    sigla: document.getElementById('setorSigla').value.trim().toUpperCase(),
+    cor_badge: document.getElementById('setorCor').value,
+    descricao: document.getElementById('setorDescricao').value.trim()
+  };
+
+  try {
+    const url = id ? `/api/setores/${id}` : '/api/setores';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoSetor');
+      await carregarSetoresAdmin();
+      await popularSelectSetores('usrSetor');
+
+      if (state.setorSelectOrigem) {
+        const selAlvo = document.getElementById(state.setorSelectOrigem);
+        if (selAlvo) selAlvo.value = payload.nome_setor;
+      }
+
+      alert(id ? 'Setor atualizado com sucesso!' : 'Novo setor cadastrado com sucesso e já disponível para seleção de usuários!');
+    } else {
+      alert('Aviso: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao salvar setor: ' + err.message);
+  }
+}
+
+async function excluirSetor(id, nome) {
+  if (!confirm(`Deseja realmente excluir o setor "${nome}"?`)) return;
+  try {
+    const res = await fetch(`/api/setores/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarSetoresAdmin();
+      await popularSelectSetores('usrSetor');
+      alert(json.message || 'Setor excluído com sucesso!');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao comunicar com o servidor: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 9. CLIENTES & POSTOS DE TRABALHO (UNIFICADO COM ALERTAS DE VAGAS)
+// -------------------------------------------------------------
+function carregarClientes() {
+  return carregarClientesComPostos();
+}
+
+async function carregarClientesComPostos() {
+  const container = document.getElementById('containerClientesPostos');
+  if (!container) return;
+  container.innerHTML = `<div class="bg-white p-8 text-center rounded-2xl border border-slate-200 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando clientes e postos contratados...</div>`;
+
+  try {
+    const res = await fetch('/api/clientes');
+    const clientes = await res.json();
+    state.clientesComPostos = clientes;
+    state.clientes = clientes;
+    state.clientesSelecionados.clear();
+    atualizarBarraAcoesClientes();
+
+    renderizarCardsClientesPostos();
+  } catch (err) {
+    console.error('Erro ao carregar clientes com postos:', err);
+    container.innerHTML = `<div class="bg-red-50 text-red-700 p-6 rounded-2xl border border-red-200 text-center font-semibold">Erro ao carregar clientes e postos: ${err.message}</div>`;
+  }
+}
+
+function aoFiltrarClientesPostos(val) {
+  state.filtroNomeClientePosto = (val || '').toLowerCase().trim();
+  renderizarCardsClientesPostos();
+}
+
+function aoSelecionarFiltroCliente(id) {
+  state.filtroClientePostoSelectId = id ? parseInt(id, 10) : '';
+  renderizarCardsClientesPostos();
+}
+
+function aoAlternarFiltroVagasAbertas(checked) {
+  state.filtroApenasVagasAbertas = !!checked;
+  renderizarCardsClientesPostos();
+}
+
+function renderizarCardsClientesPostos() {
+  const container = document.getElementById('containerClientesPostos');
+  if (!container) return;
+
+  // Atualizar contador de colaboradores na Reserva Técnica
+  const colabsLista = Array.isArray(state.colaboradores) ? state.colaboradores : [];
+  const naReserva = colabsLista.filter(col => col.ativo === 1 && !col.posto_trabalho_id).length;
+  const elReserva = document.getElementById('qtdColabsReservaTecnica');
+  if (elReserva) elReserva.textContent = naReserva;
+
+  let lista = state.clientesComPostos || [];
+
+  // Filtro 1: Cliente específico selecionado pelo select
+  if (state.filtroClientePostoSelectId) {
+    lista = lista.filter(c => c.id === state.filtroClientePostoSelectId);
+  }
+
+  // Filtro 2: Busca por texto (prioriza nome fantasia ou razão social, depois cnpj ou nome de posto)
+  if (state.filtroNomeClientePosto) {
+    const termo = state.filtroNomeClientePosto;
+    lista = lista.filter(c => {
+      const nomeFantasia = (c.nome_fantasia || '').toLowerCase();
+      const razao = (c.nome_razao_social || '').toLowerCase();
+      const cnpj = (c.cnpj || '').toLowerCase();
+      const temPosto = (c.postos || []).some(p => 
+        (p.nome_posto || '').toLowerCase().includes(termo) || 
+        (p.nome_cargo || '').toLowerCase().includes(termo)
+      );
+      return nomeFantasia.includes(termo) || razao.includes(termo) || cnpj.includes(termo) || temPosto;
+    });
+  }
+
+  // Filtro 3: Apenas vagas em aberto
+  if (state.filtroApenasVagasAbertas) {
+    lista = lista.filter(c => c.possui_vagas_abertas);
+  }
+
+  if (lista.length === 0) {
+    container.innerHTML = `
+      <div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-500">
+        <i class="fa-solid fa-building-circle-xmark text-slate-300 text-4xl mb-3 block"></i>
+        <h3 class="font-bold text-base text-slate-800">Nenhum cliente ou posto encontrado</h3>
+        <p class="text-xs text-slate-400 mt-1">Tente ajustar os filtros ou cadastrar um novo cliente/posto acima.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+  if (!state.clientesRecolhidos) state.clientesRecolhidos = new Set();
+
+  lista.forEach(c => {
+    const isChk = state.clientesSelecionados.has(c.id);
+    const postos = c.postos || [];
+    const isRecolhido = state.clientesRecolhidos.has(c.id);
+
+    let badgeAlertaGeral = '';
+    if (c.possui_vagas_abertas) {
+      badgeAlertaGeral = `
+        <span class="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-full shadow animate-pulse flex items-center gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          ${c.total_vagas_abertas} VAGA(S) EM ABERTO - REQUER CONTRATAÇÃO / REALOCAÇÃO
+        </span>
+      `;
+    } else {
+      badgeAlertaGeral = `
+        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-check text-emerald-600"></i>
+          Quadro Completo
+        </span>
+      `;
+    }
+
+    let postosHtml = '';
+    if (postos.length === 0) {
+      postosHtml = `
+        <div class="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+          <i class="fa-solid fa-map-pin text-slate-300 text-2xl mb-1 block"></i>
+          Nenhum posto de trabalho cadastrado para este cliente.
+          <div class="mt-2">
+            <button onclick="abrirModalNovoPosto(${c.id})" class="text-rose-600 hover:text-rose-700 font-bold">
+              + Cadastrar primeiro posto de trabalho
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      let linhasTabela = '';
+      postos.forEach(p => {
+        let badgeStatusVaga = '';
+        if (p.requer_contratacao) {
+          badgeStatusVaga = `
+            <div class="inline-flex items-center gap-1 bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded shadow animate-pulse">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              ${p.vagas_abertas} VAGA(S) EM ABERTO
+            </div>
+            <div class="text-[10px] text-red-700 font-bold mt-0.5">Requer contratação ou realocação</div>
+          `;
+        } else if (p.esta_lotado) {
+          badgeStatusVaga = `
+            <span class="bg-slate-100 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1">
+              <i class="fa-solid fa-lock text-slate-500"></i> Lotação Máxima (${p.total_ocupados}/${p.quantidade_vagas_limite})
+            </span>
+          `;
+        } else {
+          badgeStatusVaga = `
+            <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i> ${p.vagas_disponiveis} vaga(s) livre(s)
+            </span>
+          `;
+        }
+
+        // Colaboradores alocados
+        let colabsHtml = '';
+        if (p.colaboradores_alocados && p.colaboradores_alocados.length > 0) {
+          colabsHtml = p.colaboradores_alocados.map(col => {
+            if (col.is_multi_cliente) {
+              return `
+                <span class="inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-300 text-indigo-950 text-xs px-2.5 py-1 rounded-lg shadow-2xs">
+                  <i class="fa-solid fa-people-arrows text-indigo-600"></i>
+                  <span class="font-bold">${col.nome}</span>
+                  <span class="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide">Multi-Cliente</span>
+                  ${col.dias_semana ? `<span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-1.5 py-0.5 rounded">${col.dias_semana}</span>` : ''}
+                  ${col.carga_horaria_semanal ? `<span class="text-[10px] text-indigo-700 font-bold">(${col.carga_horaria_semanal}h/sem)</span>` : ''}
+                  <button onclick="desvincularRoteiroMulti(${col.roteiro_id}, '${escapeJsString(col.nome)}')" class="text-indigo-600 hover:text-red-700 ml-1 transition" title="Remover do Roteiro Multi-Cliente">
+                    <i class="fa-solid fa-unlink text-[11px]"></i>
+                  </button>
+                </span>
+              `;
+            }
+            return `
+              <span class="inline-flex items-center gap-1.5 bg-white border border-slate-300 text-slate-800 text-xs px-2.5 py-1 rounded-lg shadow-2xs">
+                <i class="fa-solid fa-user text-slate-400"></i>
+                <span class="font-semibold">${col.nome}</span>
+                <button onclick="desvincularParaReservaTecnica(${col.id}, '${escapeJsString(col.nome)}', '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}')" class="text-amber-600 hover:text-amber-800 ml-1 transition" title="Mover para Reserva Técnica (libera vaga neste posto sem demitir)">
+                  <i class="fa-solid fa-user-clock text-[11px]"></i>
+                </button>
+                <button onclick="abrirModalDemitirColaborador(${col.id}, '${escapeJsString(col.nome)}', '${escapeJsString(p.nome_posto)} - ${escapeJsString(c.nome_fantasia || c.nome_razao_social)}')" class="text-slate-400 hover:text-red-700 ml-0.5 transition" title="Demitir colaborador e abrir vaga no posto">
+                  <i class="fa-solid fa-user-slash text-[11px]"></i>
+                </button>
+              </span>
+            `;
+          }).join(' ');
+        } else {
+          colabsHtml = `<span class="text-xs text-red-600 font-bold italic">Nenhum colaborador alocado</span>`;
+        }
+
+        // Botão para alocar colaborador se houver vaga aberta
+        let btnAlocar = '';
+        if (p.requer_contratacao || p.vagas_disponiveis > 0) {
+          btnAlocar = `
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <button onclick="abrirModalVincularColaborador(${c.id}, ${p.id}, '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}', ${p.cargo_id || 'null'}, '${escapeJsString(p.nome_cargo || '')}', ${p.vagas_disponiveis}, '${escapeJsString(p.escala || '5x2')}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1.5 transition shadow-xs" title="Puxar colaborador da Reserva Técnica ou transferir de outro cliente">
+                <i class="fa-solid fa-people-arrows"></i> Puxar Colaborador (Reserva / Transferência)
+              </button>
+              <button onclick="abrirModalAlocarNoPosto(${c.id}, ${p.id}, '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}', ${p.cargo_id || 'null'})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[11px] font-medium px-2 py-1 rounded-md flex items-center gap-1 transition" title="Cadastrar novo colaborador contratado do zero">
+                <i class="fa-solid fa-user-plus"></i> Novo Cadastro
+              </button>
+            </div>
+          `;
+        }
+
+        linhasTabela += `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0 ${p.requer_contratacao ? 'bg-red-50/40' : ''}">
+            <td class="px-4 py-3">
+              <div class="font-bold text-slate-900">${p.nome_posto}</div>
+              <div class="text-[11px] text-slate-400">${p.nome_unidade || 'Matriz / Central'}</div>
+            </td>
+            <td class="px-4 py-3">
+              <span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-bold">${p.nome_cargo || 'Geral'}</span>
+              ${p.cargo_id ? `<span class="text-indigo-700 font-mono font-bold text-[10px] ml-1 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded" title="Código ID da Função/Cargo"><i class="fa-solid fa-briefcase mr-0.5"></i>ID: #${p.cargo_id}</span>` : ''}
+            </td>
+            <td class="px-4 py-3 text-xs">
+              <span class="font-bold text-slate-700">${p.escala}</span>
+              <div class="text-[11px] text-slate-500">${p.turno || 'Comercial'}</div>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span class="font-black text-slate-900 text-sm">${p.total_ocupados}</span>
+              <span class="text-slate-400 text-xs"> / ${p.quantidade_vagas_limite}</span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              ${badgeStatusVaga}
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex flex-wrap gap-1.5 items-center">
+                ${colabsHtml}
+              </div>
+              ${btnAlocar}
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1">
+                ${isUsuarioAdminMaster() 
+                  ? `<button onclick="abrirModalEditarPosto(${p.id})" class="text-amber-600 hover:text-amber-800 p-1.5 rounded hover:bg-amber-50 transition" title="Editar Posto (Exclusivo Admin Master - Aditivo Contratual / Ajuste de Vagas)">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                     </button>` 
+                  : `<span class="text-slate-300 p-1.5 cursor-not-allowed" title="Edição de postos e alteração de vagas contratuais restrita ao Administrador Master">
+                      <i class="fa-solid fa-lock text-xs"></i>
+                     </span>`}
+                <button onclick="excluirItem('postos', ${p.id})" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition" title="Excluir Posto">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      postosHtml = `
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-sm text-slate-600 bg-white">
+            <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="px-4 py-2.5">Posto de Trabalho</th>
+                <th class="px-4 py-2.5">Função / Cargo</th>
+                <th class="px-4 py-2.5">Escala / Turno</th>
+                <th class="px-4 py-2.5 text-center">Lotação (Ocupadas / Contratadas)</th>
+                <th class="px-4 py-2.5 text-center">Situação da Vaga</th>
+                <th class="px-4 py-2.5">Colaboradores Alocados</th>
+                <th class="px-4 py-2.5 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${linhasTabela}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    let bannerRoteiros = '';
+    if (c.roteiros_multi_cliente && c.roteiros_multi_cliente.length > 0) {
+      bannerRoteiros = `
+        <div class="mb-3 p-3 bg-gradient-to-r from-indigo-50 via-purple-50 to-indigo-50 border border-indigo-200 rounded-xl space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-people-arrows text-indigo-600"></i>
+              Colaborador(es) em Atendimento Multi-Cliente neste Contrato:
+            </span>
+            <button onclick="abrirModalMultiCliente(${c.id})" class="text-[11px] text-indigo-700 hover:text-indigo-900 font-bold underline cursor-pointer">
+              Gerenciar Roteiro
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            ${c.roteiros_multi_cliente.map(r => `
+              <div class="inline-flex items-center gap-1.5 bg-white border border-indigo-200 text-indigo-950 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs">
+                <i class="fa-solid fa-user-check text-indigo-600"></i>
+                <b>${r.colaborador_nome}</b>
+                <span class="text-[11px] text-slate-500 font-normal">| ${r.dias_cliente || 'Dias combinados'}</span>
+                <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-1.5 py-0.5 rounded">${r.carga_cliente || 0}h/sem</span>
+                <button onclick="desvincularRoteiroMulti(${r.id}, '${escapeJsString(r.colaborador_nome)}')" class="text-slate-400 hover:text-red-600 ml-1 transition" title="Desvincular do Roteiro Multi-Cliente">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML += `
+      <div class="bg-white rounded-2xl shadow-sm border ${c.possui_vagas_abertas ? 'border-red-300 ring-1 ring-red-200' : 'border-slate-200'} p-5 space-y-4 transition">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="chk-cliente mt-1.5 h-4 w-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500 cursor-pointer" value="${c.id}" ${isChk ? 'checked' : ''} onchange="aoAlternarChkCliente(this)">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="bg-violet-700 text-white text-xs font-black px-2.5 py-1 rounded-md font-mono shadow-2xs flex items-center gap-1">
+                  <i class="fa-solid fa-id-badge"></i>ID CLIENTE: #${c.id}
+                </span>
+                <h3 class="text-lg font-black text-slate-900 cursor-pointer hover:text-violet-700 transition" onclick="alternarRecolherCliente(${c.id})">${c.nome_fantasia || c.nome_razao_social}</h3>
+                ${c.nome_fantasia ? `<span class="text-xs text-slate-500 font-medium">(${c.nome_razao_social})</span>` : ''}
+                ${badgeAlertaGeral}
+              </div>
+              <div class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-4">
+                <span><i class="fa-solid fa-hashtag text-violet-600 mr-1"></i><b>Código ID:</b> <span class="font-mono text-violet-700 font-black">#${c.id}</span></span>
+                <span><i class="fa-solid fa-id-card text-slate-400 mr-1"></i><b>CNPJ:</b> <span class="font-mono">${c.cnpj || 'Não informado'}</span></span>
+                ${c.contato_responsavel ? `<span><i class="fa-solid fa-user-tie text-slate-400 mr-1"></i><b>Contato:</b> ${c.contato_responsavel}</span>` : ''}
+                ${c.telefone ? `<span><i class="fa-solid fa-phone text-slate-400 mr-1"></i><b>Telefone:</b> ${c.telefone}</span>` : ''}
+                ${c.email ? `<span><i class="fa-solid fa-envelope text-slate-400 mr-1"></i><b>E-mail:</b> ${c.email}</span>` : ''}
+                ${c.cota_mensal_insumos > 0 ? `<span><i class="fa-solid fa-boxes-stacked text-teal-600 mr-1"></i><b>Cota Insumos:</b> ${formatarMoeda(c.cota_mensal_insumos)}</span>` : ''}
+                <span><i class="fa-solid fa-layer-group text-slate-400 mr-1"></i><b>Total de Vagas:</b> ${c.total_vagas_ocupadas} ocupada(s) de ${c.total_vagas_contratadas} contratada(s)</span>
+              </div>
+              ${c.observacoes ? `<div class="text-[11px] text-slate-500 mt-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md flex items-center gap-1.5"><i class="fa-solid fa-circle-info text-amber-500"></i><span><b>Obs:</b> ${c.observacoes}</span></div>` : ''}
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
+            <!-- Botão de Minimizar / Expandir individual -->
+            <button type="button" onclick="alternarRecolherCliente(${c.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs border border-slate-300" title="${isRecolhido ? 'Expandir Postos deste Cliente' : 'Minimizar Postos deste Cliente'}">
+              <span class="text-[11px] text-slate-600 font-semibold">${postos.length} ${postos.length === 1 ? 'posto' : 'postos'}</span>
+              <i class="fa-solid ${isRecolhido ? 'fa-chevron-down text-violet-600' : 'fa-chevron-up text-slate-500'}"></i>
+            </button>
+            <button onclick="abrirModalMultiCliente(${c.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs" title="Juntar este cliente a outros num roteiro compartilhado (até 5)">
+              <i class="fa-solid fa-people-arrows"></i> Multi-Cliente
+            </button>
+            <button onclick="abrirModalEditarCliente(${c.id})" class="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs" title="Editar informações cadastrais do cliente">
+              <i class="fa-solid fa-pen-to-square"></i> Editar Cliente
+            </button>
+            <button onclick="abrirModalNovoPosto(${c.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-plus-circle"></i> Adicionar Posto neste Cliente
+            </button>
+            <button onclick="excluirItem('clientes', ${c.id})" class="text-slate-400 hover:text-red-600 p-2 rounded-lg transition" title="Excluir Cliente">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="corpoPostosCliente-${c.id}" class="${isRecolhido ? 'hidden' : ''}">
+          ${bannerRoteiros}
+          ${postosHtml}
+        </div>
+      </div>
+    `;
+  });
+}
+
+function alternarRecolherCliente(clienteId) {
+  if (!state.clientesRecolhidos) state.clientesRecolhidos = new Set();
+  if (state.clientesRecolhidos.has(clienteId)) {
+    state.clientesRecolhidos.delete(clienteId);
+  } else {
+    state.clientesRecolhidos.add(clienteId);
+  }
+  renderizarCardsClientesPostos();
+}
+
+function recolherTodosClientes() {
+  if (!state.clientesRecolhidos) state.clientesRecolhidos = new Set();
+  (state.clientesComPostos || []).forEach(c => state.clientesRecolhidos.add(c.id));
+  renderizarCardsClientesPostos();
+}
+
+function expandirTodosClientes() {
+  if (!state.clientesRecolhidos) state.clientesRecolhidos = new Set();
+  state.clientesRecolhidos.clear();
+  renderizarCardsClientesPostos();
+}
+
+function aoAlternarChkCliente(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.clientesSelecionados.add(id);
+  else state.clientesSelecionados.delete(id);
+  atualizarBarraAcoesClientes();
+}
+
+function alternarTodosClientes(master) {
+  const chks = document.querySelectorAll('.chk-cliente');
+  chks.forEach(chk => {
+    chk.checked = master.checked;
+    const id = parseInt(chk.value, 10);
+    if (master.checked) state.clientesSelecionados.add(id);
+    else state.clientesSelecionados.delete(id);
+  });
+  atualizarBarraAcoesClientes();
+}
+
+function atualizarBarraAcoesClientes() {
+  const barra = document.getElementById('barraAcoesClientes');
+  if (!barra) return;
+  const qtd = state.clientesSelecionados.size;
+  const elQtd = document.getElementById('qtdClientesSelecionados');
+  if (elQtd) elQtd.textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirClientesSelecionados() {
+  const ids = Array.from(state.clientesSelecionados);
+  if (ids.length === 0) return;
+  if (!confirm(`Deseja realmente inativar/excluir os ${ids.length} clientes selecionados em lote?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'clientes', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`${json.count} clientes inativados com sucesso!`);
+      await carregarDadosBase();
+      carregarClientesComPostos();
+    }
+  } catch (err) {
+    alert('Erro ao excluir clientes: ' + err.message);
+  }
+}
+
+async function exportarListaClientesExcel() {
+  try {
+    const res = await fetch('/api/clientes');
+    const clientes = await res.json();
+    const lista = Array.isArray(clientes) ? clientes : (state.clientes || []);
+
+    if (lista.length === 0) {
+      alert('Nenhum cliente cadastrado para exportar.');
+      return;
+    }
+
+    // Ordenar de A a Z por Nome Fantasia / Razão Social
+    lista.sort((a, b) => {
+      const nA = (a.nome_fantasia || a.nome_razao_social || '').toLowerCase();
+      const nB = (b.nome_fantasia || b.nome_razao_social || '').toLowerCase();
+      return nA.localeCompare(nB);
+    });
+
+    const dadosExport = lista.map(c => ({
+      'ID do Cliente': c.id,
+      'Nome Fantasia': c.nome_fantasia || '',
+      'Razão Social': c.nome_razao_social || '',
+      'CNPJ': c.cnpj || '',
+      'Contato': c.contato_responsavel || '',
+      'Telefone': c.telefone || '',
+      'Postos Contratados': c.total_postos || 0,
+      'Vagas Contratadas': c.total_vagas_contratadas || 0,
+      'Vagas Ocupadas': c.total_vagas_ocupadas || 0
+    }));
+
+    if (typeof XLSX !== 'undefined') {
+      const ws = XLSX.utils.json_to_sheet(dadosExport);
+
+      // Largura estilizada das colunas
+      ws['!cols'] = [
+        { wch: 15 }, // ID do Cliente
+        { wch: 35 }, // Nome Fantasia
+        { wch: 40 }, // Razão Social
+        { wch: 22 }, // CNPJ
+        { wch: 25 }, // Contato
+        { wch: 20 }, // Telefone
+        { wch: 18 }, // Postos Contratados
+        { wch: 18 }, // Vagas Contratadas
+        { wch: 16 }  // Vagas Ocupadas
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+
+      const dataHoje = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `Clientes_SISFAC_${dataHoje}.xlsx`);
+    } else {
+      alert('Biblioteca XLSX não está carregada no momento.');
+    }
+  } catch (err) {
+    console.error('Erro ao exportar clientes:', err);
+    alert('Erro ao gerar planilha de clientes: ' + err.message);
+  }
+}
+
+function abrirModalNovoCliente() {
+  popularSelectsGlobais();
+  const modal = document.getElementById('modalNovoCliente');
+  if (modal) modal.classList.remove('hidden');
+  document.querySelectorAll('.select-posto-cargo').forEach(sel => {
+    if (sel.options.length <= 1) {
+      sel.innerHTML = '<option value="">Selecione a Função / Cargo...</option>';
+      state.cargos.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.nome_cargo}</option>`;
+      });
+    }
+  });
+}
+
+function adicionarLinhaPostoNovoCliente() {
+  const container = document.getElementById('containerPostosNovoCliente');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'linha-posto-novo p-3 bg-violet-50/50 border border-violet-200 rounded-lg space-y-2 relative';
+  
+  let optionsCargos = '<option value="">Selecione a Função / Cargo...</option>';
+  state.cargos.forEach(c => {
+    optionsCargos += `<option value="${c.id}">${c.nome_cargo}</option>`;
+  });
+
+  div.innerHTML = `
+    <button type="button" onclick="this.closest('.linha-posto-novo').remove()" class="absolute top-2 right-2 text-slate-400 hover:text-red-600 text-xs font-bold" title="Remover Posto">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Nome do Posto / Local:</label>
+        <input type="text" class="input-posto-nome w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs" placeholder="Ex: Recepção Central ou Portaria B">
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Função / Cargo:</label>
+        <select class="select-posto-cargo w-full border border-slate-300 rounded px-2 py-1.5 text-xs">
+          ${optionsCargos}
+        </select>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-2">
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Vagas Contratadas:</label>
+        <input type="number" min="1" value="1" class="input-posto-vagas w-full border border-slate-300 rounded px-2 py-1 text-xs font-bold text-center">
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Escala:</label>
+        <select class="select-posto-escala w-full border border-slate-300 rounded px-2 py-1 text-xs">
+          <option value="5x2">5x2</option>
+          <option value="6x1">6x1</option>
+          <option value="12x36">12x36</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Turno / Horário:</label>
+        <input type="text" class="input-posto-turno w-full border border-slate-300 rounded px-2 py-1 text-xs" placeholder="Ex: 08h às 17h">
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+async function salvarNovoCliente(e) {
+  e.preventDefault();
+
+  // Coletar postos iniciais opcionais definidos no modal
+  const postos = [];
+  document.querySelectorAll('.linha-posto-novo').forEach(linha => {
+    const nome = linha.querySelector('.input-posto-nome')?.value?.trim();
+    const cargoId = parseInt(linha.querySelector('.select-posto-cargo')?.value, 10);
+    const vagas = parseInt(linha.querySelector('.input-posto-vagas')?.value, 10) || 1;
+    const escala = linha.querySelector('.select-posto-escala')?.value || '5x2';
+    const turno = linha.querySelector('.input-posto-turno')?.value?.trim() || 'Comercial';
+
+    if (nome) {
+      postos.push({
+        nome_posto: nome,
+        cargo_id: cargoId || null,
+        quantidade_vagas_limite: vagas,
+        escala: escala,
+        turno: turno
+      });
+    }
+  });
+
+  const payload = {
+    nome_razao_social: document.getElementById('cadCliRazao').value,
+    nome_fantasia: document.getElementById('cadCliFantasia').value,
+    cnpj: document.getElementById('cadCliCnpj').value,
+    contato_responsavel: document.getElementById('cadCliContato').value,
+    telefone: document.getElementById('cadCliTelefone').value,
+    postos: postos
+  };
+
+  try {
+    const res = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoCliente');
+      document.getElementById('formNovoCliente').reset();
+      await carregarDadosBase();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+      alert(`Cliente cadastrado com sucesso!${postos.length > 0 ? ` (${postos.length} postos contratados criados automaticamente)` : ''}`);
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function abrirModalEditarCliente(id) {
+  const cliente = (state.clientesComPostos || []).find(c => c.id === id) || (state.clientes || []).find(c => c.id === id);
+  if (!cliente) return alert('Cliente não encontrado.');
+
+  document.getElementById('editCliId').value = cliente.id;
+  const tituloEl = document.getElementById('modalEditarClienteTitulo');
+  if (tituloEl) {
+    tituloEl.textContent = `[ID #${cliente.id}] ${cliente.nome_fantasia || cliente.nome_razao_social}`;
+  }
+
+  document.getElementById('editCliRazao').value = cliente.nome_razao_social || '';
+  document.getElementById('editCliFantasia').value = cliente.nome_fantasia || '';
+  document.getElementById('editCliCnpj').value = cliente.cnpj || '';
+  document.getElementById('editCliContato').value = cliente.contato_responsavel || '';
+  document.getElementById('editCliTelefone').value = cliente.telefone || '';
+  document.getElementById('editCliEmail').value = cliente.email || '';
+  document.getElementById('editCliCotaInsumos').value = cliente.cota_mensal_insumos > 0 ? cliente.cota_mensal_insumos : '';
+  document.getElementById('editCliObservacoes').value = cliente.observacoes || '';
+  document.getElementById('editCliAtivo').checked = cliente.ativo !== 0;
+
+  document.getElementById('modalEditarCliente')?.classList.remove('hidden');
+}
+
+async function salvarEdicaoCliente(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('editCliId').value, 10);
+  if (!id) return alert('ID do cliente inválido.');
+
+  const razao = document.getElementById('editCliRazao').value.trim();
+  if (!razao) return alert('Razão Social é obrigatória.');
+
+  const payload = {
+    nome_razao_social: razao,
+    nome_fantasia: document.getElementById('editCliFantasia').value.trim(),
+    cnpj: document.getElementById('editCliCnpj').value.trim(),
+    contato_responsavel: document.getElementById('editCliContato').value.trim(),
+    telefone: document.getElementById('editCliTelefone').value.trim(),
+    email: document.getElementById('editCliEmail').value.trim(),
+    cota_mensal_insumos: parseFloat(document.getElementById('editCliCotaInsumos').value) || 0,
+    observacoes: document.getElementById('editCliObservacoes').value.trim(),
+    ativo: document.getElementById('editCliAtivo').checked ? 1 : 0
+  };
+
+  try {
+    const res = await fetch(`/api/clientes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarCliente');
+      alert('Informações do cliente atualizadas com sucesso!');
+      await carregarDadosBase();
+      if (typeof carregarClientesComPostos === 'function') {
+        await carregarClientesComPostos();
+      }
+      if (typeof carregarGestaoPredios === 'function' && document.getElementById('subConteudo-sub-cadastro-predios')) {
+        await carregarGestaoPredios();
+      }
+    } else {
+      alert('Erro ao atualizar cliente: ' + (json.message || 'Falha na requisição.'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 10. FALTAS (COM EXCLUSÃO MÚLTIPLA)
+// -------------------------------------------------------------
+async function carregarFaltas() {
+  const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
+  const clienteId = document.getElementById('filtroFaltasCliente')?.value || '';
+  const cob = document.getElementById('filtroFaltasCobertura')?.value || '';
+  const supId = document.getElementById('filtroFaltasSupervisor')?.value || '';
+  const origem = document.getElementById('filtroFaltasOrigem')?.value || '';
+
+  let url = `/api/faltas?mes=${mes}`;
+  if (clienteId) url += `&cliente_id=${clienteId}`;
+  if (cob !== '') url += `&houve_cobertura=${cob}`;
+  if (supId) url += `&supervisor_id=${supId}`;
+  if (origem) url += `&origem=${origem}`;
+
+  const tbody = document.getElementById('tabelaFaltasBody');
+  tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando ocorrências...</td></tr>`;
+
+  try {
+    const res = await fetch(url);
+    const faltas = await res.json();
+    state.faltasSelecionadas.clear();
+    atualizarBarraAcoesFaltas();
+
+    // Atualizar Indicadores de Topo
+    const totalGeral = faltas.length;
+    const totalMobile = faltas.filter(f => f.origem_lancamento === 'mobile_supervisor').length;
+    const totalCobertas = faltas.filter(f => f.houve_cobertura === 1).length;
+    const totalDescobertas = faltas.filter(f => f.houve_cobertura === 0).length;
+
+    if (document.getElementById('kpiFaltasTotal')) document.getElementById('kpiFaltasTotal').textContent = totalGeral;
+    if (document.getElementById('kpiFaltasMobile')) document.getElementById('kpiFaltasMobile').textContent = totalMobile;
+    if (document.getElementById('kpiFaltasCobertas')) document.getElementById('kpiFaltasCobertas').textContent = totalCobertas;
+    if (document.getElementById('kpiFaltasDescobertas')) document.getElementById('kpiFaltasDescobertas').textContent = totalDescobertas;
+
+    if (faltas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrência encontrada com os filtros selecionados.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = '';
+    faltas.forEach(f => {
+      let badgeCob = '';
+      let quemHtml = '';
+
+      if (f.houve_cobertura === 1) {
+        if (f.tipo_cobertura === 'freelancer') {
+          badgeCob = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">Freelancer</span>`;
+          quemHtml = `<div class="font-bold text-slate-800">${f.freelancer_nome || 'Diarista'}</div><div class="text-xs text-blue-700 font-bold">${formatarMoeda(f.valor_pago_freelance)}</div>`;
+        } else {
+          badgeCob = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">Efetivo</span>`;
+          quemHtml = `<div class="font-bold text-slate-800">${f.cobertor_efetivo_nome || 'Reserva / Dobra'}</div>`;
+        }
+      } else {
+        badgeCob = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">DESCOBERTO</span>`;
+        quemHtml = `<span class="text-red-600 font-bold text-xs">Posto Vago</span>`;
+        if (f.motivo_nao_cobertura) {
+          quemHtml += `<div class="text-[11px] text-rose-700 italic font-medium mt-0.5" title="${f.motivo_nao_cobertura}"><i class="fa-solid fa-circle-exclamation mr-0.5"></i>${f.motivo_nao_cobertura}</div>`;
+        }
+      }
+
+      // Badge de Origem e Supervisor
+      let badgeOrigem = '';
+      if (f.origem_lancamento === 'mobile_supervisor') {
+        const nomeSup = f.supervisor_exibicao || f.supervisor_nome || 'Supervisor';
+        badgeOrigem = `
+          <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-900 border border-indigo-200">
+            <i class="fa-solid fa-mobile-screen-button text-indigo-600"></i>
+            <span class="truncate max-w-[130px]" title="${nomeSup}">${nomeSup}</span>
+          </div>
+        `;
+      } else {
+        badgeOrigem = `<span class="text-xs text-slate-400 font-medium">💻 Sistema Web</span>`;
+      }
+
+      let badgeFat = f.houve_cobertura === 0
+        ? `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">${f.status_faturamento}</span>`
+        : `<span class="text-slate-300">-</span>`;
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-3 py-3 text-center">
+            <input type="checkbox" class="chk-falta" value="${f.id}" onchange="aoAlternarChkFalta(this)">
+          </td>
+          <td class="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">${formatarData(f.data_falta)}</td>
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-900">${f.cliente_nome}</div>
+            <div class="text-xs text-slate-500">${f.nome_unidade}</div>
+          </td>
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-800">${f.colaborador_nome}</div>
+            <div class="text-xs text-slate-400">${f.nome_cargo || ''}</div>
+          </td>
+          <td class="px-4 py-3 text-xs">
+            <div class="font-medium text-slate-800">${f.motivo_falta}</div>
+            ${f.turno ? `<div class="text-[10px] text-slate-400 mt-0.5">${f.turno}</div>` : ''}
+          </td>
+          <td class="px-4 py-3">${badgeCob}</td>
+          <td class="px-4 py-3">${quemHtml}</td>
+          <td class="px-4 py-3">${badgeOrigem}</td>
+          <td class="px-4 py-3 text-center">${badgeFat}</td>
+          <td class="px-4 py-3 text-right">
+            <button onclick="excluirItem('faltas', ${f.id})" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar faltas:', err);
+  }
+}
+
+function aoAlternarChkFalta(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.faltasSelecionadas.add(id);
+  else state.faltasSelecionadas.delete(id);
+  atualizarBarraAcoesFaltas();
+}
+
+function alternarTodasFaltas(master) {
+  const chks = document.querySelectorAll('.chk-falta');
+  chks.forEach(chk => {
+    chk.checked = master.checked;
+    const id = parseInt(chk.value, 10);
+    if (master.checked) state.faltasSelecionadas.add(id);
+    else state.faltasSelecionadas.delete(id);
+  });
+  atualizarBarraAcoesFaltas();
+}
+
+function atualizarBarraAcoesFaltas() {
+  const barra = document.getElementById('barraAcoesFaltas');
+  const qtd = state.faltasSelecionadas.size;
+  document.getElementById('qtdFaltasSelecionadas').textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirFaltasSelecionadas() {
+  const ids = Array.from(state.faltasSelecionadas);
+  if (!confirm(`Deseja excluir as ${ids.length} ocorrências de falta selecionadas?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'faltas', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`${json.count} ocorrências excluídas com sucesso!`);
+      carregarFaltas();
+    }
+  } catch (err) {
+    alert('Erro ao excluir faltas: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// GESTÃO DOS 5 SUPERVISORES DE CAMPO & APONTAMENTOS MOBILE
+// -------------------------------------------------------------
+async function popularSelectSupervisoresFiltro() {
+  const sel = document.getElementById('filtroFaltasSupervisor');
+  if (!sel) return;
+  try {
+    const res = await fetch('/api/supervisores');
+    const sups = await res.json();
+    const lista = Array.isArray(sups) ? sups : (sups?.supervisores || []);
+    const valAtual = sel.value;
+    sel.innerHTML = '<option value="">Todos os Supervisores</option>';
+    lista.forEach(s => {
+      sel.innerHTML += `<option value="${s.id}">${s.nome}</option>`;
+    });
+    if (valAtual) sel.value = valAtual;
+  } catch (err) {
+    console.error('Erro ao carregar supervisores para filtro:', err);
+  }
+}
+
+let cacheSupervisoresAdmin = [];
+let urlRedeGeralSupervisor = '';
+
+async function abrirModalSupervisoresMobile() {
+  const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
+  const txtMes = document.getElementById('txtMesSupervisoresInfo');
+  if (txtMes) txtMes.textContent = mes.split('-').reverse().join('/');
+  fecharFormSupervisor();
+  document.getElementById('modalSupervisoresMobile').classList.remove('hidden');
+  await carregarSupervisoresModal();
+}
+
+async function carregarSupervisoresModal() {
+  const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
+  const grid = document.getElementById('gridSupervisoresModal');
+  if (!grid) return;
+  grid.innerHTML = '<div class="col-span-2 text-center py-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando supervisores...</div>';
+
+  try {
+    const res = await fetch(`/api/supervisores?mes=${mes}`);
+    const data = await res.json();
+    const sups = data.supervisores || [];
+    cacheSupervisoresAdmin = sups;
+    const urlGlobal = data.url_portal_global || (state.urlTunnelGlobal ? `${state.urlTunnelGlobal}/supervisor` : 'https://melissa-compile-teenage-sapphire.trycloudflare.com/supervisor');
+    const urlLocal = data.url_portal_rede || (state.urlLocalRede ? `${state.urlLocalRede}/supervisor` : `${window.location.origin}/supervisor`);
+
+    state.urlPortalGlobalSupervisor = urlGlobal;
+    urlRedeGeralSupervisor = urlLocal;
+
+    // Atualizar banner duplo no modal
+    const inGlobal = document.getElementById('inputLinkSupervisorModalGlobal');
+    if (inGlobal) inGlobal.value = urlGlobal;
+    const btnGlobalOpen = document.getElementById('btnLinkSupervisorModalGlobalOpen');
+    if (btnGlobalOpen) btnGlobalOpen.href = urlGlobal;
+
+    const inLocal = document.getElementById('inputLinkSupervisorModalLocal');
+    if (inLocal) inLocal.value = urlLocal;
+    const btnLocalOpen = document.getElementById('btnLinkSupervisorModalLocalOpen');
+    if (btnLocalOpen) btnLocalOpen.href = urlLocal;
+
+    const btnAbrirRede = document.getElementById('btnLinkAbrirPortalRede');
+    if (btnAbrirRede) btnAbrirRede.href = urlGlobal || urlLocal;
+
+    if (sups.length === 0) {
+      grid.innerHTML = '<div class="col-span-2 text-center py-8 text-slate-400 font-medium bg-slate-50 rounded-xl border border-dashed border-slate-300">Nenhum supervisor cadastrado. Clique em "+ Cadastrar Novo Supervisor" acima.</div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    sups.forEach(s => {
+      const stats = s.stats_mes || { total: 0, cobertos: 0, descobertos: 0 };
+      const linkGlobal = s.link_mobile_global || (urlGlobal ? `${urlGlobal}.html?token=${s.token_acesso}` : '');
+      const linkRede = s.link_mobile_rede || `${window.location.origin}${s.link_mobile}`;
+      const linkOficial = linkGlobal || linkRede;
+
+      grid.innerHTML += `
+        <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-3 relative hover:border-indigo-300 transition">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-base">
+                ${s.nome.charAt(0)}
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-slate-900 leading-tight">${s.nome}</h4>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[11px] text-slate-500 font-medium"><i class="fa-brands fa-whatsapp text-emerald-600"></i> ${s.telefone || 'Sem WhatsApp'}</span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded font-bold ${s.ativo === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}">
+                    ${s.ativo === 1 ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Botões de Ação Administrativa -->
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="editarSupervisorAdmin(${s.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded transition cursor-pointer" title="Editar supervisor">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button type="button" onclick="excluirSupervisorAdmin(${s.id}, '${escapeJsString(s.nome)}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer" title="Excluir / Inativar">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Credenciais de Acesso do Supervisor -->
+          <div class="bg-indigo-50/60 border border-indigo-100 rounded-lg p-2.5 flex items-center justify-between text-xs">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Login:</span>
+                <span class="font-mono font-bold text-indigo-900 bg-white px-1.5 py-0.2 rounded border border-indigo-200">${s.login || '-'}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Senha:</span>
+                <span class="font-mono font-bold text-slate-800 bg-white px-1.5 py-0.2 rounded border border-slate-200">${s.senha || '123'}</span>
+                ${s.pin ? `<span class="text-[10px] text-slate-400 ml-1">(PIN: ${s.pin})</span>` : ''}
+              </div>
+            </div>
+            <button type="button" onclick="copiarCredenciaisSupervisor('${escapeJsString(s.nome)}', '${s.login}', '${s.senha || '123'}')" class="text-[11px] text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 px-2 py-1 rounded font-bold transition flex items-center gap-1 cursor-pointer" title="Copiar Usuário e Senha">
+              <i class="fa-regular fa-copy"></i> Copiar Dados
+            </button>
+          </div>
+
+          <!-- Mini Indicadores do Mês -->
+          <div class="grid grid-cols-3 gap-1.5 text-center">
+            <div class="bg-slate-50 rounded-lg p-1.5">
+              <span class="text-[10px] text-slate-500 font-bold block">Faltas</span>
+              <span class="text-xs font-black text-slate-800">${stats.total}</span>
+            </div>
+            <div class="bg-emerald-50 rounded-lg p-1.5">
+              <span class="text-[10px] text-emerald-700 font-bold block">Cobertas</span>
+              <span class="text-xs font-black text-emerald-800">${stats.cobertos}</span>
+            </div>
+            <div class="bg-rose-50 rounded-lg p-1.5">
+              <span class="text-[10px] text-rose-700 font-bold block">Descobertas</span>
+              <span class="text-xs font-black text-rose-800">${stats.descobertos}</span>
+            </div>
+          </div>
+
+          <!-- Ações de Envio e Teste -->
+          <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onclick="copiarLinkSupervisor('${s.token_acesso}', '${linkOficial}')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer" title="Copiar Link de Acesso Oficial (Internet 4G / Wi-Fi)">
+                <i class="fa-solid fa-globe text-sky-600"></i> Copiar Link (4G)
+              </button>
+              <button type="button" onclick="enviarLinkSupervisorWhatsApp('${escapeJsString(s.nome)}', '${s.login}', '${s.senha || '123'}', '${s.telefone}', '${s.token_acesso}', '${linkOficial}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition shadow-sm cursor-pointer" title="Enviar dados no WhatsApp">
+                <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp
+              </button>
+              <button type="button" onclick="copiarLinkSupervisorLocal('${linkRede}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-2 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer" title="Copiar Link Rede Wi-Fi">
+                <i class="fa-solid fa-wifi text-amber-600"></i> Wi-Fi
+              </button>
+            </div>
+            <a href="${linkOficial}" target="_blank" class="text-xs text-indigo-700 hover:text-indigo-900 font-bold p-1.5" title="Testar visão deste supervisor">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+          </div>
+        </div>
+      `;
+    });
+  } catch (err) {
+    grid.innerHTML = `<div class="col-span-2 text-center text-rose-600 font-medium py-4">Erro ao carregar supervisores: ${err.message}</div>`;
+  }
+}
+
+function abrirFormCadastroSupervisor() {
+  document.getElementById('formSupId').value = '';
+  document.getElementById('formSupNome').value = '';
+  document.getElementById('formSupLogin').value = '';
+  document.getElementById('formSupSenha').value = '123';
+  document.getElementById('formSupTelefone').value = '';
+  document.getElementById('formSupPin').value = String(Math.floor(1000 + Math.random() * 9000));
+  document.getElementById('formSupAtivo').checked = true;
+  document.getElementById('tituloFormSupervisor').textContent = 'Cadastrar Novo Supervisor';
+  document.getElementById('boxFormSupervisor').classList.remove('hidden');
+  document.getElementById('boxFormSupervisor').scrollIntoView({ behavior: 'smooth' });
+}
+
+function fecharFormSupervisor() {
+  document.getElementById('boxFormSupervisor').classList.add('hidden');
+}
+
+function editarSupervisorAdmin(id) {
+  const sup = cacheSupervisoresAdmin.find(s => s.id === id);
+  if (!sup) return;
+
+  document.getElementById('formSupId').value = sup.id;
+  document.getElementById('formSupNome').value = sup.nome;
+  document.getElementById('formSupLogin').value = sup.login || '';
+  document.getElementById('formSupSenha').value = sup.senha || '123';
+  document.getElementById('formSupTelefone').value = sup.telefone || '';
+  document.getElementById('formSupPin').value = sup.pin || '1001';
+  document.getElementById('formSupAtivo').checked = sup.ativo === 1;
+
+  document.getElementById('tituloFormSupervisor').textContent = `Editar Supervisor: ${sup.nome}`;
+  document.getElementById('boxFormSupervisor').classList.remove('hidden');
+  document.getElementById('boxFormSupervisor').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function salvarSupervisorFormInline(e) {
+  e.preventDefault();
+  const id = document.getElementById('formSupId').value;
+  const nome = document.getElementById('formSupNome').value.trim();
+  const login = document.getElementById('formSupLogin').value.trim().toLowerCase();
+  const senha = document.getElementById('formSupSenha').value.trim();
+  const telefone = document.getElementById('formSupTelefone').value.trim();
+  const pin = document.getElementById('formSupPin').value.trim();
+  const ativo = document.getElementById('formSupAtivo').checked;
+
+  if (!nome || !login || !senha) {
+    alert('Nome, Login e Senha são obrigatórios.');
+    return;
+  }
+
+  const payload = { nome, login, senha, telefone, pin, ativo };
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `/api/supervisores/${id}` : `/api/supervisores`;
+
+  const btn = document.getElementById('btnSalvarSupervisorForm');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      fecharFormSupervisor();
+      await carregarSupervisoresModal();
+      if (typeof carregarSupervisoresAdmin === 'function') {
+        try { await carregarSupervisoresAdmin(); } catch (e) {}
+      }
+      await popularSelectSupervisoresFiltro();
+      alert(json.message || 'Supervisor salvo com sucesso!');
+    } else {
+      alert('Aviso: ' + (json.message || json.error || 'Erro ao salvar.'));
+    }
+  } catch (err) {
+    alert('Erro ao salvar supervisor: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+window.salvarSupervisorFormInline = salvarSupervisorFormInline;
+
+async function excluirSupervisorAdmin(id, nome) {
+  if (!confirm(`Deseja realmente excluir ou inativar o supervisor "${nome}"?`)) return;
+
+  try {
+    const res = await fetch(`/api/supervisores/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarSupervisoresModal();
+      await popularSelectSupervisoresFiltro();
+      alert(json.message || 'Supervisor excluído/inativado com sucesso!');
+    } else {
+      alert('Erro: ' + json.error);
+    }
+  } catch (err) {
+    alert('Erro ao excluir supervisor: ' + err.message);
+  }
+}
+
+function copiarLinkSupervisorGlobal() {
+  const link = state.urlPortalGlobalSupervisor || (document.getElementById('inputLinkSupervisorModalGlobal')?.value);
+  if (!link || link.includes('Carregando')) {
+    return alert('O link global ainda está sendo gerado pelo servidor. Aguarde alguns instantes.');
+  }
+  navigator.clipboard.writeText(link).then(() => {
+    alert(`Link Global de acesso (Internet 4G / Celular) copiado com sucesso!\n\n${link}\n\nEnvie este link para qualquer supervisor acessar de qualquer lugar.`);
+  }).catch(() => {
+    prompt('Copie o link global abaixo:', link);
+  });
+}
+
+function copiarLinkRedeGeral() {
+  const link = urlRedeGeralSupervisor || (document.getElementById('inputLinkSupervisorModalLocal')?.value) || `${window.location.origin}/supervisor`;
+  navigator.clipboard.writeText(link).then(() => {
+    alert(`Link de acesso na rede Wi-Fi copiado com sucesso!\n\n${link}\n\nNota: Este link só funciona em dispositivos conectados exatamente na mesma rede Wi-Fi do escritório.`);
+  }).catch(() => {
+    prompt('Copie o link abaixo para abrir no celular:', link);
+  });
+}
+
+function copiarLinkSupervisor(token, linkOficial) {
+  const link = linkOficial || state.urlPortalGlobalSupervisor || `${window.location.origin}/supervisor.html?token=${token}`;
+  navigator.clipboard.writeText(link).then(() => {
+    alert(`Link oficial do supervisor copiado com sucesso!\n\n${link}\n\nEste link funciona em qualquer celular com internet 4G ou Wi-Fi.`);
+  }).catch(() => {
+    prompt('Copie o link do supervisor abaixo:', link);
+  });
+}
+
+function copiarLinkSupervisorLocal(linkRede) {
+  const link = linkRede || `${window.location.origin}/supervisor.html`;
+  navigator.clipboard.writeText(link).then(() => {
+    alert(`Link da rede Wi-Fi copiado com sucesso!\n\n${link}\n\n(Válido apenas quando o supervisor estiver conectado no Wi-Fi da sede)`);
+  }).catch(() => {
+    prompt('Copie o link Wi-Fi abaixo:', link);
+  });
+}
+
+function copiarCredenciaisSupervisor(nome, login, senha) {
+  const linkPortal = state.urlPortalGlobalSupervisor || urlRedeGeralSupervisor || (window.location.origin + '/supervisor');
+  const texto = `*Acesso Supervisor SISFAC*\nNome: ${nome}\nUsuário: ${login}\nSenha: ${senha}\nPortal de Acesso: ${linkPortal}`;
+  navigator.clipboard.writeText(texto).then(() => {
+    alert(`Credenciais copiadas com sucesso!\n\n${texto}`);
+  }).catch(() => {
+    prompt('Copie as credenciais abaixo:', texto);
+  });
+}
+
+function enviarLinkSupervisorWhatsApp(nome, login, senha, tel, token, linkOficial) {
+  const link = linkOficial || state.urlPortalGlobalSupervisor || `${window.location.origin}/supervisor.html?token=${token}`;
+  const texto = encodeURIComponent(`Olá ${nome}! Segue seu link de acesso oficial ao Portal do Supervisor do SISFAC:\n\n👤 *Usuário:* ${login}\n🔑 *Senha:* ${senha}\n\n📱 *Link de Acesso (Celular 4G/Wi-Fi):*\n${link}\n\nBasta tocar no link acima pelo seu celular para registrar as faltas e coberturas em tempo real.`);
+  const telLimpo = (tel || '').replace(/\D/g, '');
+  const urlWa = telLimpo.length >= 10 ? `https://api.whatsapp.com/send?phone=55${telLimpo}&text=${texto}` : `https://api.whatsapp.com/send?text=${texto}`;
+  window.open(urlWa, '_blank');
+}
+
+window.abrirModalSupervisoresMobile = abrirModalSupervisoresMobile;
+window.carregarSupervisoresModal = carregarSupervisoresModal;
+window.copiarLinkSupervisorGlobal = copiarLinkSupervisorGlobal;
+window.copiarLinkRedeGeral = copiarLinkRedeGeral;
+window.copiarLinkSupervisor = copiarLinkSupervisor;
+window.copiarLinkSupervisorLocal = copiarLinkSupervisorLocal;
+window.copiarCredenciaisSupervisor = copiarCredenciaisSupervisor;
+window.enviarLinkSupervisorWhatsApp = enviarLinkSupervisorWhatsApp;
+
+async function exportarFaltasExcel() {
+  const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
+  const clienteId = document.getElementById('filtroFaltasCliente')?.value || '';
+  const cob = document.getElementById('filtroFaltasCobertura')?.value || '';
+  const supId = document.getElementById('filtroFaltasSupervisor')?.value || '';
+  const origem = document.getElementById('filtroFaltasOrigem')?.value || '';
+
+  let url = `/api/faltas?mes=${mes}`;
+  if (clienteId) url += `&cliente_id=${clienteId}`;
+  if (cob !== '') url += `&houve_cobertura=${cob}`;
+  if (supId) url += `&supervisor_id=${supId}`;
+  if (origem) url += `&origem=${origem}`;
+
+  try {
+    const res = await fetch(url);
+    const faltas = await res.json();
+
+    if (faltas.length === 0) {
+      alert('Nenhuma ocorrência encontrada para exportar.');
+      return;
+    }
+
+    const dados = faltas.map(f => ({
+      'ID': f.id,
+      'Data da Falta': formatarData(f.data_falta),
+      'Cliente': f.cliente_nome || '',
+      'Posto / Unidade': f.nome_unidade || '',
+      'Colaborador Ausente': f.colaborador_nome || '',
+      'Cargo / Função': f.nome_cargo || '',
+      'Turno da Escala': f.turno || '',
+      'Motivo da Falta': f.motivo_falta || '',
+      'Dias Afastamento': f.dias_afastamento || 1,
+      'CID Atestado': f.cid_atestado || '',
+      'Houve Cobertura?': f.houve_cobertura === 1 ? 'SIM' : 'NÃO',
+      'Tipo de Cobertura': f.houve_cobertura === 1 ? (f.tipo_cobertura === 'freelancer' ? 'Freelancer' : 'Efetivo / Reserva') : 'Posto Descoberto',
+      'Quem Cobriu': f.cobertor_efetivo_nome || f.freelancer_nome || (f.houve_cobertura === 1 ? 'Sim' : 'Ninguém'),
+      'Custo Freelance (R$)': f.valor_pago_freelance || 0,
+      'Motivo Não Cobertura': f.motivo_nao_cobertura || '',
+      'Apontado Por (Supervisor)': f.supervisor_exibicao || f.supervisor_nome || 'Sistema Web',
+      'Origem do Apontamento': f.origem_lancamento === 'mobile_supervisor' ? 'Celular (Mobile)' : 'Sistema Web',
+      'Status Faturamento': f.status_faturamento || 'N/A',
+      'Valor Glosa Sugerido (R$)': f.valor_desconto_sugerido || 0,
+      'Observações': f.observacoes_operacao || ''
+    }));
+
+    if (typeof XLSX !== 'undefined') {
+      const ws = XLSX.utils.json_to_sheet(dados);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Faltas e Coberturas');
+      XLSX.writeFile(wb, `SISFAC_Faltas_Coberturas_${mes}.xlsx`);
+    } else {
+      // Fallback CSV
+      const headers = Object.keys(dados[0]).join(';');
+      const rows = dados.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+      const csv = '\uFEFF' + headers + '\n' + rows;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `SISFAC_Faltas_Coberturas_${mes}.csv`;
+      a.click();
+    }
+  } catch (err) {
+    alert('Erro ao exportar faltas: ' + err.message);
+  }
+}
+
+function abrirModalNovaFalta() {
+  popularSelectsGlobais();
+  document.getElementById('modalNovaFalta').classList.remove('hidden');
+}
+
+function aoSelecionarClienteFalta() {
+  const clienteId = parseInt(document.getElementById('faltaClienteId').value, 10);
+  const selUni = document.getElementById('faltaUnidadeId');
+  const selColab = document.getElementById('faltaColaboradorId');
+  selUni.innerHTML = '<option value="">Selecione a Unidade...</option>';
+  selColab.innerHTML = '<option value="">Selecione a unidade primeiro...</option>';
+
+  if (!clienteId) return;
+  state.unidades.filter(u => u.cliente_id === clienteId).forEach(u => {
+    selUni.innerHTML += `<option value="${u.id}">${u.nome_unidade}</option>`;
+  });
+}
+
+function aoSelecionarUnidadeFalta() {
+  const unidadeId = parseInt(document.getElementById('faltaUnidadeId').value, 10);
+  const selColab = document.getElementById('faltaColaboradorId');
+  selColab.innerHTML = '<option value="">Selecione o Colaborador...</option>';
+  if (!unidadeId) return;
+
+  const clienteId = parseInt(document.getElementById('faltaClienteId').value, 10);
+  state.colaboradores.filter(c => c.cliente_id === clienteId).forEach(c => {
+    selColab.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo})</option>`;
+  });
+}
+
+function aoMudarMotivoFalta() {
+  const motivo = document.getElementById('faltaMotivo').value;
+  const divDias = document.getElementById('divAtestadoDias');
+  const divCid = document.getElementById('divAtestadoCid');
+  if (motivo === 'Atestado Médico') {
+    divDias.classList.remove('hidden');
+    divCid.classList.remove('hidden');
+  } else {
+    divDias.classList.add('hidden');
+    divCid.classList.add('hidden');
+  }
+}
+
+function aoMudarHouveCobertura() {
+  const houve = document.querySelector('input[name="houveCobertura"]:checked').value === '1';
+  document.getElementById('blocoHouveCobertura').classList.toggle('hidden', !houve);
+  document.getElementById('blocoNaoHouveCobertura').classList.toggle('hidden', houve);
+}
+
+function aoMudarTipoCobertura() {
+  const tipo = document.querySelector('input[name="tipoCobertura"]:checked').value;
+  document.getElementById('blocoFreelancer').classList.toggle('hidden', tipo !== 'freelancer');
+  document.getElementById('blocoEfetivo').classList.toggle('hidden', tipo !== 'efetivo');
+}
+
+function aoSelecionarFreelancer() {
+  const select = document.getElementById('faltaFreelancerId');
+  const opt = select.options[select.selectedIndex];
+  const valor = opt ? opt.getAttribute('data-valor') : '140.00';
+  document.getElementById('faltaValorDiariaFreelance').value = valor || '140.00';
+}
+
+async function salvarNovaFalta(e) {
+  e.preventDefault();
+  const houveCobertura = document.querySelector('input[name="houveCobertura"]:checked').value === '1';
+  const tipoCobertura = houveCobertura ? document.querySelector('input[name="tipoCobertura"]:checked').value : null;
+
+  const payload = {
+    data_falta: document.getElementById('faltaData').value,
+    cliente_id: parseInt(document.getElementById('faltaClienteId').value, 10),
+    unidade_id: parseInt(document.getElementById('faltaUnidadeId').value, 10),
+    colaborador_id: parseInt(document.getElementById('faltaColaboradorId').value, 10),
+    motivo_falta: document.getElementById('faltaMotivo').value,
+    dias_afastamento: parseInt(document.getElementById('faltaDiasAtestado').value, 10) || 1,
+    cid_atestado: document.getElementById('faltaCidAtestado').value,
+    houve_cobertura: houveCobertura ? 1 : 0,
+    tipo_cobertura: tipoCobertura,
+    freelancer_id: (houveCobertura && tipoCobertura === 'freelancer') ? parseInt(document.getElementById('faltaFreelancerId').value, 10) : null,
+    valor_pago_freelance: (houveCobertura && tipoCobertura === 'freelancer') ? parseFloat(document.getElementById('faltaValorDiariaFreelance').value) || 0 : 0,
+    cobertor_colaborador_id: (houveCobertura && tipoCobertura === 'efetivo') ? parseInt(document.getElementById('faltaCobertorEfetivoId').value, 10) : null,
+    valor_desconto_sugerido: !houveCobertura ? parseFloat(document.getElementById('faltaValorDescontoSugerido').value) || 150.00 : 0,
+    observacoes_operacao: document.getElementById('faltaObservacoes').value
+  };
+
+  try {
+    const res = await fetch('/api/faltas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovaFalta');
+      carregarFaltas();
+      if (!houveCobertura) {
+        alert('Atenção: Posto registrado como DESCOBERTO!\nEncaminhado automaticamente ao FATURAMENTO para desconto contratual no cliente.');
+      } else {
+        alert('Apontamento de falta e cobertura registrado com sucesso!');
+      }
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 11. DEMAIS FUNÇÕES AUXILIARES E MODAIS
+// -------------------------------------------------------------
+async function carregarFaturamento() {
+  state.fatSelecionados.clear();
+  atualizarBarraAcoesFaturamento();
+  const chkMasterFat = document.getElementById('chkTodosFaturamento');
+  if (chkMasterFat) chkMasterFat.checked = false;
+
+  try {
+    const res = await fetch('/api/faturamento');
+    const itens = await res.json();
+    const tbody = document.getElementById('tabelaFaturamentoBody');
+    tbody.innerHTML = '';
+
+    if (itens.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhum posto com desconto pendente.</td></tr>`;
+      return;
+    }
+
+    itens.forEach(item => {
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-3 py-3 text-center">
+            <input type="checkbox" class="chk-fat" value="${item.id}" onchange="aoAlternarChkFaturamento(this)">
+          </td>
+          <td class="px-4 py-3 font-semibold text-slate-800">${formatarData(item.data_falta)}</td>
+          <td class="px-4 py-3 font-bold text-slate-900">${item.cliente_nome}</td>
+          <td class="px-4 py-3 text-xs text-slate-600">${item.nome_unidade} - ${item.nome_cargo}</td>
+          <td class="px-4 py-3 text-slate-700">${item.colaborador_faltante_nome}</td>
+          <td class="px-4 py-3 font-bold text-red-600">${formatarMoeda(item.valor_desconto_sugerido)}</td>
+          <td class="px-4 py-3"><span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">${item.status_faturamento}</span></td>
+          <td class="px-4 py-3 font-mono text-xs">${item.numero_fatura_desconto || '-'}</td>
+          <td class="px-4 py-3 text-right">
+            <button onclick="abrirModalAcaoFaturamento(${item.id}, '${item.cliente_nome}', '${item.nome_unidade}', ${item.valor_desconto_sugerido}, '${item.status_faturamento}', '${item.numero_fatura_desconto || ''}')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg">
+              Baixa Fatura
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar faturamento:', err);
+  }
+}
+
+function aoAlternarChkFaturamento(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.fatSelecionados.add(id);
+  else state.fatSelecionados.delete(id);
+  atualizarBarraAcoesFaturamento();
+}
+
+function alternarTodosFaturamento(master) {
+  const chks = document.querySelectorAll('.chk-fat');
+  chks.forEach(chk => {
+    chk.checked = master.checked;
+    const id = parseInt(chk.value, 10);
+    if (master.checked) state.fatSelecionados.add(id);
+    else state.fatSelecionados.delete(id);
+  });
+  atualizarBarraAcoesFaturamento();
+}
+
+function atualizarBarraAcoesFaturamento() {
+  const barra = document.getElementById('barraAcoesFaturamento');
+  if (!barra) return;
+  const qtd = state.fatSelecionados.size;
+  const elQtd = document.getElementById('qtdFatSelecionados');
+  if (elQtd) elQtd.textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirFaturamentoSelecionados() {
+  const ids = Array.from(state.fatSelecionados);
+  if (ids.length === 0) return;
+  if (!confirm(`Deseja realmente excluir as ${ids.length} glosas/faltas faturáveis selecionadas?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'faturamento', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`${json.count} registros de faturamento/glosa excluídos com sucesso!`);
+      carregarFaturamento();
+    } else {
+      alert('Erro ao excluir: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao excluir em massa: ' + err.message);
+  }
+}
+
+function abrirModalAcaoFaturamento(id, cliente, unidade, valor, status, numFatura) {
+  document.getElementById('fatAcaoId').value = id;
+  document.getElementById('fatAcaoClienteUnidade').textContent = `${cliente} - ${unidade}`;
+  document.getElementById('fatAcaoValor').value = valor;
+  document.getElementById('fatAcaoStatus').value = status || 'Descontado na Fatura';
+  document.getElementById('fatAcaoNumeroFatura').value = numFatura || '';
+  document.getElementById('modalFaturamentoAcao').classList.remove('hidden');
+}
+
+async function salvarAcaoFaturamento(e) {
+  e.preventDefault();
+  const id = document.getElementById('fatAcaoId').value;
+  const payload = {
+    status_faturamento: document.getElementById('fatAcaoStatus').value,
+    numero_fatura_desconto: document.getElementById('fatAcaoNumeroFatura').value,
+    valor_desconto_sugerido: parseFloat(document.getElementById('fatAcaoValor').value) || 0
+  };
+
+  try {
+    const res = await fetch(`/api/faturamento/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalFaturamentoAcao');
+      carregarFaturamento();
+      alert('Baixa de desconto em fatura registrada com sucesso!');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function exportarFaturamentoExcel() {
+  try {
+    const res = await fetch('/api/faturamento');
+    const itens = await res.json();
+    if (!itens || itens.length === 0) {
+      alert('Não há dados de faturamento/glosas para exportar.');
+      return;
+    }
+    const rows = itens.map(item => ({
+      'Data Falta': formatarData(item.data_falta),
+      'Cliente': item.cliente_nome,
+      'Posto / Cargo': `${item.nome_unidade || ''} - ${item.nome_cargo || ''}`,
+      'Colaborador Faltante': item.colaborador_faltante_nome || '',
+      'Valor Desconto Sugerido (R$)': parseFloat(item.valor_desconto_sugerido) || 0,
+      'Status': item.status_faturamento,
+      'Nº Fatura Desconto': item.numero_fatura_desconto || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Glosas_Faturamento');
+    XLSX.writeFile(wb, `SISFAC_Espelho_Glosas_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch (err) {
+    alert('Erro ao exportar espelho de glosas: ' + err.message);
+  }
+}
+
+function exportarDiretoriaExcel() {
+  try {
+    const dados = state.dashboardExecutivo || {};
+    const rows = [
+      { 'Indicador': 'Total de Colaboradores Ativos', 'Valor': dados.totalColaboradores || 0 },
+      { 'Indicador': 'Vagas em Aberto', 'Valor': dados.totalVagasAbertas || 0 },
+      { 'Indicador': 'Faltas no Mês', 'Valor': dados.totalFaltasMes || 0 },
+      { 'Indicador': 'Faturamento Previsto', 'Valor': dados.faturamentoEstimado || 0 },
+      { 'Indicador': 'Contas a Pagar no Mês', 'Valor': dados.contasPagarMes || 0 }
+    ];
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resumo_Diretoria');
+    XLSX.writeFile(wb, `SISFAC_Painel_Diretoria_${new Date().toISOString().split('T')[0]}.xlsx`);
+  } catch (err) {
+    alert('Erro ao exportar resumo da diretoria: ' + err.message);
+  }
+}
+
+async function carregarFechamentoFreelancers() {
+  const container = document.getElementById('cardsFreelancersContainer');
+  container.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando diárias...</div>`;
+
+  state.freeSelecionados.clear();
+  atualizarBarraAcoesFree();
+
+  try {
+    const res = await fetch(`/api/freelancers/fechamento?mes=${state.mesAtual}`);
+    const fechamento = await res.json();
+    container.innerHTML = '';
+
+    if (fechamento.length === 0) {
+      container.innerHTML = `<div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-400 font-medium">Nenhum freelancer cadastrado ou ativo.</div>`;
+      return;
+    }
+
+    fechamento.forEach(f => {
+      container.innerHTML += `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="${f.freelancer_id}" onchange="aoAlternarChkFree(this)">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-slate-900">${f.nome}</h3>
+                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">${f.total_diarias_mes} plantões no mês</span>
+                <span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Diária: ${formatarMoeda(f.valor_diaria_padrao || 140)}</span>
+              </div>
+              <div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (${f.tipo_chave_pix || 'Chave'}):</b> ${f.chave_pix || 'Não cadastrado'}</span>
+                ${f.telefone ? `<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>${f.telefone}</span>` : ''}
+                ${f.banco ? `<span class="text-slate-600 font-sans"><i class="fa-solid fa-building-columns mr-1 text-slate-400"></i>${f.banco}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-end gap-3">
+            <!-- Ações do Freelancer -->
+            <div class="inline-flex items-center gap-1.5 border-r border-slate-200 pr-3 mr-1">
+              <button onclick="abrirDossieFreelancer(${f.freelancer_id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition" title="Ver histórico completo de serviços e auditoria">
+                <i class="fa-solid fa-id-card-clip text-indigo-600"></i> Dossiê
+              </button>
+              <button onclick="abrirModalEditarFreelancer(${f.freelancer_id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition" title="Editar telefone, valor diária, PIX e banco">
+                <i class="fa-solid fa-user-pen"></i> Editar
+              </button>
+            </div>
+
+            <div class="text-right">
+              <p class="text-xs text-slate-400">Total Acumulado:</p>
+              <h4 class="text-lg font-black text-indigo-900">${formatarMoeda(f.valor_total_mes)}</h4>
+            </div>
+            ${f.valor_pendente > 0 ? `
+              <button onclick="pagarFreelancerMes(${f.freelancer_id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm">
+                Dar Baixa (Pago)
+              </button>
+            ` : (f.total_diarias_mes > 0 ? `<span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded border border-emerald-200">Quitado</span>` : `<span class="bg-slate-100 text-slate-500 text-xs font-medium px-3 py-1.5 rounded">Sem plantões</span>`)}
+          </div>
+        </div>
+      `;
+    });
+
+    carregarLixeiraGlobalFreelancers();
+  } catch (err) {
+    console.error('Erro ao carregar freelancers:', err);
+  }
+}
+
+function aoAlternarChkFree(chk) {
+  const id = parseInt(chk.value, 10);
+  if (chk.checked) state.freeSelecionados.add(id);
+  else state.freeSelecionados.delete(id);
+  atualizarBarraAcoesFree();
+}
+
+function alternarTodosFreeBtn() {
+  const chks = document.querySelectorAll('.chk-free');
+  if (chks.length === 0) return;
+  const todosMarcados = Array.from(chks).every(c => c.checked);
+  chks.forEach(chk => {
+    chk.checked = !todosMarcados;
+    const id = parseInt(chk.value, 10);
+    if (!todosMarcados) state.freeSelecionados.add(id);
+    else state.freeSelecionados.delete(id);
+  });
+  atualizarBarraAcoesFree();
+}
+
+function atualizarBarraAcoesFree() {
+  const barra = document.getElementById('barraAcoesFreelancers');
+  if (!barra) return;
+  const qtd = state.freeSelecionados.size;
+  const elQtd = document.getElementById('qtdFreeSelecionados');
+  if (elQtd) elQtd.textContent = qtd;
+  if (qtd > 0) barra.classList.remove('hidden');
+  else barra.classList.add('hidden');
+}
+
+async function excluirFreelancersSelecionados() {
+  const ids = Array.from(state.freeSelecionados);
+  if (ids.length === 0) return;
+  if (!confirm(`Deseja realmente inativar/excluir os ${ids.length} freelancers selecionados?`)) return;
+
+  try {
+    const res = await fetch('/api/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade: 'freelancers', ids })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`${json.count} freelancers inativados com sucesso!`);
+      carregarFechamentoFreelancers();
+      carregarDadosBase();
+    } else {
+      alert('Erro ao inativar: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao excluir em massa: ' + err.message);
+  }
+}
+
+async function pagarFreelancerMes(freelancerId) {
+  if (!confirm('Confirmar pagamento das diárias deste freelancer?')) return;
+  try {
+    await fetch('/api/freelancers/pagar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ freelancer_id: freelancerId, mes: state.mesAtual })
+    });
+    carregarFechamentoFreelancers();
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function abrirModalNovoFreelancer() {
+  popularSelectsGlobais();
+  document.getElementById('modalNovoFreelancer').classList.remove('hidden');
+}
+
+async function salvarNovoFreelancer(e) {
+  e.preventDefault();
+  const payload = {
+    nome: document.getElementById('cadFreeNome').value,
+    cargo_preferencial_id: document.getElementById('cadFreeCargoId').value ? parseInt(document.getElementById('cadFreeCargoId').value, 10) : null,
+    valor_diaria_padrao: parseFloat(document.getElementById('cadFreeValor').value) || 140.00,
+    tipo_chave_pix: document.getElementById('cadFreeTipoPix').value,
+    chave_pix: document.getElementById('cadFreeChavePix').value,
+    banco: document.getElementById('cadFreeBanco').value,
+    telefone: document.getElementById('cadFreeTelefone').value
+  };
+
+  try {
+    const res = await fetch('/api/freelancers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoFreelancer');
+      await carregarDadosBase();
+      carregarFechamentoFreelancers();
+      alert('Freelancer cadastrado com sucesso!');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =========================================================================
+// GESTÃO DE FREELANCERS, DOSSIÊ COMPLETO E AUDITORIA DE EXCLUÍDOS
+// =========================================================================
+
+// 1. EDITAR CADASTRO DO FREELANCER
+async function abrirModalEditarFreelancer(id) {
+  let free = (state.freelancers || []).find(f => f.id === id);
+  if (!free) {
+    try {
+      const res = await fetch('/api/freelancers');
+      const lista = await res.json();
+      state.freelancers = Array.isArray(lista) ? lista : [];
+      free = (state.freelancers || []).find(item => item.id === id);
+    } catch(e) {}
+  }
+  if (!free) {
+    alert('Freelancer não encontrado.');
+    return;
+  }
+
+  // Preencher cargos
+  const selCargo = document.getElementById('editFreeCargoId');
+  if (selCargo) {
+    selCargo.innerHTML = '<option value="">Selecione a Função...</option>';
+    (state.cargos || []).forEach(cg => {
+      selCargo.innerHTML += `<option value="${cg.id}">${cg.nome_cargo}</option>`;
+    });
+    selCargo.value = free.cargo_preferencial_id || '';
+  }
+
+  document.getElementById('editFreeId').value = free.id;
+  document.getElementById('editFreeNome').value = free.nome || '';
+  document.getElementById('editFreeCpf').value = free.cpf || '';
+  document.getElementById('editFreeTelefone').value = free.telefone || '';
+  document.getElementById('editFreeValor').value = (free.valor_diaria_padrao !== undefined ? free.valor_diaria_padrao : 140.00);
+  document.getElementById('editFreeTipoPix').value = free.tipo_chave_pix || 'Chave PIX';
+  document.getElementById('editFreeChavePix').value = free.chave_pix || '';
+  document.getElementById('editFreeBanco').value = free.banco || '';
+  document.getElementById('editFreeObservacoes').value = free.observacoes || '';
+
+  document.getElementById('modalEditarFreelancer').classList.remove('hidden');
+}
+
+async function salvarEdicaoFreelancer(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('editFreeId').value, 10);
+  if (!id) return;
+
+  const payload = {
+    nome: document.getElementById('editFreeNome').value.trim(),
+    cpf: document.getElementById('editFreeCpf').value.trim(),
+    cargo_preferencial_id: document.getElementById('editFreeCargoId').value ? parseInt(document.getElementById('editFreeCargoId').value, 10) : null,
+    valor_diaria_padrao: parseFloat(document.getElementById('editFreeValor').value) || 140.00,
+    tipo_chave_pix: document.getElementById('editFreeTipoPix').value,
+    chave_pix: document.getElementById('editFreeChavePix').value.trim(),
+    banco: document.getElementById('editFreeBanco').value.trim(),
+    telefone: document.getElementById('editFreeTelefone').value.trim(),
+    observacoes: document.getElementById('editFreeObservacoes').value.trim()
+  };
+
+  try {
+    const res = await fetch(`/api/freelancers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarFreelancer');
+      await carregarDadosBase();
+      carregarFechamentoFreelancers();
+      if (state.dossieFreelancerAtualId === id) {
+        carregarDossieFreelancer(id);
+      }
+      if (typeof showToast === 'function') {
+        showToast('Cadastro do freelancer atualizado com sucesso!', 'success');
+      } else {
+        alert('Cadastro do freelancer atualizado com sucesso!');
+      }
+    } else {
+      alert('Aviso: ' + (json.message || json.error));
+    }
+  } catch(err) {
+    alert('Erro ao salvar alterações: ' + err.message);
+  }
+}
+
+// 2. DOSSIÊ COMPLETO DO FREELANCER
+async function abrirDossieFreelancer(freelancerId) {
+  state.dossieFreelancerAtualId = freelancerId;
+  const modal = document.getElementById('modalDossieFreelancer');
+  if (modal) modal.classList.remove('hidden');
+  
+  const btnEdit = document.getElementById('btnDossieEditarCadastro');
+  if (btnEdit) {
+    btnEdit.onclick = () => abrirModalEditarFreelancer(freelancerId);
+  }
+
+  await carregarDossieFreelancer(freelancerId);
+}
+
+async function carregarDossieFreelancer(freelancerId) {
+  const corpoServicos = document.getElementById('dossieTabelaServicosCorpo');
+  const corpoExcluidos = document.getElementById('dossieTabelaExcluidosCorpo');
+
+  if (corpoServicos) corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando dossiê completo...</td></tr>`;
+  if (corpoExcluidos) corpoExcluidos.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando registros excluídos...</td></tr>`;
+
+  try {
+    const res = await fetch(`/api/freelancers/${freelancerId}/dossie`);
+    const data = await res.json();
+
+    if (!data || !data.freelancer) {
+      if (corpoServicos) corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-rose-500">Erro ao carregar dados do freelancer.</td></tr>`;
+      return;
+    }
+
+    const f = data.freelancer;
+    const stats = data.estatisticas || {};
+    const servicos = data.servicos || [];
+    const excluidos = data.excluidos || [];
+
+    // Header info
+    document.getElementById('dossieFreeNome').textContent = f.nome;
+    document.getElementById('dossieFreeCargoBadge').textContent = f.cargo_preferencial_nome || 'Função Geral';
+    
+    let contatosTxt = `PIX (${f.tipo_chave_pix || 'Chave'}): ${f.chave_pix || 'Não inf.'}`;
+    if (f.telefone) contatosTxt += ` • Tel: ${f.telefone}`;
+    if (f.banco) contatosTxt += ` • Banco: ${f.banco}`;
+    document.getElementById('dossieFreeContatos').textContent = contatosTxt;
+
+    // KPIs
+    document.getElementById('dossieKpiTotalDiarias').textContent = stats.total_diarias_historico || 0;
+    document.getElementById('dossieKpiTotalValor').textContent = formatarMoeda(stats.total_valor_historico || 0);
+    document.getElementById('dossieKpiTotalPendente').textContent = formatarMoeda(stats.total_pendente || 0);
+    document.getElementById('dossieKpiDiariaPadrao').textContent = formatarMoeda(f.valor_diaria_padrao || 140);
+
+    const badgeServicos = document.getElementById('dossieTotalServicosBadge');
+    if (badgeServicos) badgeServicos.textContent = `${servicos.length} serviço(s)`;
+    const badgeExcluidos = document.getElementById('dossieTotalExcluidosBadge');
+    if (badgeExcluidos) badgeExcluidos.textContent = `${excluidos.length} excluído(s)`;
+
+    // Renderizar tabela de serviços ativos
+    if (servicos.length === 0) {
+      corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Nenhum serviço prestado ativo registrado para este freelancer.</td></tr>`;
+    } else {
+      corpoServicos.innerHTML = servicos.map(s => {
+        const isPago = s.status_pagamento_freelance === 'Pago';
+        const origemBadge = s.origem_lancamento === 'mobile_supervisor' ? '📱 Mobile' : '💻 Web';
+        const dataHoraCriacao = s.created_at ? new Date(s.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data indisp.';
+
+        let atualizadoInfo = '';
+        if (s.atualizado_por) {
+          atualizadoInfo = `<span class="text-[10px] text-amber-700 block italic">Editado por: ${s.atualizado_por}</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">${formatarData(s.data_falta)}</td>
+            <td class="px-4 py-3">
+              <div class="font-bold text-slate-900">${s.cliente_nome || '-'}</div>
+              <div class="text-[11px] text-slate-500">${s.nome_unidade || '-'}</div>
+            </td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                ${s.turno || 'Diurno'}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="font-medium text-slate-800">${s.faltante_nome || '-'}</div>
+              <div class="text-[10px] text-slate-400">${s.motivo_falta || 'Falta'}</div>
+            </td>
+            <td class="px-4 py-3 font-black text-xs text-emerald-800 whitespace-nowrap">
+              ${formatarMoeda(s.valor_pago_freelance || 0)}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPago ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}">
+                ${isPago ? '✅ Pago' : '⏳ Pendente'}
+              </span>
+              ${s.data_pagamento_freelance ? `<span class="text-[10px] text-slate-400 block">${formatarData(s.data_pagamento_freelance)}</span>` : ''}
+            </td>
+            <td class="px-4 py-3 bg-indigo-50/40">
+              <div class="font-bold text-indigo-950 flex items-center gap-1">
+                <i class="fa-solid fa-user-check text-indigo-600 text-xs"></i>
+                <span>${s.quem_lancou || 'Sistema'}</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-0.5">
+                ${origemBadge} • ${dataHoraCriacao}
+              </div>
+              ${atualizadoInfo}
+            </td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5">
+                <button type="button" onclick="abrirModalEditarDiaria(${s.id}, ${freelancerId})" class="p-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold shadow-2xs transition" title="Editar este plantão">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button type="button" onclick="excluirDiariaSoft(${s.id}, ${freelancerId})" class="p-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold shadow-2xs transition" title="Excluir este plantão (mover para lixeira)">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Renderizar tabela de diárias excluídas
+    if (excluidos.length === 0) {
+      corpoExcluidos.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400">Nenhum registro excluído para este freelancer.</td></tr>`;
+    } else {
+      const ehAdminMaster = isUsuarioAdminMaster();
+      corpoExcluidos.innerHTML = excluidos.map(item => {
+        const dataHoraExclusao = item.excluido_em ? new Date(item.excluido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Não informada';
+        return `
+          <tr class="hover:bg-rose-50/40 transition border-b border-rose-100 text-slate-700">
+            <td class="px-3 py-2 font-bold whitespace-nowrap">${formatarData(item.data_falta)}</td>
+            <td class="px-3 py-2">
+              <span class="font-bold text-slate-900">${item.cliente_nome || '-'}</span>
+              <span class="text-[11px] text-slate-500 block">${item.nome_unidade || '-'}</span>
+            </td>
+            <td class="px-3 py-2 font-bold text-slate-800">${formatarMoeda(item.valor_pago_freelance || 0)}</td>
+            <td class="px-3 py-2 text-slate-600">${item.quem_lancou || 'Sistema'}</td>
+            <td class="px-3 py-2 font-bold text-rose-900 bg-rose-50/70 whitespace-nowrap">
+              <i class="fa-solid fa-user-xmark text-rose-600 mr-1"></i>${item.excluido_por || 'Usuário'}
+            </td>
+            <td class="px-3 py-2 text-[11px] font-mono text-rose-800 bg-rose-50/70 whitespace-nowrap">
+              ${dataHoraExclusao}
+            </td>
+            <td class="px-3 py-2 text-[11px] text-slate-600 bg-rose-50/70">
+              <i>${item.motivo_exclusao || 'Excluído'}</i>
+            </td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5">
+                <button type="button" onclick="restaurarDiaria(${item.id}, ${freelancerId})" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[11px] font-bold shadow-2xs" title="Restaurar este plantão de volta ao dossiê ativo">
+                  <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar
+                </button>
+                <button type="button" onclick="purgarDiariaDefinitivo(${item.id}, ${freelancerId})" class="px-2 py-1 ${ehAdminMaster ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} rounded text-[11px] font-bold shadow-2xs" ${!ehAdminMaster ? 'title="Apenas o Admin Master pode excluir definitivamente"' : 'title="Excluir Definitivamente do Banco de Dados"'}>
+                  <i class="fa-solid fa-xmark mr-1"></i> Excluir Definitivo
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+  } catch(err) {
+    console.error('Erro ao carregar dossiê:', err);
+    if (corpoServicos) corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-rose-500">Erro: ${err.message}</td></tr>`;
+  }
+}
+
+// 3. EDITAR DIÁRIA / PLANTÃO ESPECÍFICO (TUDO EDITÁVEL)
+async function abrirModalEditarDiaria(diariaId, freelancerId = null) {
+  state.diariaEdicaoAtualId = diariaId;
+  state.dossieFreelancerAtualId = freelancerId || state.dossieFreelancerAtualId;
+
+  // Buscar lista de faltas ou detalhes
+  let diaria = null;
+  try {
+    const res = await fetch('/api/faltas');
+    const todasFaltas = await res.json();
+    if (Array.isArray(todasFaltas)) {
+      diaria = todasFaltas.find(f => f.id === diariaId);
+    }
+  } catch(e) {}
+
+  if (!diaria) {
+    alert('Não foi possível carregar os detalhes desta diária.');
+    return;
+  }
+
+  // Preencher Selects
+  const selCliente = document.getElementById('editDiariaClienteId');
+  selCliente.innerHTML = '<option value="">Selecione o Cliente...</option>';
+  (state.clientes || []).forEach(c => {
+    selCliente.innerHTML += `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`;
+  });
+  selCliente.value = diaria.cliente_id;
+
+  aoMudarClienteDiariaEdicao(diaria.unidade_id);
+
+  const selCargo = document.getElementById('editDiariaCargoId');
+  selCargo.innerHTML = '<option value="">Selecione o Cargo...</option>';
+  (state.cargos || []).forEach(cg => {
+    selCargo.innerHTML += `<option value="${cg.id}">${cg.nome_cargo}</option>`;
+  });
+  selCargo.value = diaria.cargo_id || '';
+
+  const selColab = document.getElementById('editDiariaColaboradorId');
+  selColab.innerHTML = '<option value="">Selecione o Colaborador Titular...</option>';
+  (state.colaboradores || []).filter(c => c.cliente_id === diaria.cliente_id).forEach(col => {
+    selColab.innerHTML += `<option value="${col.id}">${col.nome}</option>`;
+  });
+  selColab.value = diaria.colaborador_id || '';
+
+  document.getElementById('editDiariaId').value = diaria.id;
+  document.getElementById('editDiariaFreelancerId').value = diaria.freelancer_id || freelancerId || '';
+  document.getElementById('editDiariaData').value = diaria.data_falta;
+  document.getElementById('editDiariaTurno').value = diaria.turno || 'Diurno';
+  document.getElementById('editDiariaMotivo').value = diaria.motivo_falta || '';
+  document.getElementById('editDiariaValor').value = (diaria.valor_pago_freelance !== undefined ? diaria.valor_pago_freelance : 140.00);
+  document.getElementById('editDiariaStatusPagamento').value = diaria.status_pagamento_freelance || 'Pendente';
+  document.getElementById('editDiariaDataPagamento').value = diaria.data_pagamento_freelance || '';
+  document.getElementById('editDiariaObservacoes').value = diaria.observacoes_operacao || '';
+
+  document.getElementById('modalEditarDiariaFreelancer').classList.remove('hidden');
+}
+
+function aoMudarClienteDiariaEdicao(unidadePreSelecionada = null) {
+  const clienteId = parseInt(document.getElementById('editDiariaClienteId').value, 10);
+  const selUnidade = document.getElementById('editDiariaUnidadeId');
+  selUnidade.innerHTML = '<option value="">Selecione o Posto / Unidade...</option>';
+  if (!clienteId) return;
+
+  const unidades = (state.unidades || []).filter(u => u.cliente_id === clienteId);
+  unidades.forEach(u => {
+    selUnidade.innerHTML += `<option value="${u.id}">${u.nome_unidade}</option>`;
+  });
+  if (unidadePreSelecionada) selUnidade.value = unidadePreSelecionada;
+
+  // Atualizar colaboradores daquele cliente
+  const selColab = document.getElementById('editDiariaColaboradorId');
+  selColab.innerHTML = '<option value="">Selecione o Colaborador Titular...</option>';
+  (state.colaboradores || []).filter(c => c.cliente_id === clienteId).forEach(col => {
+    selColab.innerHTML += `<option value="${col.id}">${col.nome}</option>`;
+  });
+}
+
+async function salvarEdicaoDiaria(e) {
+  e.preventDefault();
+  const id = parseInt(document.getElementById('editDiariaId').value, 10);
+  const freeId = parseInt(document.getElementById('editDiariaFreelancerId').value, 10);
+  if (!id) return;
+
+  const payload = {
+    data_falta: document.getElementById('editDiariaData').value,
+    cliente_id: parseInt(document.getElementById('editDiariaClienteId').value, 10),
+    unidade_id: parseInt(document.getElementById('editDiariaUnidadeId').value, 10),
+    cargo_id: document.getElementById('editDiariaCargoId').value ? parseInt(document.getElementById('editDiariaCargoId').value, 10) : null,
+    colaborador_id: document.getElementById('editDiariaColaboradorId').value ? parseInt(document.getElementById('editDiariaColaboradorId').value, 10) : null,
+    turno: document.getElementById('editDiariaTurno').value,
+    motivo_falta: document.getElementById('editDiariaMotivo').value.trim(),
+    valor_pago_freelance: parseFloat(document.getElementById('editDiariaValor').value) || 0,
+    status_pagamento_freelance: document.getElementById('editDiariaStatusPagamento').value,
+    data_pagamento_freelance: document.getElementById('editDiariaDataPagamento').value || null,
+    observacoes_operacao: document.getElementById('editDiariaObservacoes').value.trim(),
+    atualizado_por: state.usuarioLogado?.nome || 'Administrador'
+  };
+
+  try {
+    const res = await fetch(`/api/faltas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarDiariaFreelancer');
+      if (typeof showToast === 'function') {
+        showToast('Diária atualizada com sucesso!', 'success');
+      } else {
+        alert('Diária atualizada com sucesso!');
+      }
+      carregarFechamentoFreelancers();
+      if (freeId) carregarDossieFreelancer(freeId);
+    } else {
+      alert('Aviso: ' + (json.message || json.error));
+    }
+  } catch(err) {
+    alert('Erro ao salvar diária: ' + err.message);
+  }
+}
+
+// 4. SOFT DELETE (EXCLUIR DIÁRIA COM AUDITORIA)
+async function excluirDiariaSoft(diariaId, freelancerId = null) {
+  const motivo = prompt('Por qual motivo este plantão está sendo excluído da folha? (Ex: Duplicidade, erro de escala, cancelamento pelo cliente)');
+  if (motivo === null) return; // Cancelado
+
+  const motivoFormatado = (motivo || '').trim() || 'Exclusão solicitada pelo operador';
+  const usuarioNome = state.usuarioLogado?.nome || 'Administrador';
+
+  try {
+    const res = await fetch(`/api/faltas/${diariaId}?usuario_nome=${encodeURIComponent(usuarioNome)}&motivo=${encodeURIComponent(motivoFormatado)}`, {
+      method: 'DELETE'
+    });
+    const json = await res.json();
+    if (json.success) {
+      if (typeof showToast === 'function') {
+        showToast('Plantão movido para a lixeira com sucesso!', 'info');
+      } else {
+        alert('Plantão movido para a lixeira com sucesso!');
+      }
+      carregarFechamentoFreelancers();
+      if (freelancerId) carregarDossieFreelancer(freelancerId);
+      carregarLixeiraGlobalFreelancers();
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch(err) {
+    alert('Erro ao excluir: ' + err.message);
+  }
+}
+
+// 5. RESTAURAR DIÁRIA DA LIXEIRA
+async function restaurarDiaria(diariaId, freelancerId = null) {
+  if (!confirm('Deseja restaurar este plantão de volta ao histórico ativo do freelancer?')) return;
+
+  try {
+    const res = await fetch(`/api/faltas/${diariaId}/restaurar`, {
+      method: 'POST'
+    });
+    const json = await res.json();
+    if (json.success) {
+      if (typeof showToast === 'function') {
+        showToast('Plantão restaurado com sucesso!', 'success');
+      } else {
+        alert('Plantão restaurado com sucesso!');
+      }
+      carregarFechamentoFreelancers();
+      if (freelancerId) carregarDossieFreelancer(freelancerId);
+      carregarLixeiraGlobalFreelancers();
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch(err) {
+    alert('Erro ao restaurar: ' + err.message);
+  }
+}
+
+// 6. EXCLUIR DEFINITIVAMENTE (SOMENTE ADMIN MASTER)
+async function purgarDiariaDefinitivo(diariaId, freelancerId = null) {
+  const ehAdminMaster = isUsuarioAdminMaster();
+
+  if (!ehAdminMaster) {
+    alert('⚠️ Acesso Negado: Apenas o Administrador Master tem autorização para excluir definitivamente registros da lixeira do sistema.');
+    return;
+  }
+
+  const confirmacao = prompt('ATENÇÃO: Esta ação é irreversível e apagará o registro do banco de dados permanentemente.\n\nDigite EXCLUIR para confirmar a exclusão definitiva:');
+  if (confirmacao !== 'EXCLUIR') {
+    alert('Operação cancelada.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/faltas/${diariaId}/purgar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario_login: state.usuarioLogado?.login,
+        usuario_setor: state.usuarioLogado?.setor
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      if (typeof showToast === 'function') {
+        showToast('Registro excluído definitivamente do banco pelo Admin Master.', 'success');
+      } else {
+        alert('Registro excluído definitivamente do banco pelo Admin Master.');
+      }
+      carregarFechamentoFreelancers();
+      if (freelancerId) carregarDossieFreelancer(freelancerId);
+      carregarLixeiraGlobalFreelancers();
+    } else {
+      alert('Aviso: ' + (json.message || json.error));
+    }
+  } catch(err) {
+    alert('Erro ao purgar registro: ' + err.message);
+  }
+}
+
+// 7. CARREGAR AUDITORIA / LIXEIRA GLOBAL DE TODAS AS DIÁRIAS EXCLUÍDAS
+async function carregarLixeiraGlobalFreelancers() {
+  const tbody = document.getElementById('tabelaLixeiraGlobalFreelancersCorpo');
+  const badgeQtd = document.getElementById('badgeQtdLixeiraGlobal');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/freelancers/lixeira');
+    const excluidos = await res.json();
+
+    if (!Array.isArray(excluidos) || excluidos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium">Nenhum plantão ou diária na lixeira no momento.</td></tr>`;
+      if (badgeQtd) badgeQtd.textContent = '0 excluído(s)';
+      return;
+    }
+
+    if (badgeQtd) badgeQtd.textContent = `${excluidos.length} excluído(s)`;
+    const ehAdminMaster = isUsuarioAdminMaster();
+
+    tbody.innerHTML = excluidos.map(item => {
+      const dataHoraExclusao = item.excluido_em ? new Date(item.excluido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data indisp.';
+      return `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-slate-700">
+          <td class="px-4 py-2.5 font-bold whitespace-nowrap">${formatarData(item.data_falta)}</td>
+          <td class="px-4 py-2.5 font-bold text-slate-900">${item.freelancer_nome || '-'}</td>
+          <td class="px-4 py-2.5">
+            <span class="font-bold text-slate-800">${item.cliente_nome || '-'}</span>
+            <span class="text-[11px] text-slate-500 block">${item.nome_unidade || '-'}</span>
+          </td>
+          <td class="px-4 py-2.5 font-bold text-slate-800">${formatarMoeda(item.valor_pago_freelance || 0)}</td>
+          <td class="px-4 py-2.5 text-slate-600">${item.quem_lancou || 'Sistema'}</td>
+          <td class="px-4 py-2.5 font-bold text-rose-900 bg-rose-50/60 whitespace-nowrap">
+            <i class="fa-solid fa-user-xmark text-rose-600 mr-1"></i>${item.excluido_por || 'Usuário'}
+          </td>
+          <td class="px-4 py-2.5 text-[11px] font-mono text-rose-800 bg-rose-50/60 whitespace-nowrap">
+            ${dataHoraExclusao}
+          </td>
+          <td class="px-4 py-2.5 text-[11px] text-slate-600 bg-rose-50/60">
+            <i>${item.motivo_exclusao || 'Excluído'}</i>
+          </td>
+          <td class="px-4 py-2.5 text-center whitespace-nowrap">
+            <div class="inline-flex items-center gap-1.5">
+              <button type="button" onclick="restaurarDiaria(${item.id}, ${item.freelancer_id})" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold shadow-2xs" title="Restaurar de volta à folha ativa">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar
+              </button>
+              <button type="button" onclick="purgarDiariaDefinitivo(${item.id}, ${item.freelancer_id})" class="px-2.5 py-1 ${ehAdminMaster ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} rounded-lg text-xs font-bold shadow-2xs" ${!ehAdminMaster ? 'title="Apenas o Admin Master pode excluir definitivamente"' : 'title="Excluir Definitivamente do Banco de Dados"'}>
+                <i class="fa-solid fa-xmark mr-1"></i> Purgar
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch(err) {
+    console.error('Erro ao carregar lixeira global:', err);
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-rose-500">Erro: ${err.message}</td></tr>`;
+  }
+}
+
+async function carregarPainelDiretoria() {
+  try {
+    const res = await fetch(`/api/diretoria/dashboard?mes=${state.mesAtual}`);
+    const dados = await res.json();
+
+    const tbody = document.getElementById('tabelaDiretoriaBody');
+    tbody.innerHTML = '';
+
+    if (dados.relatorioDiretoria.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Nenhuma ocorrência registrada no mês.</td></tr>`;
+      return;
+    }
+
+    dados.relatorioDiretoria.forEach(row => {
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-2.5 font-medium text-slate-800">${formatarData(row.data_falta)}</td>
+          <td class="px-4 py-2.5 font-bold text-slate-900">${row.cliente}</td>
+          <td class="px-4 py-2.5 text-xs text-slate-600">${row.unidade} - ${row.posto}</td>
+          <td class="px-4 py-2.5 font-bold text-slate-800">${row.faltante}</td>
+          <td class="px-4 py-2.5 text-xs font-semibold text-blue-800">${row.quem_cobriu}</td>
+          <td class="px-4 py-2.5 text-right font-bold text-blue-700">${row.custo_cobertura > 0 ? formatarMoeda(row.custo_cobertura) : '-'}</td>
+          <td class="px-4 py-2.5 text-right font-bold text-red-600">${row.valor_glosa > 0 ? formatarMoeda(row.valor_glosa) : '-'}</td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    console.error('Erro ao carregar diretoria:', err);
+  }
+}
+
+// =============================================================
+// GESTÃO DE COMPRAS MULTI-PRÉDIOS (~25 PRÉDIOS), LINKS EXTERNOS E CONSOLIDAÇÃO
+// =============================================================
+
+state.comprasMultiPredios = {
+  links: null,
+  consolidado: null,
+  visaoAtiva: 'predios'
+};
+state.modalEdicaoPredioId = null;
+state.modalEdicaoQuantidades = new Map();
+
+async function carregarDadosComprasMultiPredios() {
+  const clienteId = document.getElementById('comprasClienteSelect')?.value || state.clientes[0]?.id;
+  const anoMes = document.getElementById('comprasAnoMes')?.value || state.mesAtual;
+  if (!clienteId) return;
+
+  const tbodyPredios = document.getElementById('tabelaPrediosComprasBody');
+  const tbodyConsolidado = document.getElementById('tabelaConsolidadoComprasBody');
+  const footConsolidado = document.getElementById('tabelaConsolidadoComprasFoot');
+
+  if (tbodyPredios) {
+    tbodyPredios.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Carregando prédios e status dos pedidos...</td></tr>`;
+  }
+  if (tbodyConsolidado) {
+    tbodyConsolidado.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando produtos de todos os prédios...</td></tr>`;
+  }
+
+  try {
+    const [resLinks, resConsolidado] = await Promise.all([
+      fetch(`/api/compras/links-unidades?cliente_id=${clienteId}&ano_mes=${anoMes}`),
+      fetch(`/api/compras/consolidado-cliente?cliente_id=${clienteId}&ano_mes=${anoMes}`)
+    ]);
+
+    const dataLinks = await resLinks.json();
+    const dataConsolidado = await resConsolidado.json();
+
+    state.comprasMultiPredios.links = dataLinks;
+    state.comprasMultiPredios.consolidado = dataConsolidado;
+
+    // 1. Atualizar 4 Cards de KPIs
+    const kpisL = dataLinks.kpis || {};
+    const kpisC = dataConsolidado.kpis || {};
+    const totalPredios = kpisL.total_unidades || 0;
+    const preenchidos = kpisL.total_preenchidas || 0;
+    const pendentes = kpisL.total_pendentes || 0;
+    const pct = totalPredios > 0 ? Math.round((preenchidos / totalPredios) * 100) : 0;
+
+    const elTotalPredios = document.getElementById('kpiComprasTotalPredios');
+    const elPreenchidos = document.getElementById('kpiComprasPrediosPreenchidos');
+    const elPct = document.getElementById('kpiComprasPercentual');
+    const elPendentes = document.getElementById('kpiComprasPendentesTexto');
+    const elTotalItens = document.getElementById('kpiComprasTotalItens');
+    const elValorTotal = document.getElementById('kpiComprasValorTotal');
+    const elContador = document.getElementById('abaContadorPredios');
+
+    if (elTotalPredios) elTotalPredios.textContent = totalPredios;
+    if (elPreenchidos) elPreenchidos.textContent = preenchidos;
+    if (elPct) elPct.textContent = `(${pct}%)`;
+    if (elPendentes) elPendentes.textContent = `${pendentes} pendente(s)`;
+    if (elTotalItens) elTotalItens.textContent = `${kpisC.total_itens_geral || 0} un`;
+    if (elValorTotal) elValorTotal.textContent = formatarMoeda(kpisC.valor_total_geral || 0);
+    if (elContador) elContador.textContent = totalPredios;
+
+    // 2. Renderizar Visão 1: Prédios & Status
+    renderizarTabelaPrediosCompras();
+
+    // 3. Renderizar Visão 2: Pedido Consolidado (Totalização por Item)
+    renderizarTabelaConsolidadoCompras();
+
+    // 4. Carregar Matriz Tradicional em background
+    carregarMatrizCompras();
+
+  } catch (err) {
+    console.error('Erro ao carregar dados de compras multi-prédios:', err);
+    if (tbodyPredios) {
+      tbodyPredios.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-rose-500 font-bold">Erro ao carregar: ${err.message}</td></tr>`;
+    }
+  }
+}
+
+function renderizarTabelaPrediosCompras(filtro = '') {
+  const tbody = document.getElementById('tabelaPrediosComprasBody');
+  if (!tbody || !state.comprasMultiPredios.links) return;
+
+  const termo = (filtro || '').toLowerCase().trim();
+  let unidades = state.comprasMultiPredios.links.unidades || [];
+
+  if (termo) {
+    unidades = unidades.filter(u => 
+      (u.nome_unidade || '').toLowerCase().includes(termo) ||
+      (u.responsavel_local || '').toLowerCase().includes(termo) ||
+      (u.responsavel_nome || '').toLowerCase().includes(termo)
+    );
+  }
+
+  if (unidades.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans">Nenhum prédio encontrado para este filtro.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = unidades.map(u => {
+    const isEnviado = u.status_preenchimento === 'Enviado pelo Responsável';
+    const isManual = u.status_preenchimento === 'Preenchido Manualmente';
+    
+    let statusHtml = '';
+    if (isEnviado) {
+      statusHtml = `<span class="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1"><i class="fa-solid fa-check"></i> Enviado pelo Responsável</span>`;
+    } else if (isManual) {
+      statusHtml = `<span class="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-sky-200 inline-flex items-center gap-1"><i class="fa-solid fa-pen"></i> Lançado no SISFAC</span>`;
+    } else {
+      statusHtml = `<span class="bg-amber-100 text-amber-800 font-semibold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 inline-flex items-center gap-1"><i class="fa-regular fa-clock"></i> Pendente</span>`;
+    }
+
+    const dataEnvioFormatada = u.data_envio 
+      ? new Date(u.data_envio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) 
+      : '<span class="text-slate-400 font-normal">-</span>';
+
+    const respExibicao = u.responsavel_nome || u.responsavel_local || '<span class="text-slate-400 italic">Não informado</span>';
+    const telExibicao = u.responsavel_telefone || u.telefone_local || '';
+
+    return `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+        <td class="py-2.5 px-3">
+          <div class="font-bold text-slate-900 flex items-center gap-1.5">
+            <i class="fa-regular fa-building text-slate-400"></i> ${u.nome_unidade}
+          </div>
+          <div class="text-[10px] text-slate-400 truncate max-w-xs">${u.endereco || ''}</div>
+        </td>
+        <td class="py-2.5 px-3">
+          <div class="font-medium text-slate-800">${respExibicao}</div>
+          ${telExibicao ? `<div class="text-[10px] text-slate-500 font-mono">${telExibicao}</div>` : ''}
+        </td>
+        <td class="py-2.5 px-3 text-center">${statusHtml}</td>
+        <td class="py-2.5 px-3 text-center font-mono text-[11px] text-slate-600">${dataEnvioFormatada}</td>
+        <td class="py-2.5 px-3 text-right font-mono font-bold ${u.total_itens > 0 ? 'text-teal-900' : 'text-slate-400'}">${u.total_itens} un</td>
+        <td class="py-2.5 px-3 text-right font-mono font-bold ${u.valor_total > 0 ? 'text-teal-700' : 'text-slate-400'}">${formatarMoeda(u.valor_total)}</td>
+        <td class="py-2.5 px-3 text-center">
+          <div class="flex items-center justify-center gap-1">
+            <button type="button" onclick="abrirModalEdicaoPredioCompras(${u.unidade_id})" title="Lançar ou Ajustar Pedido deste Prédio" class="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
+              <i class="fa-solid fa-pen-to-square"></i> Editar
+            </button>
+            <button type="button" onclick="copiarLinkPredio('${u.token_acesso}', ${u.unidade_id})" title="Copiar Link Direto para o Responsável" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+            <button type="button" onclick="enviarLinkWhatsApp(${u.unidade_id}, '${escapeJsString(telExibicao)}', '${escapeJsString(u.nome_unidade)}', '${u.token_acesso}')" title="Enviar Link no WhatsApp" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
+              <i class="fa-brands fa-whatsapp"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filtrarTabelaPredios(val) {
+  renderizarTabelaPrediosCompras(val);
+}
+
+function renderizarTabelaConsolidadoCompras() {
+  const tbody = document.getElementById('tabelaConsolidadoComprasBody');
+  const tfoot = document.getElementById('tabelaConsolidadoComprasFoot');
+  if (!tbody || !state.comprasMultiPredios.consolidado) return;
+
+  const produtos = state.comprasMultiPredios.consolidado.produtos || [];
+
+  if (produtos.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans">Nenhum produto cadastrado no catálogo.</td></tr>`;
+    if (tfoot) tfoot.innerHTML = '';
+    return;
+  }
+
+  let totalGeralQtd = 0;
+  let totalGeralValor = 0;
+
+  tbody.innerHTML = produtos.map(p => {
+    totalGeralQtd += p.quantidade_total || 0;
+    totalGeralValor += p.valor_total || 0;
+
+    const temDemanda = (p.quantidade_total || 0) > 0;
+
+    return `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 ${temDemanda ? 'bg-teal-50/20 font-medium' : 'text-slate-400'}">
+        <td class="py-2.5 px-3 font-mono text-[11px]">${p.codigo_referencia || p.produto_id}</td>
+        <td class="py-2.5 px-3">
+          <div class="font-bold text-slate-900">${p.descricao}</div>
+          <div class="text-[10px] text-slate-400">${p.fornecedor_nome || 'Distribuidora Padrão'}</div>
+        </td>
+        <td class="py-2.5 px-3">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">${p.categoria}</span>
+        </td>
+        <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-700">${p.unidade_medida || 'UN'}</td>
+        <td class="py-2.5 px-3 text-right font-mono text-slate-700">${formatarMoeda(p.preco_anual_fechado)}</td>
+        <td class="py-2.5 px-3 text-right font-mono font-black text-sm ${temDemanda ? 'text-teal-950 bg-teal-50/70' : 'text-slate-300'}">
+          ${p.quantidade_total} ${p.unidade_medida || 'UN'}
+        </td>
+        <td class="py-2.5 px-3 text-right font-mono font-black text-sm ${temDemanda ? 'text-teal-700 bg-teal-50/70' : 'text-slate-300'}">
+          ${formatarMoeda(p.valor_total)}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr>
+        <td colspan="5" class="py-3 px-3 text-right uppercase tracking-wider text-xs">VALOR TOTAL DO PEDIDO CONSOLIDADO (TODOS OS PRÉDIOS):</td>
+        <td class="py-3 px-3 text-right font-mono font-black text-base text-teal-300">${totalGeralQtd} un</td>
+        <td class="py-3 px-3 text-right font-mono font-black text-base text-emerald-400">${formatarMoeda(totalGeralValor)}</td>
+      </tr>
+    `;
+  }
+}
+
+function trocarVisaoCompras(visao) {
+  state.comprasMultiPredios.visaoAtiva = visao;
+
+  // Botões
+  document.querySelectorAll('.visao-compras-btn').forEach(btn => {
+    btn.classList.remove('bg-teal-50', 'text-teal-700', 'border', 'border-teal-200');
+    btn.classList.add('text-slate-600');
+  });
+
+  const btnAtivo = document.getElementById(`visaoBtn-${visao}`);
+  if (btnAtivo) {
+    btnAtivo.classList.add('bg-teal-50', 'text-teal-700', 'border', 'border-teal-200');
+    btnAtivo.classList.remove('text-slate-600');
+  }
+
+  // Divs
+  document.getElementById('visaoCompras-predios').classList.add('hidden');
+  document.getElementById('visaoCompras-consolidado').classList.add('hidden');
+  document.getElementById('visaoCompras-matriz').classList.add('hidden');
+
+  const divAtiva = document.getElementById(`visaoCompras-${visao}`);
+  if (divAtiva) divAtiva.classList.remove('hidden');
+}
+
+// -------------------------------------------------------------
+// MODAL DE LINKS EXTERNOS PARA OS RESPONSÁVEIS DOS PRÉDIOS
+// -------------------------------------------------------------
+async function abrirModalLinksPredios() {
+  const data = state.comprasMultiPredios.links;
+  if (!data || !data.cliente) {
+    return alert('Por favor, selecione um cliente e aguarde o carregamento dos dados.');
+  }
+
+  if (!state.urlTunnelGlobal) {
+    try {
+      const tRes = await fetch('/api/tunnel');
+      const tData = await tRes.json();
+      if (tData && tData.url) state.urlTunnelGlobal = tData.url;
+      if (tData && tData.local_url) state.urlLocalRede = tData.local_url;
+    } catch (e) {}
+  }
+
+  const basePublica = obterBasePublicaLink();
+  const linkGeral = `${basePublica}/pedido-unidade.html?token=${data.token_publico}&cliente_id=${data.cliente.id}&ano_mes=${data.ano_mes}`;
+
+  document.getElementById('modalLinksClienteNome').textContent = data.cliente.nome_fantasia || data.cliente.nome_razao_social;
+  document.getElementById('inputLinkGeral').value = linkGeral;
+
+  renderizarListaModalLinks();
+  document.getElementById('modalLinksPredios').classList.remove('hidden');
+}
+
+function renderizarListaModalLinks(filtro = '') {
+  const container = document.getElementById('listaLinksIndividuaisPredios');
+  const data = state.comprasMultiPredios.links;
+  if (!container || !data) return;
+
+  const basePublica = obterBasePublicaLink();
+  const termo = (filtro || '').toLowerCase().trim();
+  let unidades = data.unidades || [];
+
+  if (termo) {
+    unidades = unidades.filter(u => 
+      (u.nome_unidade || '').toLowerCase().includes(termo) ||
+      (u.responsavel_local || '').toLowerCase().includes(termo)
+    );
+  }
+
+  container.innerHTML = unidades.map(u => {
+    const linkDireto = `${basePublica}/pedido-unidade.html?token=${u.token_acesso}`;
+    const isEnviado = u.status_preenchimento === 'Enviado pelo Responsável';
+    const tel = u.responsavel_telefone || u.telefone_local || '';
+
+    return `
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-teal-50/30 transition">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-900 text-xs">${u.nome_unidade}</span>
+            ${isEnviado 
+              ? '<span class="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">Enviado</span>' 
+              : '<span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded">Pendente</span>'}
+          </div>
+          <div class="text-[11px] text-slate-500">
+            ${u.responsavel_local ? `Resp: ${u.responsavel_local}` : 'Sem responsável direto'} ${tel ? `(${tel})` : ''}
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-shrink-0">
+          <input type="text" readonly value="${linkDireto}" class="bg-white border border-slate-200 rounded px-2 py-1 font-mono text-[10px] w-36 sm:w-48 select-all text-slate-600">
+          <button type="button" onclick="navigator.clipboard.writeText('${linkDireto}'); alert('Link do ${escapeJsString(u.nome_unidade)} copiado com sucesso!');" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+            <i class="fa-regular fa-copy"></i> Copiar
+          </button>
+          <button type="button" onclick="enviarLinkWhatsApp(${u.unidade_id}, '${escapeJsString(tel)}', '${escapeJsString(u.nome_unidade)}', '${u.token_acesso}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+            <i class="fa-brands fa-whatsapp"></i> WhatsApp
+          </button>
+          <a href="${linkDireto}" target="_blank" class="p-1.5 text-slate-600 hover:text-teal-700 rounded transition" title="Abrir Link">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filtrarModalLinks(val) {
+  renderizarListaModalLinks(val);
+}
+
+function copiarLinkGenerico() {
+  const input = document.getElementById('inputLinkGeral');
+  if (input) {
+    navigator.clipboard.writeText(input.value);
+    alert('Link Geral de compras copiado com sucesso!\n\n' + input.value + '\n\nVocê pode colar em e-mails, comunicados ou grupos de WhatsApp.');
+  }
+}
+
+function copiarLinkPredio(tokenAcesso, unidadeId) {
+  const basePublica = obterBasePublicaLink();
+  const link = `${basePublica}/pedido-unidade.html?token=${tokenAcesso}`;
+  navigator.clipboard.writeText(link);
+  alert('Link direto do prédio copiado com sucesso para a área de transferência!\n\n' + link);
+}
+
+function enviarLinkWhatsApp(unidadeId, telefone, nomePredio, tokenAcesso) {
+  const basePublica = obterBasePublicaLink();
+  const link = `${basePublica}/pedido-unidade.html?token=${tokenAcesso}`;
+  const data = state.comprasMultiPredios.links;
+  const mesFormatado = data?.ano_mes || state.mesAtual;
+
+  let texto = `Olá! Segue o link para preenchimento do *Pedido Mensal de Insumos & Materiais* (${mesFormatado}):\n\n`;
+  texto += `🏢 *Prédio:* ${nomePredio}\n`;
+  texto += `👉 *Link do Pedido:* ${link}\n\n`;
+  texto += `Basta clicar no link pelo seu celular ou computador, conferir os itens necessários e confirmar o envio.`;
+
+  const telLimpo = (telefone || '').replace(/\D/g, '');
+  let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  if (telLimpo.length >= 10) {
+    url += `&phone=55${telLimpo}`;
+  }
+  window.open(url, '_blank');
+}
+
+// -------------------------------------------------------------
+// MODAL DE LANÇAMENTO / AJUSTE MANUAL DO PRÉDIO NO SISFAC
+// -------------------------------------------------------------
+function abrirModalEdicaoPredioCompras(unidadeId) {
+  const linksData = state.comprasMultiPredios.links;
+  const consolidadoData = state.comprasMultiPredios.consolidado;
+  if (!linksData || !consolidadoData) return;
+
+  const uni = linksData.unidades.find(u => u.unidade_id === unidadeId);
+  if (!uni) return;
+
+  state.modalEdicaoPredioId = unidadeId;
+  state.modalEdicaoQuantidades = new Map();
+
+  // Carregar itens já salvos dessa unidade
+  const itensSalvos = (consolidadoData.itens_matriz || []).filter(i => i.unidade_id === unidadeId);
+  itensSalvos.forEach(it => {
+    state.modalEdicaoQuantidades.set(it.produto_id, it.quantidade);
+  });
+
+  document.getElementById('modalEdicaoPredioNome').textContent = uni.nome_unidade;
+  document.getElementById('modalEdicaoPredioSub').textContent = `Cliente: ${linksData.cliente.nome_fantasia || linksData.cliente.nome_razao_social} • Competência: ${linksData.ano_mes}`;
+  document.getElementById('modalEdicaoPredioRespNome').value = uni.responsavel_nome || uni.responsavel_local || '';
+  document.getElementById('modalEdicaoPredioRespTel').value = uni.responsavel_telefone || uni.telefone_local || '';
+  document.getElementById('modalEdicaoPredioObs').value = uni.observacoes || '';
+
+  renderizarItensModalEdicao();
+  recalcularModalEdicaoTotais();
+
+  document.getElementById('modalEdicaoPredioCompras').classList.remove('hidden');
+}
+
+function renderizarItensModalEdicao(filtro = '') {
+  const container = document.getElementById('listaModalEdicaoInsumos');
+  const prods = state.comprasMultiPredios.consolidado?.produtos || [];
+  if (!container) return;
+
+  const termo = (filtro || '').toLowerCase().trim();
+  let filtrados = prods;
+  if (termo) {
+    filtrados = prods.filter(p => 
+      (p.descricao || '').toLowerCase().includes(termo) ||
+      (p.categoria || '').toLowerCase().includes(termo)
+    );
+  }
+
+  container.innerHTML = filtrados.map(p => {
+    const qtd = state.modalEdicaoQuantidades.get(p.produto_id) || 0;
+    const subtotal = qtd * p.preco_anual_fechado;
+
+    return `
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 hover:bg-slate-100 transition">
+        <div class="flex-1">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="text-[9px] bg-slate-200 text-slate-700 font-mono px-1.5 py-0.2 rounded">${p.categoria}</span>
+            <span class="text-[10px] text-slate-400">Unid: <b class="text-slate-600">${p.unidade_medida || 'UN'}</b></span>
+            <span class="text-[10px] text-teal-700 font-bold">${formatarMoeda(p.preco_anual_fechado)}</span>
+          </div>
+          <div class="font-bold text-slate-900 text-xs">${p.descricao}</div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <div class="flex items-center bg-white rounded-lg border border-slate-300 p-0.5">
+            <button type="button" onclick="alterarModalEdicaoQtd(${p.produto_id}, -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">-</button>
+            <input type="number" min="0" value="${qtd}" onchange="definirModalEdicaoQtd(${p.produto_id}, this.value)" class="w-12 text-center font-mono font-bold text-xs outline-none">
+            <button type="button" onclick="alterarModalEdicaoQtd(${p.produto_id}, 1)" class="w-6 h-6 rounded bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center">+</button>
+          </div>
+          <div class="w-20 text-right font-mono font-bold text-xs ${qtd > 0 ? 'text-teal-700' : 'text-slate-400'}">
+            ${formatarMoeda(subtotal)}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filtrarModalEdicaoInsumos(val) {
+  renderizarItensModalEdicao(val);
+}
+
+function alterarModalEdicaoQtd(prodId, delta) {
+  const atual = state.modalEdicaoQuantidades.get(prodId) || 0;
+  const novaQtd = Math.max(0, atual + delta);
+  if (novaQtd === 0) {
+    state.modalEdicaoQuantidades.delete(prodId);
+  } else {
+    state.modalEdicaoQuantidades.set(prodId, novaQtd);
+  }
+  renderizarItensModalEdicao(document.getElementById('buscaModalEdicaoInsumos')?.value || '');
+  recalcularModalEdicaoTotais();
+}
+
+function definirModalEdicaoQtd(prodId, val) {
+  const num = parseInt(val, 10) || 0;
+  if (num <= 0) {
+    state.modalEdicaoQuantidades.delete(prodId);
+  } else {
+    state.modalEdicaoQuantidades.set(prodId, num);
+  }
+  renderizarItensModalEdicao(document.getElementById('buscaModalEdicaoInsumos')?.value || '');
+  recalcularModalEdicaoTotais();
+}
+
+function recalcularModalEdicaoTotais() {
+  let totalQtd = 0;
+  let totalValor = 0;
+  const prods = state.comprasMultiPredios.consolidado?.produtos || [];
+  const mapPrecos = new Map(prods.map(p => [p.produto_id, p.preco_anual_fechado]));
+
+  state.modalEdicaoQuantidades.forEach((qtd, prodId) => {
+    totalQtd += qtd;
+    totalValor += qtd * (mapPrecos.get(prodId) || 0);
+  });
+
+  const elQtd = document.getElementById('modalEdicaoPredioTotalQtd');
+  const elVal = document.getElementById('modalEdicaoPredioTotalValor');
+  if (elQtd) elQtd.textContent = totalQtd;
+  if (elVal) elVal.textContent = formatarMoeda(totalValor);
+}
+
+async function salvarModalEdicaoPredio() {
+  const unidadeId = state.modalEdicaoPredioId;
+  const clienteId = parseInt(document.getElementById('comprasClienteSelect').value, 10);
+  const anoMes = document.getElementById('comprasAnoMes').value || state.mesAtual;
+
+  if (!unidadeId || !clienteId) return;
+
+  const respNome = document.getElementById('modalEdicaoPredioRespNome').value.trim();
+  const respTel = document.getElementById('modalEdicaoPredioRespTel').value.trim();
+  const obs = document.getElementById('modalEdicaoPredioObs').value.trim();
+
+  const itens = [];
+  state.modalEdicaoQuantidades.forEach((qtd, produtoId) => {
+    if (qtd > 0) {
+      itens.push({ produto_id: produtoId, quantidade: qtd });
+    }
+  });
+
+  try {
+    const res = await fetch('/api/compras/unidade-pedido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cliente_id: clienteId,
+        ano_mes: anoMes,
+        unidade_id: unidadeId,
+        responsavel_nome: respNome,
+        responsavel_telefone: respTel,
+        observacoes: obs,
+        itens
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEdicaoPredioCompras');
+      alert('Pedido do prédio salvo com sucesso!');
+      await carregarDadosComprasMultiPredios();
+    } else {
+      alert('Erro ao salvar: ' + (json.message || 'Falha ao salvar.'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// EXPORTAÇÃO COMPLETA DO PEDIDO CONSOLIDADO PARA EXCEL (.xlsx)
+// -------------------------------------------------------------
+function exportarPedidoConsolidadoExcel() {
+  if (!state.comprasMultiPredios.consolidado || !state.comprasMultiPredios.links) {
+    return alert('Aguarde os dados de compras carregarem para exportar.');
+  }
+
+  const { cliente, ano_mes, kpis, produtos, unidades, itens_matriz } = state.comprasMultiPredios.consolidado;
+  const clienteNome = cliente?.nome_fantasia || cliente?.nome_razao_social || 'Cliente';
+
+  const wb = XLSX.utils.book_new();
+
+  // ABA 1: Pedido Consolidado para a Distribuidora / Fornecedor
+  const dadosConsolidado = [];
+  dadosConsolidado.push({
+    'Item': 'SISFAC 2.0 - PEDIDO CONSOLIDADO DE COMPRAS',
+    'Produto_Descricao': `Cliente: ${clienteNome}`,
+    'Categoria': `Competência: ${ano_mes}`,
+    'Unid_Medida': '',
+    'Qtd_Total_Consolidada': '',
+    'Preco_Unitario_Ref': '',
+    'Valor_Total_Item': ''
+  });
+  dadosConsolidado.push({}); // Linha vazia
+
+  let totalQtd = 0;
+  let totalValor = 0;
+
+  produtos.forEach((p, idx) => {
+    totalQtd += p.quantidade_total || 0;
+    totalValor += p.valor_total || 0;
+    dadosConsolidado.push({
+      'Item': idx + 1,
+      'Produto_Descricao': p.descricao,
+      'Categoria': p.categoria || 'Geral',
+      'Unid_Medida': p.unidade_medida || 'UN',
+      'Qtd_Total_Consolidada': p.quantidade_total || 0,
+      'Preco_Unitario_Ref': p.preco_anual_fechado || 0,
+      'Valor_Total_Item': parseFloat((p.valor_total || 0).toFixed(2))
+    });
+  });
+
+  dadosConsolidado.push({});
+  dadosConsolidado.push({
+    'Item': 'TOTAL GERAL',
+    'Produto_Descricao': 'SOMA CONSOLIDADA DE TODOS OS PRÉDIOS',
+    'Categoria': '',
+    'Unid_Medida': '',
+    'Qtd_Total_Consolidada': totalQtd,
+    'Preco_Unitario_Ref': '',
+    'Valor_Total_Item': parseFloat(totalValor.toFixed(2))
+  });
+
+  const wsConsolidado = XLSX.utils.json_to_sheet(dadosConsolidado);
+  XLSX.utils.book_append_sheet(wb, wsConsolidado, 'Pedido_Consolidado');
+
+  // ABA 2: Resumo Individual por Prédio
+  const dadosPorPredio = (unidades || []).map((u, idx) => ({
+    'N': idx + 1,
+    'Predio_Bloco': u.nome_unidade,
+    'Responsavel': u.responsavel_nome || u.responsavel_local || 'Não informado',
+    'Status_Pedido': u.status_preenchimento || 'Pendente',
+    'Data_Envio': u.data_envio ? new Date(u.data_envio).toLocaleDateString('pt-BR') : '-',
+    'Total_Itens_Solicitados': u.total_itens || 0,
+    'Valor_Total_Predio': parseFloat((u.valor_total || 0).toFixed(2))
+  }));
+  const wsPredios = XLSX.utils.json_to_sheet(dadosPorPredio);
+  XLSX.utils.book_append_sheet(wb, wsPredios, 'Resumo_Por_Predio');
+
+  // ABA 3: Matriz Completa Prédios x Produtos
+  const mapaItens = new Map();
+  (itens_matriz || []).forEach(it => {
+    mapaItens.set(`${it.unidade_id}-${it.produto_id}`, it.quantidade);
+  });
+
+  const dadosMatriz = (unidades || []).map(u => {
+    const row = {
+      'Predio_Unidade': u.nome_unidade,
+      'Responsavel': u.responsavel_nome || u.responsavel_local || '-'
+    };
+    produtos.forEach(p => {
+      row[p.descricao] = mapaItens.get(`${u.unidade_id}-${p.produto_id}`) || 0;
+    });
+    row['Total_Predio_R$'] = parseFloat((u.valor_total || 0).toFixed(2));
+    return row;
+  });
+  const wsMatriz = XLSX.utils.json_to_sheet(dadosMatriz);
+  XLSX.utils.book_append_sheet(wb, wsMatriz, 'Matriz_Unidades');
+
+  const nomeLimpo = clienteNome.replace(/[^a-zA-Z0-9]/g, '_');
+  XLSX.writeFile(wb, `Pedido_Consolidado_Compras_${nomeLimpo}_${ano_mes}.xlsx`);
+}
+
+// -------------------------------------------------------------
+// MATRIZ COMPLETA TRADICIONAL
+// -------------------------------------------------------------
+async function carregarMatrizCompras() {
+  const clienteId = document.getElementById('comprasClienteSelect')?.value || state.clientes[0]?.id;
+  const anoMes = document.getElementById('comprasAnoMes')?.value || state.mesAtual;
+  if (!clienteId) return;
+
+  const thead = document.getElementById('matrizThead');
+  const tbody = document.getElementById('matrizTbody');
+  const tfoot = document.getElementById('matrizTfoot');
+
+  try {
+    const res = await fetch(`/api/compras/matriz?cliente_id=${clienteId}&ano_mes=${anoMes}`);
+    const data = await res.json();
+    state.matrizDados = data;
+
+    let thHtml = `<tr><th class="sticky-col text-left py-3 px-4 min-w-[240px]">Unidade de Entrega (${data.unidades.length} locais)</th>`;
+    data.produtos.forEach(prod => {
+      thHtml += `<th class="text-center px-3 py-2 min-w-[130px]"><div class="font-bold text-xs text-white">${prod.descricao}</div><div class="text-[10px] text-teal-300">${formatarMoeda(prod.preco_anual_fechado)}</div></th>`;
+    });
+    thHtml += `<th class="text-right px-4 py-3 min-w-[120px] bg-slate-950 text-teal-300 font-bold">Total (R$)</th></tr>`;
+    thead.innerHTML = thHtml;
+
+    const mapaItens = new Map();
+    data.itens.forEach(i => mapaItens.set(`${i.unidade_id}-${i.produto_id}`, i.quantidade));
+
+    let tbodyHtml = '';
+    data.unidades.forEach(uni => {
+      tbodyHtml += `<tr><td class="sticky-col py-2 px-4 font-bold text-slate-900">${uni.nome_unidade}</td>`;
+      data.produtos.forEach(prod => {
+        const qtd = mapaItens.get(`${uni.id}-${prod.id}`) || 0;
+        tbodyHtml += `<td class="text-center px-2 py-1"><input type="number" min="0" value="${qtd}" class="qty-input" data-unidade="${uni.id}" data-produto="${prod.id}" oninput="recalcularTotaisMatriz()"></td>`;
+      });
+      tbodyHtml += `<td class="text-right px-4 py-2 font-bold text-slate-900" id="totalUni-${uni.id}">R$ 0,00</td></tr>`;
+    });
+    tbody.innerHTML = tbodyHtml;
+
+    recalcularTotaisMatriz();
+  } catch (err) {
+    console.error('Erro matriz:', err);
+  }
+}
+
+function recalcularTotaisMatriz() {
+  if (!state.matrizDados) return;
+  const { unidades, produtos } = state.matrizDados;
+  unidades.forEach(uni => {
+    let sub = 0;
+    produtos.forEach(prod => {
+      const input = document.querySelector(`input[data-unidade="${uni.id}"][data-produto="${prod.id}"]`);
+      const qtd = input ? parseInt(input.value, 10) || 0 : 0;
+      sub += qtd * prod.preco_anual_fechado;
+    });
+    const el = document.getElementById(`totalUni-${uni.id}`);
+    if (el) el.textContent = formatarMoeda(sub);
+  });
+}
+
+async function salvarMatrizCompras() {
+  const clienteId = parseInt(document.getElementById('comprasClienteSelect').value, 10);
+  const anoMes = document.getElementById('comprasAnoMes').value || state.mesAtual;
+  const itens = [];
+
+  document.querySelectorAll('.qty-input').forEach(input => {
+    const qtd = parseInt(input.value, 10) || 0;
+    if (qtd > 0) {
+      itens.push({
+        unidade_id: parseInt(input.getAttribute('data-unidade'), 10),
+        produto_id: parseInt(input.getAttribute('data-produto'), 10),
+        quantidade: qtd
+      });
+    }
+  });
+
+  try {
+    const res = await fetch('/api/compras/matriz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cliente_id: clienteId, ano_mes: anoMes, itens })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('Pedido de compras mensal salvo com sucesso!');
+      await carregarDadosComprasMultiPredios();
+    }
+  } catch (err) {
+    alert('Erro ao salvar: ' + err.message);
+  }
+}
+
+async function copiarMesAnteriorCompras() {
+  const clienteId = parseInt(document.getElementById('comprasClienteSelect').value, 10);
+  const anoMes = document.getElementById('comprasAnoMes').value || state.mesAtual;
+
+  try {
+    const res = await fetch('/api/compras/copiar-mes-anterior', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cliente_id: clienteId, ano_mes_atual: anoMes })
+    });
+    const json = await res.json();
+    if (json.itens) {
+      json.itens.forEach(i => {
+        const input = document.querySelector(`input[data-unidade="${i.unidade_id}"][data-produto="${i.produto_id}"]`);
+        if (input) input.value = i.quantidade;
+      });
+      recalcularTotaisMatriz();
+      alert(`Quantidades duplicadas com sucesso do mês anterior (${json.copiado_de})!`);
+      await carregarDadosComprasMultiPredios();
+    } else {
+      alert(json.message || 'Sem pedido no mês anterior.');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function abrirModalRomaneios() {
+  const clienteId = parseInt(document.getElementById('comprasClienteSelect').value, 10);
+  const anoMes = document.getElementById('comprasAnoMes').value || state.mesAtual;
+  const container = document.getElementById('romaneiosCardsContainer');
+  container.innerHTML = '<div class="text-center py-6 text-slate-400">Gerando romaneios...</div>';
+  document.getElementById('modalRomaneios').classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/compras/romaneios?cliente_id=${clienteId}&ano_mes=${anoMes}`);
+    const data = await res.json();
+    container.innerHTML = '';
+
+    data.romaneios.forEach(rom => {
+      let rows = '';
+      rom.itens.forEach(it => {
+        rows += `<tr><td class="py-1 px-3">${it.descricao}</td><td class="py-1 px-3 text-center">${it.unidade_medida}</td><td class="py-1 px-3 text-right font-bold">${it.quantidade}</td><td class="py-1 px-3 text-right font-bold text-teal-700">${formatarMoeda(it.subtotal)}</td></tr>`;
+      });
+
+      container.innerHTML += `
+        <div class="romaneio-card bg-white p-6 rounded-xl border border-slate-300 print-page-break mb-4">
+          <div class="flex justify-between border-b pb-2 mb-3">
+            <div>
+              <h2 class="font-black text-slate-900">ROMANEIO DE ENTREGA - ${data.ano_mes}</h2>
+              <div class="text-xs text-slate-700">Cliente: ${data.cliente.nome_razao_social}</div>
+              <div class="text-xs font-bold text-blue-800">Unidade: ${rom.unidade.nome_unidade}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-slate-400">SISFAC 2.0</div>
+              <div class="text-sm font-bold text-slate-900">${formatarMoeda(rom.total_unidade)}</div>
+            </div>
+          </div>
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-100 uppercase text-[10px]">
+              <tr><th>Produto</th><th class="text-center">UN</th><th class="text-right">Qtd</th><th class="text-right">Subtotal</th></tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="4" class="text-center py-2 text-slate-400">Sem itens</td></tr>'}</tbody>
+          </table>
+          <div class="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-[10px] text-slate-500">
+            <div>Data de Recebimento: ____/____/________</div>
+            <div>Assinatura do Responsável: _______________________________</div>
+          </div>
+        </div>
+      `;
+    });
+  } catch (err) {
+    container.innerHTML = `<div class="text-rose-500 text-center py-4">Erro ao carregar romaneios: ${err.message}</div>`;
+  }
+}
+
+// =============================================================
+// CADASTRO & GESTÃO DE PRÉDIOS E UNIDADES DE ENTREGA (ILIMITADOS)
+// =============================================================
+
+state.gestaoPredios = {
+  lista: [],
+  listaFiltrada: [],
+  termoBusca: '',
+  clienteId: '',
+  status: '1'
+};
+state.prediosImportacaoPendente = [];
+
+async function carregarGestaoPredios() {
+  const clienteId = document.getElementById('filtroGestaoPrediosCliente')?.value || '';
+  const status = document.getElementById('filtroGestaoPrediosStatus')?.value || '1';
+  state.gestaoPredios.clienteId = clienteId;
+  state.gestaoPredios.status = status;
+
+  const tbody = document.getElementById('tabelaGestaoPrediosBody');
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Carregando prédios e unidades cadastradas...</td></tr>`;
+  }
+
+  try {
+    const params = new URLSearchParams();
+    if (clienteId) params.set('cliente_id', clienteId);
+    if (status !== 'all') params.set('ativo', status);
+    else params.set('ativo', 'all');
+
+    const res = await fetch('/api/unidades?' + params.toString());
+    const data = await res.json();
+    state.gestaoPredios.lista = Array.isArray(data) ? data : [];
+
+    // Atualizar KPIs
+    const total = state.gestaoPredios.lista.length;
+    const ativos = state.gestaoPredios.lista.filter(u => u.ativo === 1).length;
+    const comResp = state.gestaoPredios.lista.filter(u => (u.responsavel_local && u.responsavel_local.trim()) || (u.telefone_local && u.telefone_local.trim())).length;
+    const clientesSet = new Set(state.gestaoPredios.lista.map(u => u.cliente_id));
+
+    const elTotal = document.getElementById('kpiGestaoPrediosTotal');
+    const elAtivos = document.getElementById('kpiGestaoPrediosAtivos');
+    const elComResp = document.getElementById('kpiGestaoPrediosComResp');
+    const elClientes = document.getElementById('kpiGestaoPrediosClientes');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elAtivos) elAtivos.textContent = ativos;
+    if (elComResp) elComResp.textContent = comResp;
+    if (elClientes) elClientes.textContent = clientesSet.size;
+
+    filtrarGestaoPrediosLocal();
+  } catch (err) {
+    console.error('Erro ao carregar prédios:', err);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-rose-500 font-bold">Erro ao carregar: ${err.message}</td></tr>`;
+    }
+  }
+}
+
+function filtrarGestaoPrediosLocal() {
+  const busca = (document.getElementById('buscaGestaoPredios')?.value || '').trim().toLowerCase();
+  state.gestaoPredios.termoBusca = busca;
+
+  let filtrados = state.gestaoPredios.lista;
+  if (busca) {
+    filtrados = filtrados.filter(u => 
+      (u.nome_unidade && u.nome_unidade.toLowerCase().includes(busca)) ||
+      (u.cliente_nome && u.cliente_nome.toLowerCase().includes(busca)) ||
+      (u.endereco && u.endereco.toLowerCase().includes(busca)) ||
+      (u.bairro && u.bairro.toLowerCase().includes(busca)) ||
+      (u.cidade && u.cidade.toLowerCase().includes(busca)) ||
+      (u.responsavel_local && u.responsavel_local.toLowerCase().includes(busca)) ||
+      (u.telefone_local && u.telefone_local.toLowerCase().includes(busca)) ||
+      (u.observacoes && u.observacoes.toLowerCase().includes(busca)) ||
+      String(u.id).includes(busca)
+    );
+  }
+
+  state.gestaoPredios.listaFiltrada = filtrados;
+  renderizarTabelaGestaoPredios();
+}
+
+function renderizarTabelaGestaoPredios() {
+  const tbody = document.getElementById('tabelaGestaoPrediosBody');
+  const contador = document.getElementById('contadorExibicaoPredios');
+  if (!tbody) return;
+
+  const lista = state.gestaoPredios.listaFiltrada || [];
+  if (contador) {
+    contador.textContent = `Exibindo ${lista.length} prédio(s) de ${state.gestaoPredios.lista.length} cadastrado(s)`;
+  }
+
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-sans"><i class="fa-solid fa-building-circle-exclamation text-2xl mb-2 text-slate-300"></i><br>Nenhum prédio encontrado com os filtros atuais.<br><button onclick="abrirModalNovoPredio()" class="mt-2 text-xs text-teal-600 font-bold underline">+ Cadastrar Novo Prédio</button></td></tr>`;
+    return;
+  }
+
+  let html = '';
+  lista.forEach(u => {
+    const isAtivo = u.ativo === 1;
+    const badgeStatus = isAtivo 
+      ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Ativo</span>'
+      : '<span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Inativo</span>';
+
+    const endFormatado = [u.endereco, u.bairro, u.cidade].filter(Boolean).join(' - ') || '<span class="text-slate-400 italic">Não informado</span>';
+    const telFormatado = u.telefone_local ? u.telefone_local.trim() : '';
+    const telClean = telFormatado.replace(/\D/g, '');
+    const telBtn = telClean.length >= 10 
+      ? `<a href="https://wa.me/55${telClean}" target="_blank" class="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold text-[11px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"><i class="fa-brands fa-whatsapp text-emerald-600"></i> ${telFormatado}</a>`
+      : (telFormatado || '<span class="text-slate-400 italic">-</span>');
+
+    const cotaTxt = u.cota_limite_insumos > 0 ? formatarMoeda(u.cota_limite_insumos) : '<span class="text-slate-400">Livre</span>';
+
+    // Link público
+    const linkAuto = u.ultimo_token_acesso ? `/pedido-unidade.html?token=${u.ultimo_token_acesso}` : `/pedido-unidade.html?cliente_id=${u.cliente_id}&unidade_id=${u.id}`;
+
+    html += `
+      <tr class="hover:bg-slate-50/80 transition ${!isAtivo ? 'opacity-60 bg-slate-50/50' : ''}" id="row-predio-${u.id}">
+        <td class="py-2.5 px-3 text-center"><input type="checkbox" class="chk-predio-row w-3.5 h-3.5 rounded text-teal-600 cursor-pointer" value="${u.id}" onchange="atualizarBtnExcluirPrediosLote()"></td>
+        <td class="py-2.5 px-3 text-center font-mono font-bold text-slate-500">${u.id}</td>
+        <td class="py-2.5 px-3">
+          <div class="font-bold text-slate-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-building text-teal-600"></i>
+            <span>${u.nome_unidade}</span>
+          </div>
+          ${u.observacoes ? `<div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-circle-info text-amber-500"></i> ${u.observacoes}</div>` : ''}
+        </td>
+        <td class="py-2.5 px-3">
+          <div class="font-semibold text-slate-800">${u.cliente_nome || '-'}</div>
+          <div class="text-[10px] text-slate-400">ID Cliente: ${u.cliente_id}</div>
+        </td>
+        <td class="py-2.5 px-3 text-slate-600 leading-tight">${endFormatado}</td>
+        <td class="py-2.5 px-3">
+          <div class="font-medium text-slate-800">${u.responsavel_local || '<span class="text-slate-400 italic">Não informado</span>'}</div>
+        </td>
+        <td class="py-2.5 px-3">${telBtn}</td>
+        <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-700">${cotaTxt}</td>
+        <td class="py-2.5 px-3 text-center">${badgeStatus}</td>
+        <td class="py-2.5 px-3 text-center">
+          <div class="flex items-center justify-center gap-1">
+            <button type="button" onclick="abrirModalEditarPredio(${u.id})" class="p-1.5 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded transition" title="Editar Dados do Prédio">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button type="button" onclick="copiarLinkDiretoPredio('${linkAuto}', '${u.nome_unidade.replace(/'/g, "\\'")}')" class="p-1.5 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded transition" title="Copiar Link de Autoatendimento">
+              <i class="fa-solid fa-link"></i>
+            </button>
+            <a href="${linkAuto}" target="_blank" class="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition" title="Abrir Página de Pedido em Nova Aba">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+            <button type="button" onclick="excluirPredio(${u.id}, '${u.nome_unidade.replace(/'/g, "\\'")}')" class="p-1.5 text-slate-600 hover:text-rose-700 hover:bg-rose-50 rounded transition" title="${isAtivo ? 'Inativar / Excluir Prédio' : 'Excluir Prédio'}">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
+function copiarLinkDiretoPredio(path, nome) {
+  const fullUrl = obterBasePublicaLink() + path;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      alert(`Link do ${nome} copiado para a área de transferência!\n\n${fullUrl}`);
+    }).catch(() => {
+      prompt(`Copie o link do ${nome}:`, fullUrl);
+    });
+  } else {
+    prompt(`Copie o link do ${nome}:`, fullUrl);
+  }
+}
+
+function popularSelectFornecedoresPermitidos(selecionadosJson = '[]') {
+  const sel = document.getElementById('predioFornecedoresPermitidos');
+  if (!sel) return;
+  sel.innerHTML = '';
+  
+  let permitidos = [];
+  try { permitidos = JSON.parse(selecionadosJson) || []; } catch(e) {}
+  
+  const forns = (state.fornecedores || []).filter(f => f.ativo === 1).sort((a,b) => (a.nome_empresa || '').localeCompare(b.nome_empresa || ''));
+  for (const f of forns) {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = `${f.nome_empresa} (${f.cnpj || 'S/ CNPJ'})`;
+    if (permitidos.includes(f.id.toString()) || permitidos.includes(f.id)) {
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  }
+}
+
+function abrirModalNovoPredio() {
+  document.getElementById('formCadastroPredio')?.reset();
+  document.getElementById('predioEditId').value = '';
+  document.getElementById('modalCadastroPredioTitulo').innerHTML = '<i class="fa-solid fa-city text-teal-300"></i> Cadastrar Novo Prédio / Unidade de Entrega';
+  document.getElementById('predioAtivo').checked = true;
+
+  popularSelectFornecedoresPermitidos('[]');
+
+  const cliSel = document.getElementById('filtroGestaoPrediosCliente')?.value || document.getElementById('comprasClienteSelect')?.value || '';
+  if (cliSel) {
+    const sel = document.getElementById('predioClienteId');
+    if (sel) sel.value = cliSel;
+  }
+
+  document.getElementById('modalCadastroPredio')?.classList.remove('hidden');
+}
+
+function abrirModalEditarPredio(id) {
+  const u = (state.gestaoPredios.lista || []).find(item => item.id === id) || (state.unidades || []).find(item => item.id === id);
+  if (!u) return alert('Prédio não encontrado.');
+
+  document.getElementById('predioEditId').value = u.id;
+  document.getElementById('modalCadastroPredioTitulo').innerHTML = `<i class="fa-solid fa-pen-to-square text-teal-300"></i> Editar Prédio: <span class="text-teal-200 font-bold">${u.nome_unidade}</span>`;
+  document.getElementById('predioClienteId').value = u.cliente_id || '';
+  document.getElementById('predioNomeUnidade').value = u.nome_unidade || '';
+  document.getElementById('predioEndereco').value = u.endereco || '';
+  document.getElementById('predioCep').value = u.cep || '';
+  document.getElementById('predioBairro').value = u.bairro || '';
+  document.getElementById('predioCidade').value = u.cidade || '';
+  document.getElementById('predioResponsavelLocal').value = u.responsavel_local || '';
+  document.getElementById('predioTelefoneLocal').value = u.telefone_local || '';
+  document.getElementById('predioCotaLimite').value = u.cota_limite_insumos > 0 ? u.cota_limite_insumos : '';
+  document.getElementById('predioObservacoes').value = u.observacoes || '';
+  document.getElementById('predioAtivo').checked = u.ativo === 1;
+
+  popularSelectFornecedoresPermitidos(u.fornecedores_permitidos_json || '[]');
+
+  document.getElementById('modalCadastroPredio')?.classList.remove('hidden');
+}
+
+async function salvarPredio(e) {
+  e.preventDefault();
+  const id = document.getElementById('predioEditId').value;
+  const clienteId = parseInt(document.getElementById('predioClienteId').value, 10);
+  const nomeUnidade = (document.getElementById('predioNomeUnidade').value || '').trim();
+
+  if (!clienteId) return alert('Selecione o Cliente Contratante.');
+  if (!nomeUnidade) return alert('Informe o Nome do Prédio.');
+
+  const selFornecedores = document.getElementById('predioFornecedoresPermitidos');
+  let fornecedoresPermitidos = [];
+  if (selFornecedores) {
+    fornecedoresPermitidos = Array.from(selFornecedores.selectedOptions).map(opt => parseInt(opt.value, 10));
+  }
+
+  const payload = {
+    cliente_id: clienteId,
+    nome_unidade: nomeUnidade,
+    endereco: document.getElementById('predioEndereco').value.trim(),
+    cep: document.getElementById('predioCep').value.trim(),
+    bairro: document.getElementById('predioBairro').value.trim(),
+    cidade: document.getElementById('predioCidade').value.trim(),
+    responsavel_local: document.getElementById('predioResponsavelLocal').value.trim(),
+    telefone_local: document.getElementById('predioTelefoneLocal').value.trim(),
+    cota_limite_insumos: parseFloat(document.getElementById('predioCotaLimite').value) || 0,
+    observacoes: document.getElementById('predioObservacoes').value.trim(),
+    fornecedores_permitidos_json: JSON.stringify(fornecedoresPermitidos),
+    ativo: document.getElementById('predioAtivo').checked ? 1 : 0
+  };
+
+  try {
+    const url = id ? `/api/unidades/${id}` : '/api/unidades';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalCadastroPredio');
+      alert(`Prédio "${nomeUnidade}" ${id ? 'atualizado' : 'cadastrado'} com sucesso!`);
+      await carregarGestaoPredios();
+      await carregarDadosBase();
+      if (document.getElementById('comprasClienteSelect')) {
+        await carregarDadosComprasMultiPredios();
+      }
+    } else {
+      alert('Erro ao salvar prédio: ' + (json.message || 'Falha ao salvar.'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function excluirPredio(id, nome) {
+  if (!confirm(`Deseja realmente inativar/remover o prédio "${nome}"?\n\nEle será inativado se houver registros vinculados para preservar o histórico.`)) return;
+
+  try {
+    const res = await fetch(`/api/unidades/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      alert(json.message || 'Prédio inativado/removido com sucesso!');
+      await carregarGestaoPredios();
+      await carregarDadosBase();
+      if (document.getElementById('comprasClienteSelect')) {
+        await carregarDadosComprasMultiPredios();
+      }
+    } else {
+      alert('Erro: ' + (json.message || 'Não foi possível remover.'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function exportarGestaoPrediosExcel() {
+  const lista = state.gestaoPredios.listaFiltrada || state.gestaoPredios.lista || [];
+  if (lista.length === 0) return alert('Nenhum prédio cadastrado para exportar.');
+
+  const dados = lista.map((u, idx) => ({
+    'ID': u.id,
+    'Nome_Predio_Unidade': u.nome_unidade,
+    'Cliente_ID': u.cliente_id,
+    'Cliente_Nome': u.cliente_nome || '',
+    'Endereco': u.endereco || '',
+    'Bairro': u.bairro || '',
+    'Cidade': u.cidade || '',
+    'CEP': u.cep || '',
+    'Responsavel_Local': u.responsavel_local || '',
+    'Telefone_WhatsApp': u.telefone_local || '',
+    'Cota_Limite_Insumos_R$': u.cota_limite_insumos || 0,
+    'Observacoes_Entrega': u.observacoes || '',
+    'Situacao': u.ativo === 1 ? 'Ativo' : 'Inativo',
+    'Total_Colaboradores_Lotados': u.total_colaboradores || 0
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(dados);
+  ws['!cols'] = [
+    { wch: 8 }, { wch: 30 }, { wch: 10 }, { wch: 30 }, { wch: 35 },
+    { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 25 }, { wch: 20 },
+    { wch: 18 }, { wch: 35 }, { wch: 12 }, { wch: 14 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'Relacao_Predios');
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `Relacao_Predios_Unidades_${hoje}.xlsx`);
+}
+
+function abrirModalImportarPredios() {
+  document.getElementById('inputArquivoImportarPredios').value = '';
+  document.getElementById('previewImportacaoPrediosContainer').classList.add('hidden');
+  document.getElementById('btnConfirmarImportacaoPredios').disabled = true;
+  state.prediosImportacaoPendente = [];
+
+  const cliSel = document.getElementById('filtroGestaoPrediosCliente')?.value || document.getElementById('comprasClienteSelect')?.value || '';
+  if (cliSel) {
+    const sel = document.getElementById('importarPrediosClientePadrao');
+    if (sel) sel.value = cliSel;
+  }
+
+  document.getElementById('modalImportarPredios')?.classList.remove('hidden');
+}
+
+function baixarModeloImportacaoPredios() {
+  const wb = XLSX.utils.book_new();
+
+  // Aba 1: Modelo_Predios
+  const exemplo = [
+    {
+      'Nome_Predio': 'Torre A - Edifício Horizonte',
+      'Cliente': '1',
+      'Endereco': 'Av. Paulista, 1000',
+      'Bairro': 'Bela Vista',
+      'Cidade': 'São Paulo',
+      'CEP': '01310-100',
+      'Responsavel': 'Síndico Roberto Ferreira',
+      'Telefone': '(11) 98888-1111',
+      'Cota_Insumos': 1500.00,
+      'Observacoes': 'Entregar na doca de carga das 08h às 11h'
+    },
+    {
+      'Nome_Predio': 'Torre B - Bloco Administrativo',
+      'Cliente': '1',
+      'Endereco': 'Av. Paulista, 1000 - Fundos',
+      'Bairro': 'Bela Vista',
+      'Cidade': 'São Paulo',
+      'CEP': '01310-100',
+      'Responsavel': 'Zelador Carlos Alberto',
+      'Telefone': '(11) 98888-2222',
+      'Cota_Insumos': 1200.00,
+      'Observacoes': 'Portaria 2'
+    },
+    {
+      'Nome_Predio': 'Prédio 03 - Auditório & Eventos',
+      'Cliente': 'Rede de Ensino & Faculdades Futuro S/A',
+      'Endereco': 'Rua Augusta, 500',
+      'Bairro': 'Consolação',
+      'Cidade': 'São Paulo',
+      'CEP': '01305-000',
+      'Responsavel': 'Encarregada Sônia',
+      'Telefone': '(11) 97777-3333',
+      'Cota_Insumos': 800.00,
+      'Observacoes': 'Recebimento de segunda a sexta'
+    }
+  ];
+
+  const wsModelo = XLSX.utils.json_to_sheet(exemplo);
+  wsModelo['!cols'] = [
+    { wch: 32 }, { wch: 25 }, { wch: 30 }, { wch: 18 }, { wch: 18 },
+    { wch: 14 }, { wch: 26 }, { wch: 18 }, { wch: 15 }, { wch: 35 }
+  ];
+  XLSX.utils.book_append_sheet(wb, wsModelo, 'Modelo_Predios');
+
+  // Aba 2: Guia de Clientes e IDs
+  const guiaClientes = (state.clientes || []).map(c => ({
+    'ID_Cliente': c.id,
+    'Nome_Fantasia': c.nome_fantasia || c.nome_razao_social,
+    'Razao_Social': c.nome_razao_social || '',
+    'CNPJ': c.cnpj || ''
+  }));
+  const wsGuia = XLSX.utils.json_to_sheet(guiaClientes);
+  wsGuia['!cols'] = [{ wch: 12 }, { wch: 30 }, { wch: 35 }, { wch: 20 }];
+  XLSX.utils.book_append_sheet(wb, wsGuia, 'Guia_Clientes_IDs');
+
+  XLSX.writeFile(wb, 'Modelo_Importacao_Predios_SISFAC.xlsx');
+}
+
+function processarArquivoImportacaoPredios(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet);
+
+      if (!rawRows || rawRows.length === 0) {
+        return alert('A planilha selecionada está vazia.');
+      }
+
+      const clientePadraoId = parseInt(document.getElementById('importarPrediosClientePadrao')?.value, 10) || state.clientes[0]?.id;
+      const predios = [];
+
+      rawRows.forEach((row, idx) => {
+        const getVal = (chaves) => {
+          for (const k of Object.keys(row)) {
+            const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (const ch of chaves) {
+              if (cleanK.includes(ch)) return row[k];
+            }
+          }
+          return '';
+        };
+
+        const nomePredio = getVal(['nomepredio', 'predio', 'unidade', 'bloco', 'local', 'nome']);
+        if (!nomePredio || !String(nomePredio).trim()) return;
+
+        const cliente = getVal(['cliente', 'client', 'contratante', 'idcliente']) || clientePadraoId;
+        const endereco = getVal(['endereco', 'rua', 'logradouro']);
+        const bairro = getVal(['bairro']);
+        const cidade = getVal(['cidade', 'municipio']);
+        const cep = getVal(['cep']);
+        const responsavel = getVal(['responsavel', 'sindico', 'zelador', 'contato']);
+        const telefone = getVal(['telefone', 'whatsapp', 'celular', 'fone', 'tel']);
+        const cota = parseFloat(getVal(['cota', 'cotainsumos', 'limite', 'valor'])) || 0;
+        const obs = getVal(['observacao', 'observacoes', 'obs', 'instrucao', 'instrucoes']);
+
+        predios.push({
+          cliente,
+          nome_unidade: String(nomePredio).trim(),
+          endereco: String(endereco || '').trim(),
+          bairro: String(bairro || '').trim(),
+          cidade: String(cidade || '').trim(),
+          cep: String(cep || '').trim(),
+          responsavel_local: String(responsavel || '').trim(),
+          telefone_local: String(telefone || '').trim(),
+          cota_limite_insumos: cota,
+          observacoes: String(obs || '').trim()
+        });
+      });
+
+      if (predios.length === 0) {
+        return alert('Nenhum prédio com nome válido foi identificado na planilha.');
+      }
+
+      state.prediosImportacaoPendente = predios;
+
+      const container = document.getElementById('previewImportacaoPrediosContainer');
+      const qtdEl = document.getElementById('previewImportacaoPrediosQtd');
+      const tbody = document.getElementById('previewImportacaoPrediosBody');
+      const btn = document.getElementById('btnConfirmarImportacaoPredios');
+
+      if (qtdEl) qtdEl.textContent = `${predios.length} prédio(s) detectado(s)`;
+      if (tbody) {
+        tbody.innerHTML = predios.slice(0, 10).map(p => `
+          <tr>
+            <td class="p-1.5 font-bold text-slate-800">${p.nome_unidade}</td>
+            <td class="p-1.5 text-slate-600">${p.cliente || '-'}</td>
+            <td class="p-1.5 text-slate-600">${p.responsavel_local || '-'}</td>
+            <td class="p-1.5 text-slate-600">${p.telefone_local || '-'}</td>
+          </tr>
+        `).join('');
+        if (predios.length > 10) {
+          tbody.innerHTML += `<tr><td colspan="4" class="p-1.5 text-center text-slate-400 italic">... e mais ${predios.length - 10} prédio(s)</td></tr>`;
+        }
+      }
+
+      container.classList.remove('hidden');
+      btn.disabled = false;
+    } catch (err) {
+      alert('Erro ao ler planilha: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function confirmarImportacaoPredios() {
+  if (!state.prediosImportacaoPendente || state.prediosImportacaoPendente.length === 0) {
+    return alert('Nenhum prédio pendente para importar.');
+  }
+
+  const btn = document.getElementById('btnConfirmarImportacaoPredios');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Importando...';
+
+  try {
+    const res = await fetch('/api/unidades/importar-lote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unidades: state.prediosImportacaoPendente })
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalImportarPredios');
+      alert(`Importação concluída com sucesso!\n\n${json.inseridos} novo(s) prédio(s) cadastrado(s)\n${json.atualizados} prédio(s) atualizado(s)`);
+      await carregarGestaoPredios();
+      await carregarDadosBase();
+      if (document.getElementById('comprasClienteSelect')) {
+        await carregarDadosComprasMultiPredios();
+      }
+    } else {
+      alert('Erro na importação: ' + (json.message || 'Falha ao importar.'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Importar Todos os Prédios';
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Importar Todos os Prédios';
+  }
+}
+
+// Utilitários
+async function excluirItem(entidade, id) {
+  if (!confirm(`Deseja realmente excluir este registro de ${entidade}?`)) return;
+  try {
+    const res = await fetch(`/api/batch-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entidade, ids: [id] })
+    });
+    const json = await res.json();
+    if (json.success) {
+      if (entidade === 'colaboradores') carregarColaboradores();
+      else if (entidade === 'postos') carregarPostosTrabalho();
+      else if (entidade === 'faltas') carregarFaltas();
+      else if (entidade === 'clientes') carregarClientes();
+      else if (entidade === 'usuarios') carregarUsuarios();
+    }
+  } catch (err) {
+    alert('Erro ao excluir: ' + err.message);
+  }
+}
+
+function fecharModal(modalId) {
+  document.getElementById(modalId)?.classList.add('hidden');
+}
+
+function formatarMoeda(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarData(d) {
+  if (!d) return '-';
+  const p = d.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
+// =============================================================
+// 10. DASHBOARD EXECUTIVO GERAL
+// =============================================================
+async function carregarDashboardExecutivo() {
+  const mesInput = document.getElementById('dashboardMes');
+  const mes = mesInput?.value || state.mesAtual;
+  const containerKpis = document.getElementById('dashboardKpisGrid');
+  const containerLotacao = document.getElementById('dashLotaClientesContainer');
+  const containerFin = document.getElementById('dashFinanceiroContainer');
+  const containerFaltas = document.getElementById('dashFaltasRankingContainer');
+
+  if (containerKpis) {
+    containerKpis.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando indicadores consolidados do SISFAC 2.0...</div>`;
+  }
+
+  try {
+    const res = await fetch(`/api/dashboard/executivo?mes=${mes}`);
+    const data = await res.json();
+    state.dadosDashboard = data;
+    const k = data.kpis || {};
+
+    const totalClientesAtivos = k.clientes_ativos ?? k.totalClientesAtivos ?? 0;
+    const totalPostosContratados = k.postos_totais ?? k.totalPostosContratados ?? 0;
+    const vagasContratadas = k.vagas_contratadas ?? k.vagasContratadas ?? 0;
+    const vagasOcupadas = k.vagas_ocupadas ?? k.vagasOcupadas ?? 0;
+    const vagasAbertas = k.vagas_abertas ?? k.vagasAbertas ?? Math.max(0, vagasContratadas - vagasOcupadas);
+    const taxaOcupacao = vagasContratadas > 0 ? ((vagasOcupadas / vagasContratadas) * 100).toFixed(1) + '%' : '100%';
+    const colaboradoresAtivos = k.colaboradores_ativos ?? k.colaboradoresAtivos ?? 0;
+    const colaboradoresDemitidosMes = k.colaboradores_demitidos_mes ?? k.colaboradoresDemitidosMes ?? 0;
+    const colaboradoresEmFerias = k.colaboradores_em_ferias ?? k.colaboradoresEmFerias ?? 0;
+    const totalFaltasMes = k.faltas_total_mes ?? k.totalFaltasMes ?? 0;
+    const totalFaltasSemCobertura = k.postos_descobertos ?? k.totalFaltasSemCobertura ?? 0;
+    const totalFaltasComCobertura = k.faltas_cobertas ?? k.totalFaltasComCobertura ?? 0;
+    const taxaCoberturaFaltas = totalFaltasMes > 0 ? ((totalFaltasComCobertura / totalFaltasMes) * 100).toFixed(1) + '%' : '100%';
+    const totalGlosasFaturamento = k.glosas_total ?? k.totalGlosasFaturamento ?? 0;
+    const totalDiariasFreelancers = k.custo_total_freelancers ?? k.totalDiariasFreelancers ?? 0;
+    const totalPagoFreelancers = k.totalPagoFreelancers ?? 0;
+    const totalPendenteFreelancers = k.totalPendenteFreelancers ?? (totalDiariasFreelancers - totalPagoFreelancers);
+    const totalVtCalculado = k.beneficios_vt ?? k.totalVtCalculado ?? 0;
+    const totalVaCalculado = k.beneficios_va ?? k.totalVaCalculado ?? 0;
+    const totalBeneficios = k.beneficios_total_geral ?? k.totalBeneficios ?? (totalVtCalculado + totalVaCalculado);
+
+    if (containerKpis) {
+      containerKpis.innerHTML = `
+        <!-- KPI 1: Clientes & Contratos -->
+        <div class="bg-gradient-to-br from-white to-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-slate-500">Clientes Ativos</span>
+            <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-building"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-slate-900">${totalClientesAtivos}</div>
+            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">${totalPostosContratados} postos em contrato</div>
+          </div>
+        </div>
+
+        <!-- KPI 2: Vagas Contratadas -->
+        <div class="bg-gradient-to-br from-white to-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-slate-500">Vagas Contratadas</span>
+            <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-briefcase"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-indigo-900">${vagasContratadas}</div>
+            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">${vagasOcupadas} ocupadas (${taxaOcupacao})</div>
+          </div>
+        </div>
+
+        <!-- KPI 3: Vagas em Aberto (Alerta) -->
+        <div class="bg-gradient-to-br from-white to-amber-50/50 p-4 rounded-xl border ${vagasAbertas > 0 ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'} shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-amber-800">Vagas Abertas</span>
+            <span class="w-8 h-8 rounded-lg ${vagasAbertas > 0 ? 'bg-amber-200 text-amber-900 animate-pulse' : 'bg-slate-100 text-slate-500'} flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-triangle-exclamation"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-amber-700">${vagasAbertas}</div>
+            <div class="text-[11px] text-amber-800 font-bold mt-0.5">${vagasAbertas > 0 ? 'Requer contratação/alocação' : 'Quadro 100% preenchido'}</div>
+          </div>
+        </div>
+
+        <!-- KPI 4: Colaboradores Ativos -->
+        <div class="bg-gradient-to-br from-white to-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-slate-500">Efetivo Ativo</span>
+            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-users"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-slate-900">${colaboradoresAtivos}</div>
+            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">${colaboradoresDemitidosMes} demissões no mês</div>
+          </div>
+        </div>
+
+        <!-- KPI 5: Colaboradores em Férias -->
+        <div class="bg-gradient-to-br from-white to-sky-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-sky-800">Em Férias</span>
+            <span class="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-umbrella-beach"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-sky-900">${colaboradoresEmFerias}</div>
+            <div class="text-[11px] text-sky-700 font-semibold mt-0.5">Período ativo na competência</div>
+          </div>
+        </div>
+
+        <!-- KPI 6: Faltas no Mês -->
+        <div class="bg-gradient-to-br from-white to-rose-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-rose-800">Faltas no Mês</span>
+            <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-calendar-xmark"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-rose-700">${totalFaltasMes}</div>
+            <div class="text-[11px] text-rose-600 font-semibold mt-0.5">${totalFaltasSemCobertura} sem cobertura (${taxaCoberturaFaltas} cobertas)</div>
+          </div>
+        </div>
+
+        <!-- KPI 7: Glosas de Faturamento -->
+        <div class="bg-gradient-to-br from-white to-red-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-red-800">Glosas Faturamento</span>
+            <span class="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-money-bill-trend-down"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-xl font-black text-red-700">${formatarMoeda(totalGlosasFaturamento)}</div>
+            <div class="text-[11px] text-red-600 font-semibold mt-0.5">Descontos por desfalque</div>
+          </div>
+        </div>
+
+        <!-- KPI 8: Diárias Freelancers -->
+        <div class="bg-gradient-to-br from-white to-amber-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-amber-800">Total Freelancers</span>
+            <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-hand-holding-dollar"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-xl font-black text-amber-700">${formatarMoeda(totalDiariasFreelancers)}</div>
+            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">${formatarMoeda(totalPagoFreelancers)} pagos / ${formatarMoeda(totalPendenteFreelancers)} a pagar</div>
+          </div>
+        </div>
+
+        <!-- KPI 9: Total Vale Transporte (VT) -->
+        <div class="bg-gradient-to-br from-white to-emerald-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-emerald-800">Total VT (Transporte)</span>
+            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-bus"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-xl font-black text-emerald-700">${formatarMoeda(totalVtCalculado)}</div>
+            <div class="text-[11px] text-emerald-700 font-semibold mt-0.5">Calculado separadamente</div>
+          </div>
+        </div>
+
+        <!-- KPI 10: Total Vale Alimentação (VA) -->
+        <div class="bg-gradient-to-br from-white to-violet-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase text-violet-800">Total VA (Alimentação)</span>
+            <span class="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-utensils"></i></span>
+          </div>
+          <div class="mt-2">
+            <div class="text-xl font-black text-violet-700">${formatarMoeda(totalVaCalculado)}</div>
+            <div class="text-[11px] text-violet-700 font-semibold mt-0.5">Calculado separadamente</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Painel 1: Lotação Top Clientes
+    const lotaLista = data.clientesLota || data.lotacaoClientes || [];
+    if (containerLotacao) {
+      if (!lotaLista || lotaLista.length === 0) {
+        containerLotacao.innerHTML = '<div class="text-xs text-slate-400 py-6 text-center">Nenhum cliente cadastrado.</div>';
+      } else {
+        containerLotacao.innerHTML = '';
+        lotaLista.forEach(cl => {
+          const contratadas = cl.contratadas ?? cl.vagas_totais ?? 0;
+          const ocupadas = cl.ocupadas ?? cl.vagas_ocupadas ?? 0;
+          const abertas = Math.max(0, contratadas - ocupadas);
+          const pct = Math.min(100, Math.round(contratadas > 0 ? (ocupadas / contratadas) * 100 : (ocupadas > 0 ? 100 : 0)));
+          const temVagasAbertas = abertas > 0;
+          containerLotacao.innerHTML += `
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+                <span class="truncate max-w-[200px]">${cl.nome_fantasia || 'Cliente'}</span>
+                <span class="${temVagasAbertas ? 'text-amber-700 font-bold' : 'text-emerald-700'}">${ocupadas} / ${contratadas} vagas (${pct}%)</span>
+              </div>
+              <div class="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+                <div class="h-2 rounded-full ${pct >= 100 ? 'bg-emerald-500' : (temVagasAbertas ? 'bg-amber-500' : 'bg-indigo-600')}" style="width: ${pct}%"></div>
+              </div>
+              <div class="flex items-center justify-between text-[11px] mt-1.5">
+                <span class="text-slate-500">ID: #${cl.id}</span>
+                ${temVagasAbertas 
+                  ? `<span class="bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded text-[10px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${abertas} vaga(s) em aberto</span>` 
+                  : `<span class="text-emerald-700 font-semibold text-[10px]"><i class="fa-solid fa-circle-check mr-1"></i>Completo</span>`}
+              </div>
+            </div>
+          `;
+        });
+      }
+    }
+
+    // Painel 2: Comparativo Financeiro Operacional
+    if (containerFin) {
+      containerFin.innerHTML = `
+        <div class="space-y-3">
+          <div class="p-3 bg-violet-50/60 rounded-lg border border-violet-200">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-violet-950 flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-violet-600"></i> Total Geral de Benefícios</span>
+              <span class="font-black text-violet-900">${formatarMoeda(totalBeneficios)}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-violet-200/60 text-[11px]">
+              <div class="bg-white p-2 rounded border border-violet-100">
+                <span class="text-slate-500 block font-semibold">🚌 Vale Transporte (VT):</span>
+                <span class="font-bold text-emerald-700 text-xs">${formatarMoeda(totalVtCalculado)}</span>
+              </div>
+              <div class="bg-white p-2 rounded border border-violet-100">
+                <span class="text-slate-500 block font-semibold">🍽️ Vale Alimentação (VA):</span>
+                <span class="font-bold text-purple-700 text-xs">${formatarMoeda(totalVaCalculado)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-amber-50/60 rounded-lg border border-amber-200">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-amber-950 flex items-center gap-1.5"><i class="fa-solid fa-user-clock text-amber-600"></i> Freelancers Operacionais</span>
+              <span class="font-black text-amber-900">${formatarMoeda(totalDiariasFreelancers)}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-amber-200/60 text-[11px]">
+              <div class="bg-white p-2 rounded border border-amber-100">
+                <span class="text-slate-500 block font-semibold">Pago (Baixado):</span>
+                <span class="font-bold text-emerald-700 text-xs">${formatarMoeda(totalPagoFreelancers)}</span>
+              </div>
+              <div class="bg-white p-2 rounded border border-amber-100">
+                <span class="text-slate-500 block font-semibold">Pendente (A Pagar):</span>
+                <span class="font-bold text-amber-700 text-xs">${formatarMoeda(totalPendenteFreelancers)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-red-50/60 rounded-lg border border-red-200">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-red-950 flex items-center gap-1.5"><i class="fa-solid fa-circle-minus text-red-600"></i> Glosas & Descontos em Faturas</span>
+              <span class="font-black text-red-700">${formatarMoeda(totalGlosasFaturamento)}</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">Impacto direto no faturamento mensal por ausência de cobertura em postos de serviço.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // Painel 3: Ranking de Faltas
+    const faltasLista = data.topFaltasClientes || data.faltasRanking || [];
+    if (containerFaltas) {
+      if (!faltasLista || faltasLista.length === 0) {
+        containerFaltas.innerHTML = '<div class="text-xs text-slate-400 py-6 text-center">Nenhuma falta registrada no mês de competência.</div>';
+      } else {
+        containerFaltas.innerHTML = '';
+        faltasLista.forEach((f, idx) => {
+          const nomeCli = f.cliente_nome || f.nome_fantasia || ('Cliente #' + (f.cliente_id || (idx + 1)));
+          const clienteIdParam = f.cliente_id ? f.cliente_id : 'null';
+          containerFaltas.innerHTML += `
+            <div class="p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg border border-slate-200 flex items-center justify-between text-xs transition">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center justify-center">${idx + 1}</span>
+                <span class="font-bold text-slate-800 truncate max-w-[140px]" title="${escapeJsString(nomeCli)}">${nomeCli}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded text-[11px]">${f.total_faltas} faltas</span>
+                ${f.faltas_glosa ? `<span class="bg-red-200 text-red-900 font-bold px-1.5 py-0.5 rounded text-[10px]" title="Faltas sem cobertura (Glosas)">${f.faltas_glosa} glosas</span>` : ''}
+                <button onclick="abrirExplorarDashboard(${clienteIdParam})" class="text-xs bg-slate-200 hover:bg-indigo-600 hover:text-white text-slate-700 p-1 px-1.5 rounded transition shadow-2xs font-semibold flex items-center gap-1" title="Explorar detalhes das faltas deste cliente">
+                  <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Ver
+                </button>
+              </div>
+            </div>
+          `;
+        });
+      }
+    }
+
+  } catch (err) {
+    console.error('Erro ao carregar Dashboard Executivo:', err);
+    if (containerKpis) containerKpis.innerHTML = `<div class="col-span-full py-6 text-center text-red-600 font-bold">Erro ao carregar indicadores: ${err.message}</div>`;
+  }
+}
+
+// =============================================================
+// 11. CENTRAL UNIFICADA DE RELATÓRIOS
+// =============================================================
+function abrirRelatorio(tipo) {
+  state.relatorioTipoAtual = tipo;
+  const sel = document.getElementById('relatorioTipoSelect');
+  if (sel) sel.value = tipo;
+  navegarPara('relatorios');
+}
+
+function trocarTipoRelatorio(tipo) {
+  state.relatorioTipoAtual = tipo;
+  carregarRelatorioAtual();
+}
+
+async function carregarRelatorioAtual() {
+  const tipo = state.relatorioTipoAtual || document.getElementById('relatorioTipoSelect')?.value || 'admitidos-demitidos';
+  state.relatorioTipoAtual = tipo;
+
+  const mesInput = document.getElementById('relatorioMesFiltro');
+  const mes = mesInput?.value || state.mesAtual;
+  const clienteId = document.getElementById('relatorioClienteFiltro')?.value || '';
+
+  const cardsContainer = document.getElementById('relatorioCardsResumo');
+  const tabelaContainer = document.getElementById('relatorioTabelaContainer');
+  const tituloEl = document.getElementById('relatorioTituloExibicao');
+  const subtituloEl = document.getElementById('relatorioSubtituloExibicao');
+  const dataEmissaoEl = document.getElementById('relatorioDataEmissao');
+
+  if (dataEmissaoEl) {
+    dataEmissaoEl.textContent = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+  }
+
+  if (tabelaContainer) {
+    tabelaContainer.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Gerando relatório consolidado...</div>`;
+  }
+
+  let endpoint = '';
+  if (tipo === 'admitidos-demitidos') endpoint = '/api/relatorios/admitidos-demitidos';
+  else if (tipo === 'ferias-mensais') endpoint = '/api/relatorios/ferias-mensais';
+  else if (tipo === 'freelancers') endpoint = '/api/relatorios/freelancers';
+  else if (tipo === 'glosas') endpoint = '/api/relatorios/glosas';
+  else if (tipo === 'beneficios') endpoint = '/api/relatorios/beneficios';
+
+  const params = [];
+  if (mes) params.push(`mes=${mes}`);
+  if (clienteId) params.push(`cliente_id=${clienteId}`);
+  if (params.length > 0) endpoint += `?${params.join('&')}`;
+
+  try {
+    const res = await fetch(endpoint);
+    const data = await res.json();
+    state.dadosRelatorioAtual = data;
+
+    // 1. ADMITIDOS E DEMITIDOS
+    if (tipo === 'admitidos-demitidos') {
+      const lista = data.colaboradores || data.lista || [];
+      state.dadosRelatorioAtual.lista = lista;
+
+      const totalAdm = data.total_admitidos ?? data.resumo?.totalAdmitidos ?? 0;
+      const totalDem = data.total_demitidos ?? data.resumo?.totalDemitidos ?? 0;
+      const totalAtivos = data.total_ativos ?? data.resumo?.efetivoTotalAtivo ?? 0;
+      const turnover = (data.taxa_turnover ?? data.resumo?.taxaRotatividade ?? 0) + '%';
+
+      if (tituloEl) tituloEl.textContent = 'Relatório de Admissões, Demissões & Turnover';
+      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Efetivo Total Ativo: ${totalAtivos}`;
+
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-emerald-800">Total Admitidos</span>
+            <div class="text-2xl font-black text-emerald-700 mt-1">${totalAdm}</div>
+            <span class="text-[10px] text-emerald-600 font-semibold">Novas contratações</span>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-rose-800">Total Demitidos</span>
+            <div class="text-2xl font-black text-rose-700 mt-1">${totalDem}</div>
+            <span class="text-[10px] text-rose-600 font-semibold">Desligamentos no mês</span>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-blue-800">Saldo Líquido</span>
+            <div class="text-2xl font-black ${(totalAdm - totalDem) >= 0 ? 'text-blue-700' : 'text-red-700'} mt-1">
+              ${(totalAdm - totalDem) > 0 ? '+' : ''}${totalAdm - totalDem}
+            </div>
+            <span class="text-[10px] text-blue-600 font-semibold">Variação do efetivo</span>
+          </div>
+          <div class="bg-purple-50 border border-purple-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-purple-800">Taxa de Turnover</span>
+            <div class="text-2xl font-black text-purple-700 mt-1">${turnover}</div>
+            <span class="text-[10px] text-purple-600 font-semibold">Índice de rotatividade</span>
+          </div>
+        `;
+      }
+
+      if (tabelaContainer) {
+        if (!lista || lista.length === 0) {
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhuma movimentação de admissão ou demissão registrada no período.</div>`;
+        } else {
+          let rowsHtml = '';
+          lista.forEach(item => {
+            const isDem = (item.status_colaborador === 'Demitido' || item.ativo === 0) && item.data_demissao;
+            const dataEvento = isDem ? item.data_demissao : item.data_admissao;
+            const motivo = isDem ? (item.motivo_demissao || 'Desligamento') : 'Contratação / Admissão';
+
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2 py-0.5 rounded text-xs font-bold ${!isDem ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                    ${!isDem ? '<i class="fa-solid fa-user-plus mr-1"></i>Admissão' : '<i class="fa-solid fa-user-minus mr-1"></i>Demissão'}
+                  </span>
+                </td>
+                <td class="px-4 py-3 font-bold text-slate-900">${item.nome}</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500">${item.cpf || 'Não informado'}</td>
+                <td class="px-4 py-3 text-xs font-semibold text-slate-700">${item.nome_cargo || '-'}</td>
+                <td class="px-4 py-3 text-xs text-slate-600">
+                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Reserva Técnica'}</div>
+                  <div class="text-[11px] text-slate-500">${item.nome_posto || 'Sem posto'}</div>
+                </td>
+                <td class="px-4 py-3 text-xs font-bold text-slate-800">${formatarData(dataEvento)}</td>
+                <td class="px-4 py-3 text-xs text-slate-600">${motivo}</td>
+              </tr>
+            `;
+          });
+
+          tabelaContainer.innerHTML = `
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3 text-center">Tipo</th>
+                  <th class="px-4 py-3">Colaborador</th>
+                  <th class="px-4 py-3">CPF</th>
+                  <th class="px-4 py-3">Função</th>
+                  <th class="px-4 py-3">Cliente / Posto</th>
+                  <th class="px-4 py-3">Data do Evento</th>
+                  <th class="px-4 py-3">Motivo / Detalhes</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          `;
+        }
+      }
+    }
+
+    // 2. FÉRIAS MENSAIS & COBERTURAS
+    else if (tipo === 'ferias-mensais') {
+      const lista = data.ferias || data.lista || [];
+      state.dadosRelatorioAtual.lista = lista;
+
+      const totalFerias = data.total_em_ferias ?? data.resumo?.totalEmFerias ?? lista.length;
+      const totalCobertos = data.total_cobertos_freelance ?? data.resumo?.cobertasFreelancer ?? 0;
+      const custoTotal = data.custo_total_cobertura ?? data.resumo?.custoTotalCoberturas ?? 0;
+
+      if (tituloEl) tituloEl.textContent = 'Relatório Mensal de Férias & Coberturas Operacionais';
+      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Histórico e Programação`;
+
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-sky-800">Total em Férias</span>
+            <div class="text-2xl font-black text-sky-700 mt-1">${totalFerias}</div>
+            <span class="text-[10px] text-sky-600 font-semibold">Colaboradores no mês</span>
+          </div>
+          <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-indigo-800">Períodos Registrados</span>
+            <div class="text-2xl font-black text-indigo-700 mt-1">${lista.length}</div>
+            <span class="text-[10px] text-indigo-600 font-semibold">Histórico no mês</span>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-amber-800">Com Freelancer</span>
+            <div class="text-2xl font-black text-amber-700 mt-1">${totalCobertos}</div>
+            <span class="text-[10px] text-amber-600 font-semibold">Cobertura terceirizada</span>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-emerald-800">Custo Coberturas</span>
+            <div class="text-2xl font-black text-emerald-700 mt-1">${formatarMoeda(custoTotal)}</div>
+            <span class="text-[10px] text-emerald-600 font-semibold">Investimento em diárias</span>
+          </div>
+        `;
+      }
+
+      if (tabelaContainer) {
+        if (!lista || lista.length === 0) {
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum registro de férias encontrado para a competência.</div>`;
+        } else {
+          let rowsHtml = '';
+          lista.forEach(item => {
+            const titular = item.titular_nome || item.nome_colaborador || item.nome || '-';
+            const cpf = item.cpf || item.colaborador_cpf || '-';
+            const freelancer = item.freelancer_nome || item.nome_freelancer || '-';
+
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="px-4 py-3">
+                  <div class="font-bold text-slate-900">${titular}</div>
+                  <div class="text-xs text-slate-400 font-mono">${cpf}</div>
+                </td>
+                <td class="px-4 py-3 text-xs font-semibold text-slate-700">${item.nome_cargo || '-'}</td>
+                <td class="px-4 py-3 text-xs text-slate-600">
+                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Reserva Técnica'}</div>
+                  <div class="text-[11px] text-slate-500">${item.nome_posto || 'Sem posto'}</div>
+                </td>
+                <td class="px-4 py-3 text-xs font-bold text-slate-800">${formatarData(item.data_inicio)}</td>
+                <td class="px-4 py-3 text-xs font-bold text-slate-800">${formatarData(item.data_fim)}</td>
+                <td class="px-4 py-3 text-center text-xs font-black text-indigo-700">${item.dias_ferias || 30}d</td>
+                <td class="px-4 py-3 text-xs text-slate-600">${item.tipo_ferias || 'Integral'}</td>
+                <td class="px-4 py-3 text-center">
+                  ${item.havera_cobertura 
+                    ? '<span class="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded"><i class="fa-solid fa-check mr-1"></i>Coberto</span>' 
+                    : '<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded">Sem Cobertura</span>'}
+                </td>
+                <td class="px-4 py-3 text-xs text-slate-700 font-medium">${freelancer}</td>
+                <td class="px-4 py-3 text-right font-bold text-xs text-emerald-700">${formatarMoeda(item.valor_cobertura || 0)}</td>
+              </tr>
+            `;
+          });
+
+          tabelaContainer.innerHTML = `
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3">Colaborador</th>
+                  <th class="px-4 py-3">Função</th>
+                  <th class="px-4 py-3">Cliente / Posto</th>
+                  <th class="px-4 py-3">Início</th>
+                  <th class="px-4 py-3">Término</th>
+                  <th class="px-4 py-3 text-center">Dias</th>
+                  <th class="px-4 py-3">Tipo</th>
+                  <th class="px-4 py-3 text-center">Cobertura</th>
+                  <th class="px-4 py-3">Freelancer Designado</th>
+                  <th class="px-4 py-3 text-right">Custo Cobertura</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          `;
+        }
+      }
+    }
+
+    // 3. FREELANCERS & DIÁRIAS
+    else if (tipo === 'freelancers') {
+      const lista = data.freelancers || data.lista || [];
+      state.dadosRelatorioAtual.lista = lista;
+
+      const totalDiarias = data.total_diarias_geral ?? data.resumo?.totalDiarias ?? 0;
+      const valorGeral = data.valor_total_geral ?? data.resumo?.totalGeral ?? 0;
+      const valorPago = data.valor_total_pago ?? data.resumo?.totalPago ?? 0;
+      const valorPendente = data.valor_total_pendente ?? data.resumo?.totalPendente ?? (valorGeral - valorPago);
+
+      if (tituloEl) tituloEl.textContent = 'Demonstrativo Mensal de Freelancers & Diárias';
+      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Fechamento de Diárias e PIX`;
+
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-slate-600">Total Diárias</span>
+            <div class="text-2xl font-black text-slate-900 mt-1">${totalDiarias}</div>
+            <span class="text-[10px] text-slate-500 font-semibold">Escalações realizadas</span>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-amber-800">Valor Total</span>
+            <div class="text-2xl font-black text-amber-700 mt-1">${formatarMoeda(valorGeral)}</div>
+            <span class="text-[10px] text-amber-600 font-semibold">Custo total do período</span>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-emerald-800">Total Pago</span>
+            <div class="text-2xl font-black text-emerald-700 mt-1">${formatarMoeda(valorPago)}</div>
+            <span class="text-[10px] text-emerald-600 font-semibold">Diárias já quitadas</span>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-rose-800">Total a Pagar</span>
+            <div class="text-2xl font-black text-rose-700 mt-1">${formatarMoeda(valorPendente)}</div>
+            <span class="text-[10px] text-rose-600 font-semibold">Pendentes de PIX</span>
+          </div>
+        `;
+      }
+
+      if (tabelaContainer) {
+        if (!lista || lista.length === 0) {
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum registro de freelancer encontrado para a competência.</div>`;
+        } else {
+          let rowsHtml = '';
+          lista.forEach(item => {
+            const diarias = item.total_diarias_mes ?? item.diarias ?? 0;
+            const valTotal = item.valor_total_mes ?? item.valor_diaria ?? 0;
+            const valPago = item.valor_pago ?? 0;
+            const valPendente = item.valor_pendente ?? (valTotal - valPago);
+            const isTotalPago = valTotal > 0 && valPendente === 0;
+
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="px-4 py-3">
+                  <div class="font-bold text-slate-900">${item.nome}</div>
+                  <div class="text-xs text-slate-400 font-mono">${item.telefone || '-'}</div>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs font-bold text-blue-700">${item.chave_pix || '-'} <span class="text-[10px] text-slate-400 font-normal">(${item.tipo_chave_pix || 'PIX'})</span></td>
+                <td class="px-4 py-3 text-xs text-slate-600">${item.banco || '-'}</td>
+                <td class="px-4 py-3 text-center text-xs font-bold text-indigo-700">${diarias} plantão(ões)</td>
+                <td class="px-4 py-3 text-right font-bold text-xs text-emerald-700">${formatarMoeda(valPago)}</td>
+                <td class="px-4 py-3 text-right font-bold text-xs ${valPendente > 0 ? 'text-rose-700' : 'text-slate-400'}">${formatarMoeda(valPendente)}</td>
+                <td class="px-4 py-3 text-right font-black text-xs text-slate-900">${formatarMoeda(valTotal)}</td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isTotalPago ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                    ${isTotalPago ? '<i class="fa-solid fa-check mr-1"></i>Quitado' : '<i class="fa-solid fa-clock mr-1"></i>Pendente'}
+                  </span>
+                </td>
+              </tr>
+            `;
+          });
+
+          tabelaContainer.innerHTML = `
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3">Freelancer</th>
+                  <th class="px-4 py-3">Chave PIX</th>
+                  <th class="px-4 py-3">Banco</th>
+                  <th class="px-4 py-3 text-center">Total Plantões</th>
+                  <th class="px-4 py-3 text-right">Valor Pago</th>
+                  <th class="px-4 py-3 text-right">Valor Pendente</th>
+                  <th class="px-4 py-3 text-right">Valor Total</th>
+                  <th class="px-4 py-3 text-center">Situação</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+              <tfoot class="bg-slate-900 text-white font-bold text-xs">
+                <tr>
+                  <td colspan="4" class="px-4 py-3 text-right uppercase">Totais Gerais:</td>
+                  <td class="px-4 py-3 text-right text-emerald-300">${formatarMoeda(valorPago)}</td>
+                  <td class="px-4 py-3 text-right text-rose-300">${formatarMoeda(valorPendente)}</td>
+                  <td class="px-4 py-3 text-right text-amber-300 text-sm">${formatarMoeda(valorGeral)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          `;
+        }
+      }
+    }
+
+    // 4. GLOSAS E DESCONTOS DE FATURAMENTO
+    else if (tipo === 'glosas') {
+      const lista = data.glosas || data.lista || [];
+      state.dadosRelatorioAtual.lista = lista;
+
+      const totalGlosas = data.total_glosas_ocorrencias ?? data.resumo?.totalFaltasDescobertas ?? lista.length;
+      const valorGlosado = data.valor_total_glosado ?? data.resumo?.valorTotalGlosas ?? 0;
+      const valorDescontado = data.valor_descontado_fatura ?? data.resumo?.valorGlosasDescontadas ?? 0;
+      const valorPendente = data.valor_pendente_glosas ?? data.resumo?.valorGlosasPendentes ?? (valorGlosado - valorDescontado);
+
+      if (tituloEl) tituloEl.textContent = 'Relatório de Glosas & Descontos de Faturamento';
+      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Postos Descobertos e Descontos`;
+
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-rose-800">Faltas Descobertas</span>
+            <div class="text-2xl font-black text-rose-700 mt-1">${totalGlosas}</div>
+            <span class="text-[10px] text-rose-600 font-semibold">Ausências sem cobertura</span>
+          </div>
+          <div class="bg-red-50 border border-red-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-red-800">Valor Total Glosas</span>
+            <div class="text-2xl font-black text-red-700 mt-1">${formatarMoeda(valorGlosado)}</div>
+            <span class="text-[10px] text-red-600 font-semibold">Prejuízo total estimado</span>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-blue-800">Glosado em NF</span>
+            <div class="text-2xl font-black text-blue-700 mt-1">${formatarMoeda(valorDescontado)}</div>
+            <span class="text-[10px] text-blue-600 font-semibold">Descontado na fatura</span>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-amber-800">Glosas a Deduzir</span>
+            <div class="text-2xl font-black text-amber-700 mt-1">${formatarMoeda(valorPendente)}</div>
+            <span class="text-[10px] text-amber-600 font-semibold">Ainda não faturadas</span>
+          </div>
+        `;
+      }
+
+      if (tabelaContainer) {
+        if (!lista || lista.length === 0) {
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhuma ocorrência de glosa ou posto descoberto no período.</div>`;
+        } else {
+          let rowsHtml = '';
+          lista.forEach(item => {
+            const isFaturado = item.status_faturamento === 'Descontado na Fatura' || item.status_faturamento === 'Faturado com Desconto';
+            const valGlosa = item.valor_glosa ?? item.valor_desconto_glosa ?? 0;
+            const faltante = item.faltante_nome || item.colaborador_nome || '-';
+            const posto = item.nome_posto || item.nome_unidade || '-';
+
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="px-4 py-3 text-xs font-bold text-slate-800">${formatarData(item.data_falta)}</td>
+                <td class="px-4 py-3 font-bold text-slate-900">${faltante}</td>
+                <td class="px-4 py-3 text-xs font-semibold text-slate-800">${item.cliente_nome || '-'}</td>
+                <td class="px-4 py-3 text-xs text-slate-600">${posto}</td>
+                <td class="px-4 py-3 text-xs text-slate-500">${item.motivo_falta || item.motivo || '-'}</td>
+                <td class="px-4 py-3 text-right font-black text-xs text-red-700">${formatarMoeda(valGlosa)}</td>
+                <td class="px-4 py-3 text-center">
+                  <span class="px-2 py-0.5 rounded text-[11px] font-bold ${isFaturado ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800'}">
+                    ${item.status_faturamento || 'Pendente de Fatura'}
+                  </span>
+                </td>
+              </tr>
+            `;
+          });
+
+          tabelaContainer.innerHTML = `
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3">Data</th>
+                  <th class="px-4 py-3">Colaborador Ausente</th>
+                  <th class="px-4 py-3">Cliente</th>
+                  <th class="px-4 py-3">Posto / Unidade</th>
+                  <th class="px-4 py-3">Motivo da Ausência</th>
+                  <th class="px-4 py-3 text-right">Desconto Glosa (R$)</th>
+                  <th class="px-4 py-3 text-center">Situação Faturamento</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+              <tfoot class="bg-slate-900 text-white font-bold text-xs">
+                <tr>
+                  <td colspan="5" class="px-4 py-3 text-right uppercase">Total de Glosas no Período:</td>
+                  <td class="px-4 py-3 text-right text-red-300 text-sm">${formatarMoeda(valorGlosado)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          `;
+        }
+      }
+    }
+
+    // 5. FOLHA DE BENEFÍCIOS (VA E VT SEPARADOS)
+    else if (tipo === 'beneficios') {
+      const lista = data.itens || data.lista || [];
+      state.dadosRelatorioAtual.lista = lista;
+
+      const totalVT = data.total_geral_vt ?? data.resumo?.totalVt ?? 0;
+      const totalVA = data.total_geral_va ?? data.resumo?.totalVa ?? 0;
+      const totalGeral = data.total_geral_beneficios ?? data.resumo?.totalGeralBeneficios ?? (totalVT + totalVA);
+      const faltasAbatidas = data.total_faltas_descontadas ?? data.resumo?.totalEconomiaFaltas ?? 0;
+
+      if (tituloEl) tituloEl.textContent = 'Demonstrativo de Benefícios (VA e VT Segregados)';
+      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Apuração Individual com Dias Úteis e Faltas Deduzidas`;
+
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-emerald-800">Total Vale Transporte (VT)</span>
+            <div class="text-2xl font-black text-emerald-700 mt-1">${formatarMoeda(totalVT)}</div>
+            <span class="text-[10px] text-emerald-600 font-semibold">Calculado separadamente</span>
+          </div>
+          <div class="bg-purple-50 border border-purple-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-purple-800">Total Vale Alimentação (VA)</span>
+            <div class="text-2xl font-black text-purple-700 mt-1">${formatarMoeda(totalVA)}</div>
+            <span class="text-[10px] text-purple-600 font-semibold">Calculado separadamente</span>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-blue-800">Custo Total Geral</span>
+            <div class="text-2xl font-black text-blue-900 mt-1">${formatarMoeda(totalGeral)}</div>
+            <span class="text-[10px] text-blue-600 font-semibold">VT + VA consolidado</span>
+          </div>
+          <div class="bg-teal-50 border border-teal-200 rounded-xl p-3.5 shadow-sm">
+            <span class="text-[11px] font-bold uppercase text-teal-800">Faltas Descontadas</span>
+            <div class="text-2xl font-black text-teal-700 mt-1">${faltasAbatidas}</div>
+            <span class="text-[10px] text-teal-600 font-semibold">Dias abatidos da folha</span>
+          </div>
+        `;
+      }
+
+      if (tabelaContainer) {
+        if (!lista || lista.length === 0) {
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum colaborador ativo no período selecionado.</div>`;
+        } else {
+          let rowsHtml = '';
+          lista.forEach(item => {
+            const vUnitaria = item.valor_passagem_unitaria || 0;
+            const qtdPass = item.quantidade_passagens_dia || 2;
+            const vt = item.total_vt || 0;
+            const va = item.total_va || 0;
+            const totalColab = item.total_beneficios_colaborador ?? item.total_geral ?? (vt + va);
+
+            rowsHtml += `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="px-4 py-3">
+                  <div class="font-bold text-slate-900">${item.nome}</div>
+                  <div class="text-xs text-slate-400 font-mono">${item.cpf || 'Sem CPF'}</div>
+                </td>
+                <td class="px-4 py-3 text-xs text-slate-700">
+                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Geral'}</div>
+                  <div class="text-[11px] text-slate-500">${item.nome_posto || 'Sem posto'}</div>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs">${item.escala || '5x2'}</td>
+                <td class="px-4 py-3 text-center text-xs">
+                  <span class="font-bold text-slate-800">${item.dias_efetivos || 0}d</span>
+                  ${(item.faltas_mes || 0) > 0 ? `<span class="text-red-500 text-[10px] block font-semibold">(-${item.faltas_mes} faltas)</span>` : ''}
+                </td>
+                <td class="px-4 py-3 text-right font-mono text-xs text-slate-700">${formatarMoeda(vUnitaria)} (${qtdPass}x)</td>
+                <td class="px-4 py-3 text-right font-black text-xs text-emerald-700 bg-emerald-50/30">${formatarMoeda(vt)}</td>
+                <td class="px-4 py-3 text-right font-mono text-xs text-slate-700">${formatarMoeda(item.valor_diario_va || 0)}</td>
+                <td class="px-4 py-3 text-right font-black text-xs text-purple-700 bg-purple-50/30">${formatarMoeda(va)}</td>
+                <td class="px-4 py-3 text-right font-black text-sm text-blue-900 bg-blue-50/40">${formatarMoeda(totalColab)}</td>
+              </tr>
+            `;
+          });
+
+          tabelaContainer.innerHTML = `
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3">Colaborador</th>
+                  <th class="px-4 py-3">Cliente / Posto</th>
+                  <th class="px-4 py-3">Escala</th>
+                  <th class="px-4 py-3 text-center">Dias Efetivos</th>
+                  <th class="px-4 py-3 text-right">Tarifa VT</th>
+                  <th class="px-4 py-3 text-right text-emerald-800 bg-emerald-100/50">Total VT (R$)</th>
+                  <th class="px-4 py-3 text-right">Diária VA</th>
+                  <th class="px-4 py-3 text-right text-purple-800 bg-purple-100/50">Total VA (R$)</th>
+                  <th class="px-4 py-3 text-right text-blue-900 bg-blue-100/50">Total Benefícios (R$)</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+              <tfoot class="bg-slate-900 text-white font-bold text-xs">
+                <tr>
+                  <td colspan="5" class="px-4 py-3 text-right uppercase tracking-wider">Totais Gerais Segregados:</td>
+                  <td class="px-4 py-3 text-right text-emerald-300">${formatarMoeda(totalVT)}</td>
+                  <td></td>
+                  <td class="px-4 py-3 text-right text-purple-300">${formatarMoeda(totalVA)}</td>
+                  <td class="px-4 py-3 text-right text-amber-300 text-sm">${formatarMoeda(totalGeral)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          `;
+        }
+      }
+    }
+
+  } catch (err) {
+    console.error('Erro ao gerar relatório:', err);
+    if (tabelaContainer) {
+      tabelaContainer.innerHTML = `<div class="py-8 text-center text-red-600 font-semibold">Erro ao carregar dados do relatório: ${err.message}</div>`;
+    }
+  }
+}
+
+function exportarRelatorioAtualExcel() {
+  if (!state.dadosRelatorioAtual || !state.dadosRelatorioAtual.lista || state.dadosRelatorioAtual.lista.length === 0) {
+    alert('Nenhum dado para exportar. Selecione os filtros e gere o relatório primeiro.');
+    return;
+  }
+
+  const tipo = state.relatorioTipoAtual;
+  const mes = document.getElementById('relatorioMesFiltro')?.value || state.mesAtual;
+  const lista = state.dadosRelatorioAtual.lista;
+  let dadosExport = [];
+  let nomeArquivo = `Relatorio_${tipo}_${mes}`;
+
+  if (tipo === 'admitidos-demitidos') {
+    dadosExport = lista.map(item => {
+      const isDem = (item.status_colaborador === 'Demitido' || item.ativo === 0) && item.data_demissao;
+      return {
+        'Tipo': isDem ? 'Demissão' : 'Admissão',
+        'Nome do Colaborador': item.nome,
+        'CPF': item.cpf || '',
+        'Cargo / Função': item.nome_cargo || '',
+        'Cliente': item.cliente_nome || 'Reserva Técnica',
+        'Posto de Trabalho': item.nome_posto || '',
+        'Data do Evento': isDem ? (item.data_demissao || '') : (item.data_admissao || ''),
+        'Motivo / Detalhes': isDem ? (item.motivo_demissao || 'Desligamento') : 'Contratação'
+      };
+    });
+  } else if (tipo === 'ferias-mensais') {
+    dadosExport = lista.map(item => ({
+      'Colaborador': item.titular_nome || item.nome_colaborador || item.nome,
+      'CPF': item.cpf || item.colaborador_cpf || '',
+      'Função': item.nome_cargo || '',
+      'Cliente': item.cliente_nome || '',
+      'Posto': item.nome_posto || '',
+      'Início das Férias': item.data_inicio || '',
+      'Fim das Férias': item.data_fim || '',
+      'Dias de Férias': item.dias_ferias || 30,
+      'Tipo de Período': item.tipo_ferias || '',
+      'Houve Cobertura?': item.havera_cobertura ? 'Sim' : 'Não',
+      'Freelancer Designado': item.freelancer_nome || item.nome_freelancer || '',
+      'Valor da Cobertura (R$)': item.valor_cobertura || 0
+    }));
+  } else if (tipo === 'freelancers') {
+    dadosExport = lista.map(item => {
+      const valTotal = item.valor_total_mes ?? item.valor_diaria ?? 0;
+      const valPago = item.valor_pago ?? 0;
+      const valPendente = item.valor_pendente ?? (valTotal - valPago);
+      return {
+        'Nome do Freelancer': item.nome,
+        'Telefone': item.telefone || '',
+        'Chave PIX': item.chave_pix || '',
+        'Tipo Chave': item.tipo_chave_pix || 'PIX',
+        'Banco': item.banco || '',
+        'Total de Diárias': item.total_diarias_mes ?? item.diarias ?? 0,
+        'Valor Pago (R$)': valPago,
+        'Valor Pendente (R$)': valPendente,
+        'Valor Total (R$)': valTotal
+      };
+    });
+  } else if (tipo === 'glosas') {
+    dadosExport = lista.map(item => ({
+      'Data da Falta': item.data_falta || '',
+      'Colaborador Ausente': item.faltante_nome || item.colaborador_nome || '',
+      'Cliente': item.cliente_nome || '',
+      'Posto / Unidade': item.nome_posto || item.nome_unidade || '',
+      'Motivo': item.motivo_falta || item.motivo || '',
+      'Valor Desconto Glosa (R$)': item.valor_glosa ?? item.valor_desconto_glosa ?? 0,
+      'Situação Faturamento': item.status_faturamento || ''
+    }));
+  } else if (tipo === 'beneficios') {
+    dadosExport = lista.map(item => {
+      const vt = item.total_vt || 0;
+      const va = item.total_va || 0;
+      const totalColab = item.total_beneficios_colaborador ?? item.total_geral ?? (vt + va);
+      return {
+        'Colaborador': item.nome,
+        'CPF': item.cpf || '',
+        'Cliente': item.cliente_nome || '',
+        'Posto': item.nome_posto || '',
+        'Escala': item.escala || '',
+        'Dias Efetivos': item.dias_efetivos || 0,
+        'Faltas Descontadas': item.faltas_mes || 0,
+        'Tarifa VT (R$)': item.valor_passagem_unitaria || 0,
+        'Passagens por Dia': item.quantidade_passagens_dia || 2,
+        'Total VT (R$)': vt,
+        'Diária VA (R$)': item.valor_diario_va || 0,
+        'Total VA (R$)': va,
+        'Total Geral Benefícios (R$)': totalColab
+      };
+    });
+  }
+
+  if (typeof XLSX !== 'undefined') {
+    const ws = XLSX.utils.json_to_sheet(dadosExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+    XLSX.writeFile(wb, `${nomeArquivo}.xlsx`);
+  } else {
+    alert('Biblioteca XLSX não está disponível no momento.');
+  }
+}
+
+function imprimirRelatorioAtual() {
+  window.print();
+}
+
+// =============================================================
+// 12. VINCULAR / TRANSFERIR COLABORADORES EM LOTE AO POSTO DE TRABALHO
+// =============================================================
+state.filtroVinculacaoAba = 'todos';
+state.colaboradoresParaVinculacao = [];
+state.colaboradoresSelecionadosIds = new Set();
+state.dadosPostoDestinoVincular = {
+  vagasLivres: 0,
+  postoId: null,
+  clienteId: null,
+  cargoId: null,
+  escala: null
+};
+
+async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clienteNome, cargoId, cargoNome, vagasDisponiveis, escalaPosto) {
+  // Configurar IDs e dados do posto de destino no formulário
+  document.getElementById('vincularPostoId').value = postoId;
+  document.getElementById('vincularClienteId').value = clienteId;
+  document.getElementById('vincularPostoCargoId').value = cargoId || '';
+  document.getElementById('vincularPostoEscala').value = escalaPosto || '5x2';
+
+  document.getElementById('vincularDestinoCliente').textContent = clienteNome;
+  document.getElementById('vincularDestinoPosto').textContent = postoNome;
+  document.getElementById('vincularDestinoCargo').textContent = cargoNome || 'Geral';
+  document.getElementById('vincularDestinoVagas').textContent = `${vagasDisponiveis} vaga(s) livre(s)`;
+  document.getElementById('vincularDestinoEscala').textContent = escalaPosto || '5x2';
+
+  const qtdVagasEl = document.getElementById('qtdVagasLivresPostoInfo');
+  if (qtdVagasEl) qtdVagasEl.textContent = vagasDisponiveis;
+
+  document.getElementById('txtSyncCargoNome').textContent = cargoNome || 'Padrão do Posto';
+  document.getElementById('txtSyncEscalaNome').textContent = escalaPosto || '5x2';
+
+  document.getElementById('chkSyncCargo').checked = true;
+  document.getElementById('chkSyncEscala').checked = true;
+  document.getElementById('vincularBuscaInput').value = '';
+
+  state.colaboradoresSelecionadosIds.clear();
+  state.dadosPostoDestinoVincular = {
+    vagasLivres: vagasDisponiveis,
+    postoId,
+    clienteId,
+    cargoId,
+    escala: escalaPosto
+  };
+
+  state.filtroVinculacaoAba = 'todos';
+  alternarAbaFiltroVinculacao('todos');
+
+  // Garantir dados atualizados dos colaboradores
+  try {
+    const res = await fetch('/api/colaboradores');
+    const dadosCol = await res.json();
+    state.colaboradores = Array.isArray(dadosCol) ? dadosCol : [];
+  } catch (e) {
+    console.error('Erro ao atualizar colaboradores:', e);
+  }
+
+  // Filtrar colaboradores ativos que NÃO estão já alocados neste mesmo posto
+  const listaBase = Array.isArray(state.colaboradores) ? state.colaboradores : [];
+  state.colaboradoresParaVinculacao = listaBase.filter(c => 
+    c.ativo === 1 && c.status_colaborador !== 'Demitido' && c.posto_trabalho_id !== postoId
+  );
+
+  filtrarColaboradoresVinculacao();
+
+  // Alerta de Lotação do Posto de Destino e Opção de Troca
+  const boxAlertaDest = document.getElementById('boxAlertaLotacaoDestinoVincular');
+  const selTrocarDest = document.getElementById('selTrocarDestinoVincularPosto');
+  const txtAlertaDest = document.getElementById('txtAlertaLotacaoDestinoVincular');
+
+  if (vagasDisponiveis <= 0) {
+    if (boxAlertaDest) boxAlertaDest.classList.remove('hidden');
+    if (txtAlertaDest) txtAlertaDest.textContent = `Atenção: O setor "${postoNome}" já atingiu a capacidade máxima (0 vagas disponíveis)!`;
+    if (selTrocarDest) {
+      selTrocarDest.innerHTML = '<option value="">-- Selecione outro setor deste cliente com vagas --</option>';
+      const outrosPostos = (state.postos || []).filter(p => p.cliente_id === clienteId && p.id !== postoId);
+      if (outrosPostos.length === 0) {
+        selTrocarDest.innerHTML += '<option value="" disabled>Nenhum outro setor cadastrado para este cliente</option>';
+      } else {
+        outrosPostos.forEach(p => {
+          const ocup = p.total_ocupados || 0;
+          const lim = p.quantidade_vagas_limite || 1;
+          const livres = Math.max(0, lim - ocup);
+          const estaLotado = livres <= 0;
+          selTrocarDest.innerHTML += `<option value="${p.id}" ${estaLotado ? 'disabled class="text-slate-400 bg-slate-100"' : 'class="font-semibold text-emerald-800"'}>
+            ${p.nome_posto} (${estaLotado ? '⚠️ LOTADO' : `✅ ${livres} vaga(s) livre(s)`})
+          </option>`;
+        });
+      }
+    }
+  } else {
+    if (boxAlertaDest) boxAlertaDest.classList.add('hidden');
+  }
+
+  const modal = document.getElementById('modalVincularColaborador');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function aoTrocarDestinoVincularPosto(novoPostoIdStr) {
+  const novoPostoId = parseInt(novoPostoIdStr, 10);
+  if (!novoPostoId) return;
+
+  const novoPosto = (state.postos || []).find(p => p.id === novoPostoId);
+  if (!novoPosto) return;
+
+  const cliente = (state.clientes || []).find(c => c.id === novoPosto.cliente_id);
+  const clienteNome = cliente ? cliente.nome : (document.getElementById('vincularDestinoCliente')?.textContent || '');
+  const ocup = novoPosto.total_ocupados || 0;
+  const lim = novoPosto.quantidade_vagas_limite || 1;
+  const vagasLivres = Math.max(0, lim - ocup);
+
+  abrirModalVincularColaborador(
+    novoPosto.cliente_id,
+    novoPosto.id,
+    novoPosto.nome_posto,
+    clienteNome,
+    novoPosto.cargo_id,
+    novoPosto.cargo_nome || novoPosto.nome_cargo || '',
+    vagasLivres,
+    novoPosto.escala || '5x2'
+  );
+  if (typeof showToast === 'function') {
+    showToast(`Destino alterado para o setor "${novoPosto.nome_posto}".`, 'info');
+  }
+}
+
+function alternarAbaFiltroVinculacao(aba) {
+  state.filtroVinculacaoAba = aba;
+  ['todos', 'reserva', 'outros'].forEach(tipo => {
+    const btn = document.getElementById(`filtroVincularAba-${tipo}`);
+    if (!btn) return;
+    if (tipo === aba) {
+      btn.className = 'px-2.5 py-1 rounded-md font-bold text-indigo-700 bg-white shadow-xs';
+    } else {
+      btn.className = 'px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900';
+    }
+  });
+  filtrarColaboradoresVinculacao();
+}
+
+function obterColaboradoresFiltradosVinculacao() {
+  const busca = (document.getElementById('vincularBuscaInput')?.value || '').toLowerCase().trim();
+  const aba = state.filtroVinculacaoAba || 'todos';
+  let filtrados = state.colaboradoresParaVinculacao || [];
+
+  if (aba === 'reserva') {
+    filtrados = filtrados.filter(c => !c.posto_trabalho_id);
+  } else if (aba === 'outros') {
+    filtrados = filtrados.filter(c => !!c.posto_trabalho_id);
+  }
+
+  if (busca) {
+    filtrados = filtrados.filter(c => {
+      const nome = (c.nome || '').toLowerCase();
+      const cpf = (c.cpf || '').toLowerCase();
+      const cargo = (c.nome_cargo || '').toLowerCase();
+      const cliente = (c.cliente_nome || '').toLowerCase();
+      const posto = (c.nome_posto || '').toLowerCase();
+      return nome.includes(busca) || cpf.includes(busca) || cargo.includes(busca) || cliente.includes(busca) || posto.includes(busca);
+    });
+  }
+  return filtrados;
+}
+
+function filtrarColaboradoresVinculacao() {
+  const container = document.getElementById('listaCheckboxesColaboradoresVincular');
+  if (!container) return;
+
+  const filtrados = obterColaboradoresFiltradosVinculacao();
+  const qtdEl = document.getElementById('qtdColabsFiltradosVincular');
+  if (qtdEl) qtdEl.textContent = filtrados.length;
+
+  if (filtrados.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 text-center text-xs text-slate-400 font-medium">
+        <i class="fa-solid fa-users-slash text-2xl mb-1 text-slate-300 block"></i>
+        Nenhum colaborador encontrado com os filtros aplicados.
+      </div>
+    `;
+    atualizarDiagnosticoVinculacao();
+    return;
+  }
+
+  container.innerHTML = filtrados.map(c => {
+    const isChecked = state.colaboradoresSelecionadosIds.has(c.id);
+    const isReserva = !c.posto_trabalho_id;
+    return `
+      <label class="flex items-center gap-3 p-2.5 rounded-xl border transition cursor-pointer select-none ${isChecked ? 'bg-indigo-50/80 border-indigo-400 ring-1 ring-indigo-300' : 'bg-white border-slate-200 hover:border-indigo-200 hover:bg-slate-50/80'}">
+        <input type="checkbox" value="${c.id}" ${isChecked ? 'checked' : ''} onchange="aoAlternarCheckboxColaboradorVinculacao(${c.id}, this.checked)" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="font-bold text-xs text-slate-900 truncate">${c.nome}</span>
+            <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${isReserva ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}">
+              ${isReserva ? '🟢 Reserva Técnica' : `🟠 Transf: ${(c.cliente_nome || 'Cliente').toUpperCase()}`}
+            </span>
+          </div>
+          <div class="text-[11px] text-slate-500 truncate mt-0.5">
+            CPF: <span class="font-mono text-slate-600">${c.cpf || 'S/ CPF'}</span> • Cargo: <b class="text-slate-700">${c.nome_cargo || 'Geral'}</b>
+            ${!isReserva ? ` • Posto atual: <i>${c.nome_posto || 'Posto'}</i>` : ''}
+          </div>
+        </div>
+      </label>
+    `;
+  }).join('');
+
+  atualizarDiagnosticoVinculacao();
+}
+
+function aoAlternarCheckboxColaboradorVinculacao(id, isChecked) {
+  if (isChecked) {
+    state.colaboradoresSelecionadosIds.add(id);
+  } else {
+    state.colaboradoresSelecionadosIds.delete(id);
+  }
+  filtrarColaboradoresVinculacao();
+}
+
+function marcarTodosFiltradosVinculacao() {
+  const filtrados = obterColaboradoresFiltradosVinculacao();
+  filtrados.forEach(c => state.colaboradoresSelecionadosIds.add(c.id));
+  filtrarColaboradoresVinculacao();
+}
+
+function desmarcarTodosVinculacao() {
+  state.colaboradoresSelecionadosIds.clear();
+  filtrarColaboradoresVinculacao();
+}
+
+function atualizarDiagnosticoVinculacao() {
+  const total = state.colaboradoresSelecionadosIds.size;
+  const vagasLivres = state.dadosPostoDestinoVincular.vagasLivres || 0;
+  const badgeTotal = document.getElementById('badgeTotalSelecionadosVincular');
+  if (badgeTotal) {
+    badgeTotal.textContent = `${total} selecionado(s)`;
+    badgeTotal.className = total > vagasLivres 
+      ? 'font-bold text-xs bg-rose-100 text-rose-800 px-2.5 py-0.5 rounded-full border border-rose-300' 
+      : 'font-bold text-xs bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full border border-indigo-200';
+  }
+
+  const btnConfirmar = document.getElementById('btnConfirmarVinculacao');
+  if (btnConfirmar) {
+    btnConfirmar.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Confirmar Vinculação (${total} selecionado${total === 1 ? '' : 's'})`;
+  }
+
+  const diag = document.getElementById('vincularCardDiagnostico');
+  if (!diag) return;
+
+  if (total === 0) {
+    diag.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 text-center';
+    diag.innerHTML = '<i class="fa-solid fa-hand-pointer mr-1 text-slate-400"></i> Nenhum colaborador selecionado. Marque os colaboradores desejados na lista acima.';
+    diag.classList.remove('hidden');
+    if (btnConfirmar) btnConfirmar.disabled = true;
+    return;
+  }
+
+  // Contabilizar origem dos selecionados
+  let reservas = 0;
+  let transferencias = 0;
+  const origensTransf = [];
+
+  state.colaboradoresSelecionadosIds.forEach(id => {
+    const colab = (state.colaboradores || []).find(c => c.id === id);
+    if (colab) {
+      if (!colab.posto_trabalho_id) {
+        reservas++;
+      } else {
+        transferencias++;
+        origensTransf.push(`<b>${colab.nome}</b> (libera vaga em <i>${colab.nome_posto}</i> de ${colab.cliente_nome})`);
+      }
+    }
+  });
+
+  diag.classList.remove('hidden');
+
+  if (total > vagasLivres) {
+    diag.className = 'p-3.5 bg-rose-50 border-2 border-rose-300 text-rose-950 rounded-xl text-xs space-y-1.5';
+    diag.innerHTML = `
+      <div class="font-bold flex items-center gap-1.5 text-rose-800">
+        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
+        <span>LIMITE DE VAGAS EXCEDIDO: ${total} selecionados para ${vagasLivres} vaga(s) disponível(is)</span>
+      </div>
+      <p class="text-[11px] text-rose-800 leading-relaxed">
+        Você selecionou mais colaboradores do que o posto comporta. Por favor, <b>desmarque ${total - vagasLivres} colaborador(es)</b> para respeitar o limite contratual do posto.
+      </p>
+    `;
+    if (btnConfirmar) btnConfirmar.disabled = true;
+    return;
+  }
+
+  if (btnConfirmar) btnConfirmar.disabled = false;
+
+  diag.className = 'p-3.5 bg-indigo-50 border border-indigo-200 text-indigo-950 rounded-xl text-xs space-y-1.5';
+  let detalhesTransf = '';
+  if (transferencias > 0) {
+    detalhesTransf = `
+      <div class="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-1 space-y-0.5">
+        <span class="font-bold block text-amber-950">⚠️ Impacto nas vagas dos postos anteriores:</span>
+        <ul class="list-disc list-inside space-y-0.5">
+          ${origensTransf.map(item => `<li>${item}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  }
+
+  diag.innerHTML = `
+    <div class="font-bold flex items-center justify-between text-indigo-900">
+      <span class="flex items-center gap-1.5"><i class="fa-solid fa-users text-indigo-600"></i> Resumo da Vinculação em Lote:</span>
+      <span class="bg-indigo-200/80 text-indigo-950 px-2 py-0.5 rounded font-bold">${total} de ${vagasLivres} vaga(s) preenchida(s)</span>
+    </div>
+    <div class="text-[11px] text-slate-700 flex flex-wrap items-center gap-3 pt-0.5">
+      <span>🟢 Da Reserva Técnica: <b>${reservas}</b></span>
+      <span>🟠 Por Transferência: <b>${transferencias}</b></span>
+    </div>
+    ${detalhesTransf}
+  `;
+}
+
+async function salvarVinculacaoColaborador(e) {
+  e.preventDefault();
+  const ids = Array.from(state.colaboradoresSelecionadosIds);
+
+  if (ids.length === 0) {
+    alert('Por favor, marque pelo menos 1 colaborador na lista com o checkbox.');
+    return;
+  }
+
+  const vagasLivres = state.dadosPostoDestinoVincular.vagasLivres || 0;
+  if (ids.length > vagasLivres) {
+    alert(`Você selecionou ${ids.length} colaboradores, mas este posto possui apenas ${vagasLivres} vaga(s) livre(s). Reduza a quantidade selecionada.`);
+    return;
+  }
+
+  const postoId = parseInt(document.getElementById('vincularPostoId').value, 10);
+  const clienteId = parseInt(document.getElementById('vincularClienteId').value, 10);
+  const syncCargo = document.getElementById('chkSyncCargo').checked;
+  const syncEscala = document.getElementById('chkSyncEscala').checked;
+
+  const postoCargoId = document.getElementById('vincularPostoCargoId').value;
+  const postoEscala = document.getElementById('vincularPostoEscala').value;
+
+  const payload = {
+    colaborador_ids: ids,
+    posto_trabalho_id: postoId,
+    cliente_id: clienteId,
+    cargo_id: syncCargo && postoCargoId ? parseInt(postoCargoId, 10) : null,
+    escala: syncEscala && postoEscala ? postoEscala : null
+  };
+
+  const btnConfirmar = document.getElementById('btnConfirmarVinculacao');
+  if (btnConfirmar) {
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Vinculando ${ids.length} colaborador(es)...`;
+  }
+
+  try {
+    const res = await fetch(`/api/colaboradores/vincular-lote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      fecharModal('modalVincularColaborador');
+      await carregarDadosBase();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+      if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+      alert(json.message || 'Colaboradores vinculados ao posto com sucesso!');
+    } else {
+      alert('Aviso: ' + (json.error || json.message));
+    }
+  } catch (err) {
+    alert('Erro ao vincular colaboradores: ' + err.message);
+  } finally {
+    if (btnConfirmar) {
+      btnConfirmar.disabled = false;
+      btnConfirmar.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Vinculação ao Posto';
+    }
+  }
+}
+
+async function desvincularParaReservaTecnica(colabId, colabNome, postoNome, clienteNome) {
+  if (!confirm(`Deseja mover o colaborador "${colabNome}" do posto "${postoNome}" (${clienteNome}) para a RESERVA TÉCNICA?\n\nIsso liberará 1 vaga neste posto sem demitir o funcionário.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/colaboradores/${colabId}/desvincular-posto`, {
+      method: 'POST'
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      await carregarDadosBase();
+      if (state.abaAtiva === 'clientes') carregarClientesComPostos();
+      if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+      alert(json.message || `Colaborador ${colabNome} movido para a Reserva Técnica com sucesso!`);
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao mover para reserva: ' + err.message);
+  }
+}
+
+// =============================================================
+// 9. DOSSIÊ E HISTÓRICO DA VIDA DO COLABORADOR (LINHA DO TEMPO 360°)
+// =============================================================
+state.historicoColaboradorAtual = null;
+state.filtroHistoricoAtivo = 'TODOS';
+
+async function abrirModalHistoricoColaborador(id) {
+  const modal = document.getElementById('modalHistoricoColaborador');
+  if (modal) modal.classList.remove('hidden');
+
+  const container = document.getElementById('areaTimelineEventos');
+  if (container) {
+    container.innerHTML = `
+      <div class="text-center py-12 text-slate-400 font-medium">
+        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-indigo-600 block"></i>
+        Carregando histórico completo da vida do colaborador...
+      </div>
+    `;
+  }
+
+  // Esconder formulário de anotação
+  const boxForm = document.getElementById('boxFormAnotacaoHistorico');
+  if (boxForm) boxForm.classList.add('hidden');
+
+  try {
+    const res = await fetch(`/api/colaboradores/${id}/historico`);
+    const json = await res.json();
+
+    if (!json || json.error) {
+      alert('Erro ao carregar histórico: ' + (json?.message || 'Colaborador não encontrado'));
+      fecharModal('modalHistoricoColaborador');
+      return;
+    }
+
+    state.historicoColaboradorAtual = json;
+    const colab = json.colaborador;
+    const stats = json.estatisticas;
+
+    // Cabeçalho
+    document.getElementById('histColabNome').textContent = colab.nome;
+    document.getElementById('histColabCargo').textContent = colab.nome_cargo || 'Função Contratual';
+    document.getElementById('histColabCliente').textContent = (colab.cliente_nome ? colab.cliente_nome : 'Reserva Técnica') + (colab.nome_posto ? ' • ' + colab.nome_posto : '');
+    document.getElementById('histColabCPF').textContent = colab.cpf || 'Não informado';
+
+    const isDemitido = colab.ativo === 0 || colab.status_colaborador === 'Demitido';
+    const isFerias = colab.status_ferias_atual === 'Em Férias';
+    const badgeStatus = document.getElementById('histColabStatusBadge');
+
+    if (isDemitido) {
+      badgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-400/30';
+      badgeStatus.textContent = 'Demitido / Desligado';
+    } else if (isFerias) {
+      badgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30';
+      badgeStatus.textContent = 'Em Férias';
+    } else {
+      badgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
+      badgeStatus.textContent = 'Ativo no Posto';
+    }
+
+    // KPIs
+    document.getElementById('kpiTempoEmpresa').textContent = stats.tempo_empresa || 'Recente';
+    document.getElementById('kpiDataAdmissao').textContent = colab.data_admissao ? `Admitido em ${formatarData(colab.data_admissao)}` : 'Sem data de admissão';
+    document.getElementById('kpiTotalFerias').textContent = `${stats.total_ferias || 0} período(s)`;
+    document.getElementById('kpiTotalFaltas').textContent = `${stats.total_faltas || 0} falta(s) | ${stats.total_atestados || 0} atestado(s)`;
+    document.getElementById('kpiTotalTransferencias').textContent = `${stats.total_transferencias || 0} movimentação(ões)`;
+
+    // Resetar filtro e renderizar
+    filtrarPillHistorico('TODOS');
+
+  } catch (err) {
+    console.error('Erro ao abrir histórico do colaborador:', err);
+    alert('Falha de conexão ao buscar histórico: ' + err.message);
+  }
+}
+
+function filtrarPillHistorico(tipo) {
+  state.filtroHistoricoAtivo = tipo;
+
+  const botoes = document.querySelectorAll('#pillsFiltroHistorico .btn-pill-hist');
+  botoes.forEach(btn => {
+    if (btn.dataset.filtro === tipo) {
+      btn.className = 'btn-pill-hist active px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-sm transition';
+    } else {
+      btn.className = 'btn-pill-hist px-3 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition';
+    }
+  });
+
+  renderizarLinhaDoTempoHistorico();
+}
+
+function renderizarLinhaDoTempoHistorico() {
+  const container = document.getElementById('areaTimelineEventos');
+  if (!container || !state.historicoColaboradorAtual) return;
+
+  const timeline = state.historicoColaboradorAtual.timeline || [];
+  const filtro = state.filtroHistoricoAtivo || 'TODOS';
+
+  const filtrados = timeline.filter(ev => {
+    if (filtro === 'TODOS') return true;
+    if (filtro === 'FERIAS') return ev.tipo === 'FERIAS';
+    if (filtro === 'FALTA_ATESTADO') return ev.tipo === 'FALTA' || ev.tipo === 'ATESTADO';
+    if (filtro === 'TRANSFERENCIA') return ev.tipo === 'TRANSFERENCIA';
+    if (filtro === 'ALTERACAO_BENEFICIO') return ev.tipo === 'ALTERACAO_BENEFICIO';
+    if (filtro === 'DEMISSAO') return ev.tipo === 'DEMISSAO';
+    return true;
+  });
+
+  if (filtrados.length === 0) {
+    container.innerHTML = `
+      <div class="bg-white rounded-xl p-8 text-center border border-dashed border-slate-300 text-slate-400 font-medium">
+        <i class="fa-solid fa-timeline text-3xl mb-2 text-slate-300 block"></i>
+        Nenhum evento localizado para a categoria selecionada.
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  filtrados.forEach(ev => {
+    let iconClass = 'fa-solid fa-circle-info';
+    let iconBg = 'bg-slate-700 text-white';
+    let badgeBorder = 'border-slate-200 bg-white';
+    let badgeTipoTexto = ev.tipo;
+    let badgeTipoColor = 'bg-slate-100 text-slate-700';
+
+    switch (ev.tipo) {
+      case 'ADMISSAO':
+        iconClass = 'fa-solid fa-user-check';
+        iconBg = 'bg-emerald-600 text-white shadow-emerald-200';
+        badgeBorder = 'border-emerald-200 bg-emerald-50/40';
+        badgeTipoTexto = 'Admissão';
+        badgeTipoColor = 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+        break;
+      case 'FERIAS':
+        iconClass = 'fa-solid fa-umbrella-beach';
+        iconBg = 'bg-amber-500 text-white shadow-amber-200';
+        badgeBorder = 'border-amber-200 bg-amber-50/40';
+        badgeTipoTexto = 'Férias';
+        badgeTipoColor = 'bg-amber-100 text-amber-800 border border-amber-200';
+        break;
+      case 'FALTA':
+        iconClass = 'fa-solid fa-xmark';
+        iconBg = 'bg-red-600 text-white shadow-red-200';
+        badgeBorder = 'border-red-200 bg-red-50/40';
+        badgeTipoTexto = 'Falta Operacional';
+        badgeTipoColor = 'bg-red-100 text-red-800 border border-red-200';
+        break;
+      case 'ATESTADO':
+        iconClass = 'fa-solid fa-file-medical';
+        iconBg = 'bg-purple-600 text-white shadow-purple-200';
+        badgeBorder = 'border-purple-200 bg-purple-50/40';
+        badgeTipoTexto = 'Atestado Médico';
+        badgeTipoColor = 'bg-purple-100 text-purple-800 border border-purple-200';
+        break;
+      case 'TRANSFERENCIA':
+        iconClass = 'fa-solid fa-arrows-rotate';
+        iconBg = 'bg-blue-600 text-white shadow-blue-200';
+        badgeBorder = 'border-blue-200 bg-blue-50/40';
+        badgeTipoTexto = 'Mudança de Posto / Setor';
+        badgeTipoColor = 'bg-blue-100 text-blue-800 border border-blue-200';
+        break;
+      case 'ALTERACAO_BENEFICIO':
+        iconClass = 'fa-solid fa-bus';
+        iconBg = 'bg-teal-600 text-white shadow-teal-200';
+        badgeBorder = 'border-teal-200 bg-teal-50/40';
+        badgeTipoTexto = 'Transporte / Benefício';
+        badgeTipoColor = 'bg-teal-100 text-teal-800 border border-teal-200';
+        break;
+      case 'DEMISSAO':
+        iconClass = 'fa-solid fa-user-slash';
+        iconBg = 'bg-rose-800 text-white shadow-rose-200';
+        badgeBorder = 'border-rose-300 bg-rose-50/50';
+        badgeTipoTexto = 'Desligamento / Demissão';
+        badgeTipoColor = 'bg-rose-100 text-rose-900 border border-rose-300';
+        break;
+      case 'ELOGIO':
+        iconClass = 'fa-solid fa-star';
+        iconBg = 'bg-yellow-500 text-white shadow-yellow-200';
+        badgeBorder = 'border-yellow-200 bg-yellow-50/40';
+        badgeTipoTexto = 'Elogio';
+        badgeTipoColor = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+        break;
+      case 'ADVERTENCIA':
+        iconClass = 'fa-solid fa-triangle-exclamation';
+        iconBg = 'bg-orange-600 text-white shadow-orange-200';
+        badgeBorder = 'border-orange-200 bg-orange-50/40';
+        badgeTipoTexto = 'Advertência';
+        badgeTipoColor = 'bg-orange-100 text-orange-800 border border-orange-200';
+        break;
+      case 'TREINAMENTO':
+        iconClass = 'fa-solid fa-graduation-cap';
+        iconBg = 'bg-indigo-600 text-white shadow-indigo-200';
+        badgeBorder = 'border-indigo-200 bg-indigo-50/40';
+        badgeTipoTexto = 'Treinamento';
+        badgeTipoColor = 'bg-indigo-100 text-indigo-800 border border-indigo-200';
+        break;
+      default:
+        iconClass = 'fa-solid fa-note-sticky';
+        iconBg = 'bg-slate-700 text-white shadow-slate-200';
+        badgeBorder = 'border-slate-200 bg-white';
+        badgeTipoTexto = 'Anotação';
+        badgeTipoColor = 'bg-slate-100 text-slate-700 border border-slate-200';
+        break;
+    }
+
+    html += `
+      <div class="relative group">
+        <!-- Marcador na linha vertical -->
+        <div class="absolute -left-[35px] sm:-left-[43px] top-1 w-7 h-7 sm:w-8 sm:h-8 rounded-full ${iconBg} shadow-md flex items-center justify-center text-xs ring-4 ring-white transition-transform group-hover:scale-110">
+          <i class="${iconClass}"></i>
+        </div>
+
+        <!-- Card do Evento -->
+        <div class="rounded-xl border ${badgeBorder} p-3.5 shadow-sm hover:shadow-md transition">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeTipoColor}">
+                ${badgeTipoTexto}
+              </span>
+              <h4 class="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">
+                ${ev.titulo}
+              </h4>
+            </div>
+            <div class="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+              <i class="fa-regular fa-calendar text-slate-400"></i>
+              <span>${formatarData(ev.data)}</span>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-600 leading-relaxed">
+            ${ev.descricao || 'Sem descrição informada.'}
+          </p>
+
+          <div class="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-400">
+            <span><i class="fa-solid fa-user-pen mr-1"></i> Registrado por: <b>${ev.responsavel || 'Sistema'}</b></span>
+            ${ev.created_at ? `<span class="italic font-mono">${new Date(ev.created_at).toLocaleDateString('pt-BR')} ${new Date(ev.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function alternarFormAnotacaoHistorico() {
+  const box = document.getElementById('boxFormAnotacaoHistorico');
+  if (!box) return;
+  const estaOculto = box.classList.contains('hidden');
+  if (estaOculto) {
+    box.classList.remove('hidden');
+    document.getElementById('novaAnotacaoData').value = new Date().toISOString().split('T')[0];
+    document.getElementById('novaAnotacaoTitulo').value = '';
+    document.getElementById('novaAnotacaoDescricao').value = '';
+    setTimeout(() => document.getElementById('novaAnotacaoTitulo').focus(), 50);
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
+async function salvarNovaAnotacaoHistorico(e) {
+  e.preventDefault();
+  if (!state.historicoColaboradorAtual?.colaborador?.id) return;
+
+  const colabId = state.historicoColaboradorAtual.colaborador.id;
+  const payload = {
+    tipo_evento: document.getElementById('novaAnotacaoTipo').value,
+    titulo: document.getElementById('novaAnotacaoTitulo').value.trim(),
+    descricao: document.getElementById('novaAnotacaoDescricao').value.trim(),
+    data_evento: document.getElementById('novaAnotacaoData').value,
+    usuario_responsavel: (state.usuarioLogado?.nome || 'Administrador')
+  };
+
+  try {
+    const res = await fetch(`/api/colaboradores/${colabId}/historico`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alternarFormAnotacaoHistorico();
+      await abrirModalHistoricoColaborador(colabId);
+      alert('Ocorrência registrada no histórico com sucesso!');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro ao registrar ocorrência: ' + err.message);
+  }
+}
+
+function imprimirHistoricoColaborador() {
+  if (!state.historicoColaboradorAtual) return;
+  const colab = state.historicoColaboradorAtual.colaborador;
+  const stats = state.historicoColaboradorAtual.estatisticas;
+  const timeline = state.historicoColaboradorAtual.timeline || [];
+
+  const printWin = window.open('', '_blank', 'width=900,height=700');
+  let timelineRows = '';
+  timeline.forEach(t => {
+    timelineRows += `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-size: 11px; white-space: nowrap;">${formatarData(t.data)}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: bold; font-size: 12px;">${t.tipo}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">
+          <b>${t.titulo}</b><br>
+          <span style="color: #475569; font-size: 11px;">${t.descricao}</span>
+        </td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">${t.responsavel || 'Sistema'}</td>
+      </tr>
+    `;
+  });
+
+  const printHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Dossiê e Histórico - ${colab.nome}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 30px; color: #1e293b; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .sub { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+        .grid { display: flex; gap: 15px; margin-bottom: 25px; }
+        .card { flex: 1; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #f8fafc; }
+        .card-title { font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+        .card-val { font-size: 14px; font-weight: bold; color: #0f172a; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background: #f1f5f9; padding: 8px; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; }
+        @media print {
+          button { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 15px;">
+        <div>
+          <h1>DOSSIÊ DO COLABORADOR • HISTÓRICO INTEGRADO 360°</h1>
+          <div class="sub">SISFAC 2.0 • Sistema Integrado de Facilidades e Terceirização</div>
+        </div>
+        <div style="text-align: right; font-size: 11px; color: #64748b;">
+          Emissão: ${new Date().toLocaleString('pt-BR')}<br>
+          Status: <b>${colab.status_colaborador || (colab.ativo ? 'Ativo' : 'Demitido')}</b>
+        </div>
+      </div>
+
+      <div style="margin: 20px 0;">
+        <h2 style="font-size: 16px; margin: 0;">${colab.nome}</h2>
+        <div style="font-size: 12px; color: #475569; margin-top: 4px;">
+          <b>Função:</b> ${colab.nome_cargo || 'N/I'} &nbsp;|&nbsp; 
+          <b>Cliente/Posto:</b> ${colab.cliente_nome || 'Reserva Técnica'} - ${colab.nome_posto || 'Sem posto fixo'} &nbsp;|&nbsp; 
+          <b>Escala:</b> ${colab.escala || '5x2'} &nbsp;|&nbsp; 
+          <b>CPF:</b> ${colab.cpf || 'N/I'}
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Tempo de Casa</div>
+          <div class="card-val">${stats.tempo_empresa}</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Admissão: ${formatarData(colab.data_admissao)}</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Férias Gozadas</div>
+          <div class="card-val">${stats.total_ferias} períodos</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Faltas & Atestados</div>
+          <div class="card-val">${stats.total_faltas} faltas | ${stats.total_atestados} atestados</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Movimentações de Posto</div>
+          <div class="card-val">${stats.total_transferencias} vezes</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 13px; text-transform: uppercase; color: #334155; margin-bottom: 8px;">Linha do Tempo Cronológica de Ocorrências e Eventos</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 90px;">Data</th>
+            <th style="width: 130px;">Categoria</th>
+            <th>Evento / Ocorrência Registrada</th>
+            <th style="width: 120px;">Responsável</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${timelineRows}
+        </tbody>
+      </table>
+
+      <script>
+        window.onload = function() { window.print(); }
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWin.document.write(printHtml);
+  printWin.document.close();
+}
+
+
+// =============================================================
+// 10. CONCESSÃO COLETIVA DE BENEFÍCIOS EM LOTE (SETOR DE BENEFÍCIOS)
+// =============================================================
+function abrirModalConcessaoLoteBeneficios(idsPreSelecionados = []) {
+  const modal = document.getElementById('modalConcessaoColetivaBeneficios');
+  if (modal) modal.classList.remove('hidden');
+
+  // Mês de competência padrão
+  const anoMesInput = document.getElementById('loteAnoMes');
+  const mesAtual = document.getElementById('benefAnoMes')?.value || new Date().toISOString().slice(0, 7);
+  if (anoMesInput) anoMesInput.value = mesAtual;
+
+  // Popular seletor de clientes do modal
+  const selCli = document.getElementById('filtroClienteModalLote');
+  if (selCli) {
+    selCli.innerHTML = '<option value="">Filtrar por Cliente (Todos)...</option>';
+    (state.clientes || []).forEach(c => {
+      selCli.innerHTML += `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`;
+    });
+  }
+
+  // Preencher datas padrão (primeiro e último dia do mês)
+  aoMudarMesLote();
+
+  // Renderizar lista de colaboradores com checkboxes
+  renderizarListaColaboradoresLote(idsPreSelecionados);
+}
+
+function abrirModalConcessaoLoteComSelecionados() {
+  const marcados = Array.from(document.querySelectorAll('.chk-benef-item:checked')).map(chk => parseInt(chk.value, 10));
+  if (marcados.length === 0) {
+    alert('Nenhum colaborador foi selecionado na tabela de benefícios.');
+    return;
+  }
+  abrirModalConcessaoLoteBeneficios(marcados);
+}
+
+function aoMudarMesLote() {
+  const mesVal = document.getElementById('loteAnoMes')?.value || new Date().toISOString().slice(0, 7);
+  const [ano, mesNum] = mesVal.split('-').map(Number);
+  const totalDias = new Date(ano, mesNum, 0).getDate();
+
+  const dataIni = `${mesVal}-01`;
+  const dataFim = `${mesVal}-${String(totalDias).padStart(2, '0')}`;
+
+  const inputIni = document.getElementById('loteDataInicio');
+  const inputFim = document.getElementById('loteDataFim');
+  if (inputIni) inputIni.value = dataIni;
+  if (inputFim) inputFim.value = dataFim;
+
+  atualizarPrevisaoDiasLote();
+}
+
+function atualizarPrevisaoDiasLote() {
+  const iniStr = document.getElementById('loteDataInicio')?.value;
+  const fimStr = document.getElementById('loteDataFim')?.value;
+
+  if (!iniStr || !fimStr) return;
+
+  const d5x2 = calcularDiasCalendarioLocal(iniStr, fimStr, '5x2');
+  const d6x1 = calcularDiasCalendarioLocal(iniStr, fimStr, '6x1');
+  const d12x36 = calcularDiasCalendarioLocal(iniStr, fimStr, '12x36');
+
+  const el5 = document.getElementById('diasPrevistos5x2');
+  const el6 = document.getElementById('diasPrevistos6x1');
+  const el12 = document.getElementById('diasPrevistos12x36');
+
+  if (el5) el5.textContent = d5x2;
+  if (el6) el6.textContent = d6x1;
+  if (el12) el12.textContent = d12x36;
+}
+
+function calcularDiasCalendarioLocal(iniStr, fimStr, escala) {
+  const inicio = new Date(iniStr + 'T00:00:00');
+  const fim = new Date(fimStr + 'T00:00:00');
+  if (isNaN(inicio.getTime()) || isNaN(fim.getTime()) || inicio > fim) return 0;
+
+  let total = 0;
+  const curr = new Date(inicio);
+  let step12x36 = 0;
+
+  while (curr <= fim) {
+    const day = curr.getDay(); // 0 = Domingo, 6 = Sábado
+    if (escala.includes('5x2')) {
+      if (day !== 0 && day !== 6) total++;
+    } else if (escala.includes('6x1')) {
+      if (day !== 0) total++;
+    } else if (escala.includes('12x36')) {
+      if (step12x36 % 2 === 0) total++;
+      step12x36++;
+    } else {
+      if (day !== 0 && day !== 6) total++;
+    }
+    curr.setDate(curr.getDate() + 1);
+  }
+  return total;
+}
+
+function renderizarListaColaboradoresLote(idsPreSelecionados = []) {
+  const container = document.getElementById('listaColabsLoteContainer');
+  if (!container) return;
+
+  const colabs = (state.colaboradores || []).filter(c => c.ativo !== 0 && c.status_colaborador !== 'Demitido');
+
+  if (colabs.length === 0) {
+    container.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">Nenhum colaborador ativo encontrado no sistema.</div>`;
+    return;
+  }
+
+  let html = '';
+  colabs.forEach(c => {
+    const isChecked = idsPreSelecionados.includes(c.id);
+    const escalaStr = c.escala || '5x2';
+    let badgeEscalaCor = 'bg-sky-100 text-sky-800';
+    if (escalaStr.includes('6x1')) badgeEscalaCor = 'bg-indigo-100 text-indigo-800';
+    else if (escalaStr.includes('12x36')) badgeEscalaCor = 'bg-purple-100 text-purple-800';
+
+    html += `
+      <label class="item-colab-lote flex items-center justify-between p-2.5 hover:bg-slate-50 cursor-pointer select-none transition" 
+             data-id="${c.id}" 
+             data-nome="${(c.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}" 
+             data-escala="${escalaStr}" 
+             data-cliente="${c.cliente_id || ''}">
+        <div class="flex items-center gap-2.5">
+          <input type="checkbox" value="${c.id}" class="chk-lote-colab w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" 
+                 ${isChecked ? 'checked' : ''} onchange="atualizarContadorSelecionadosLote()">
+          <div>
+            <div class="text-xs font-bold text-slate-800">${c.nome}</div>
+            <div class="text-[11px] text-slate-400">${c.cliente_nome || 'Reserva Técnica'} • ${c.nome_posto || 'Posto Padrão'}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-[11px]">
+          <span class="font-bold px-2 py-0.5 rounded-full ${badgeEscalaCor}">
+            ${escalaStr}
+          </span>
+          <span class="text-slate-500 font-mono hidden sm:inline">
+            VT: R$ ${(c.valor_passagem_unitaria || 4.40).toFixed(2)} (${c.quantidade_passagens_dia || 2}x) | VA: R$ ${(c.valor_diario_va || 28).toFixed(2)}
+          </span>
+        </div>
+      </label>
+    `;
+  });
+
+  container.innerHTML = html;
+  atualizarContadorSelecionadosLote();
+}
+
+function filtrarListaColabsModalLote() {
+  const busca = (document.getElementById('buscaColabModalLote')?.value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const clienteId = document.getElementById('filtroClienteModalLote')?.value || '';
+
+  const items = document.querySelectorAll('#listaColabsLoteContainer .item-colab-lote');
+  items.forEach(item => {
+    const nome = item.dataset.nome || '';
+    const cli = item.dataset.cliente || '';
+
+    const matchBusca = !busca || nome.includes(busca);
+    const matchCli = !clienteId || cli === clienteId;
+
+    if (matchBusca && matchCli) {
+      item.classList.remove('hidden');
+    } else {
+      item.classList.add('hidden');
+    }
+  });
+}
+
+function selecionarColabsLotePorEscala(escala) {
+  const items = document.querySelectorAll('#listaColabsLoteContainer .item-colab-lote');
+  items.forEach(item => {
+    if (item.classList.contains('hidden')) return; // ignora ocultos pelo filtro
+    const chk = item.querySelector('.chk-lote-colab');
+    if (!chk) return;
+
+    if (escala === 'NENHUM') {
+      chk.checked = false;
+    } else if (escala === 'TODOS') {
+      chk.checked = true;
+    } else {
+      const colabEscala = item.dataset.escala || '';
+      chk.checked = colabEscala.includes(escala);
+    }
+  });
+
+  atualizarContadorSelecionadosLote();
+}
+
+function atualizarContadorSelecionadosLote() {
+  const total = document.querySelectorAll('.chk-lote-colab:checked').length;
+  const badge = document.getElementById('badgeQtdSelecionadosLote');
+  if (badge) badge.textContent = `${total} selecionado(s)`;
+}
+
+function alternarModoDiasManual(checked) {
+  const box = document.getElementById('boxDiasManuais');
+  if (box) {
+    if (checked) box.classList.remove('hidden');
+    else box.classList.add('hidden');
+  }
+}
+
+function alternarModoValoresLote(modo) {
+  const box = document.getElementById('boxValoresFixosLote');
+  if (box) {
+    if (modo === 'fixo') box.classList.remove('hidden');
+    else box.classList.add('hidden');
+  }
+}
+
+async function salvarConcessaoLoteBeneficios(e) {
+  e.preventDefault();
+
+  const selecionados = Array.from(document.querySelectorAll('.chk-lote-colab:checked')).map(chk => parseInt(chk.value, 10));
+  if (selecionados.length === 0) {
+    alert('Atenção: Selecione ao menos 1 colaborador para aplicar a concessão de benefícios em lote.');
+    return;
+  }
+
+  const anoMes = document.getElementById('loteAnoMes').value;
+  const dataInicio = document.getElementById('loteDataInicio').value;
+  const dataFim = document.getElementById('loteDataFim').value;
+  const modoDiasManual = document.getElementById('chkForcarDiasManual').checked;
+  const modoValores = document.querySelector('input[name="loteModoValores"]:checked')?.value || 'espelhar';
+  const descontarFaltas = document.getElementById('chkDescontarFaltasLote').checked;
+  const observacoes = document.getElementById('loteObservacoes').value.trim();
+
+  const payload = {
+    ano_mes: anoMes,
+    colaborador_ids: selecionados,
+    data_inicio: dataInicio,
+    data_fim: dataFim,
+    dias_modo: modoDiasManual ? 'fixo' : 'calendario',
+    dias_vt_fixo: parseInt(document.getElementById('loteDiasVTManual').value, 10) || 0,
+    dias_va_fixo: parseInt(document.getElementById('loteDiasVAManual').value, 10) || 0,
+    espelhar_valores_cadastrados: modoValores === 'espelhar',
+    tarifa_vt_personalizada: document.getElementById('loteTarifaVTFixo').value,
+    passagens_dia_personalizada: document.getElementById('lotePassagensDiaFixo').value,
+    diaria_va_personalizada: document.getElementById('loteDiariaVAFixo').value,
+    descontar_faltas: descontarFaltas,
+    observacoes: observacoes
+  };
+
+  const btnSalvar = document.getElementById('btnSalvarLoteBenef');
+  if (btnSalvar) {
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Concedendo para ${selecionados.length} colaborador(es)...`;
+  }
+
+  try {
+    const res = await fetch('/api/beneficios/concessao-lote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      fecharModal('modalConcessaoColetivaBeneficios');
+      // Atualizar o seletor da competência de benefícios se for diferente
+      const selMesPrinc = document.getElementById('benefAnoMes');
+      if (selMesPrinc && selMesPrinc.value !== anoMes) {
+        selMesPrinc.value = anoMes;
+      }
+      await carregarBeneficios();
+      alert(json.message || `Concessão de benefícios aplicada com sucesso para ${json.count} colaboradores!`);
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao processar concessão em lote'));
+    }
+  } catch (err) {
+    alert('Erro ao processar concessão em lote: ' + err.message);
+  } finally {
+    if (btnSalvar) {
+      btnSalvar.disabled = false;
+      btnSalvar.innerHTML = '<i class="fa-solid fa-rocket"></i> Aplicar Concessão para Todos os Selecionados';
+    }
+  }
+}
+
+// =============================================================
+// EDIÇÃO DE POSTOS DE TRABALHO (EXCLUSIVO ADMINISTRADOR MASTER)
+// =============================================================
+
+async function abrirModalEditarPosto(postoId) {
+  if (!isUsuarioAdminMaster()) {
+    alert('Acesso Restrito: Apenas o Administrador Master tem autorização para editar postos de clientes (aditivos de contrato ou correção).');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/postos/${postoId}`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Erro ao carregar dados do posto');
+    }
+    const p = await res.json();
+
+    document.getElementById('editarPostoId').value = p.id;
+    document.getElementById('editarPostoClienteId').value = p.cliente_id;
+    document.getElementById('editarPostoClienteNome').textContent = `[ID #${p.cliente_id}] ${p.cliente_nome || p.nome_fantasia || p.nome_razao_social || 'Cliente'}`;
+    document.getElementById('editarPostoNome').value = p.nome_posto || '';
+    document.getElementById('editarPostoLimiteVagas').value = p.quantidade_vagas_limite || 1;
+    document.getElementById('editarPostoLimiteVagas').min = p.total_ocupados || 1;
+    document.getElementById('editarPostoAvisoOcupacao').innerHTML = `Ocupadas: <b>${p.total_ocupados || 0}</b> colaborador(es) atualmente alocado(s). (Mínimo permitido: ${p.total_ocupados || 1})`;
+    document.getElementById('editarPostoEscala').value = p.escala || '5x2';
+    document.getElementById('editarPostoTurno').value = p.turno || '';
+    document.getElementById('editarPostoObservacoes').value = p.observacoes || '';
+    document.getElementById('editarPostoAtivo').checked = p.ativo === 1;
+
+    // Popular Unidades do Cliente
+    const selectUnidade = document.getElementById('editarPostoUnidadeId');
+    selectUnidade.innerHTML = '<option value="">Matriz / Unidade Central (Padrão)</option>';
+    try {
+      const resU = await fetch(`/api/unidades?cliente_id=${p.cliente_id}`);
+      const unidades = await resU.json();
+      unidades.forEach(u => {
+        selectUnidade.innerHTML += `<option value="${u.id}" ${u.id === p.unidade_id ? 'selected' : ''}>${u.nome_unidade}</option>`;
+      });
+    } catch(e) {}
+
+    // Popular Funções / Cargos
+    const selectCargo = document.getElementById('editarPostoCargoId');
+    selectCargo.innerHTML = '';
+    (state.cargos || []).forEach(cg => {
+      selectCargo.innerHTML += `<option value="${cg.id}" ${cg.id === p.cargo_id ? 'selected' : ''}>${cg.nome_cargo} (ID: #${cg.id})</option>`;
+    });
+
+    abrirModal('modalEditarPosto');
+  } catch (err) {
+    console.error('Erro ao abrir edição de posto:', err);
+    alert('Não foi possível carregar o posto para edição: ' + err.message);
+  }
+}
+
+async function salvarEdicaoPosto(event) {
+  event.preventDefault();
+  if (!isUsuarioAdminMaster()) {
+    alert('Acesso Restrito: Apenas o Administrador Master pode salvar alterações de postos e aditivos de contratos.');
+    return;
+  }
+
+  const id = parseInt(document.getElementById('editarPostoId').value, 10);
+  const clienteId = parseInt(document.getElementById('editarPostoClienteId').value, 10);
+  const nome_posto = document.getElementById('editarPostoNome').value.trim();
+  const unidade_id = document.getElementById('editarPostoUnidadeId').value || null;
+  const cargo_id = parseInt(document.getElementById('editarPostoCargoId').value, 10);
+  const quantidade_vagas_limite = parseInt(document.getElementById('editarPostoLimiteVagas').value, 10) || 1;
+  const escala = document.getElementById('editarPostoEscala').value;
+  const turno = document.getElementById('editarPostoTurno').value.trim();
+  const observacoes = document.getElementById('editarPostoObservacoes').value.trim();
+  const ativo = document.getElementById('editarPostoAtivo').checked ? 1 : 0;
+
+  if (!nome_posto) {
+    alert('Informe o nome de identificação do posto.');
+    return;
+  }
+  if (!cargo_id) {
+    alert('Selecione a função/cargo do posto.');
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarEdicaoPosto');
+  const textoOriginal = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Salvando...';
+  }
+
+  try {
+    const res = await fetch(`/api/postos/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Usuario-Login': state.usuarioLogado?.login || '',
+        'X-Usuario-Setor': state.usuarioLogado?.setor || ''
+      },
+      body: JSON.stringify({
+        nome_posto,
+        unidade_id,
+        cargo_id,
+        quantidade_vagas_limite,
+        escala,
+        turno,
+        observacoes,
+        ativo,
+        usuario_login: state.usuarioLogado?.login,
+        usuario_setor: state.usuarioLogado?.setor
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Erro ao atualizar posto de trabalho');
+    }
+
+    alert('Posto de trabalho atualizado com sucesso pelo Administrador Master!');
+    fecharModal('modalEditarPosto');
+    await carregarClientesComPostos();
+    if (state.abaAtiva === 'dashboard') carregarDashboardExecutivo();
+  } catch (err) {
+    console.error('Erro ao salvar edição de posto:', err);
+    alert('Erro: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+    }
+  }
+}
+
+// =============================================================
+// EXPLORADOR ANALÍTICO DE OCORRÊNCIAS & FALTAS DO DASHBOARD
+// =============================================================
+
+state.exploradorOcorrencias = {
+  dados: [],
+  filtroTexto: ''
+};
+
+async function abrirExplorarDashboard(clienteId = null) {
+  const mesAtualDash = document.getElementById('dashboardMes')?.value || state.mesAtual || new Date().toISOString().slice(0, 7);
+  const inputMes = document.getElementById('explorarDashboardMes');
+  if (inputMes) inputMes.value = mesAtualDash;
+
+  // Preencher seletor de clientes
+  const selectCli = document.getElementById('explorarDashboardCliente');
+  if (selectCli) {
+    selectCli.innerHTML = '<option value="">Todos os Clientes</option>';
+    const listaClientes = state.clientesComPostos || state.clientes || [];
+    listaClientes.forEach(c => {
+      const nome = c.nome_fantasia || c.nome_razao_social || `Cliente #${c.id}`;
+      const isSelected = clienteId && parseInt(clienteId, 10) === c.id;
+      selectCli.innerHTML += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${nome} (ID: #${c.id})</option>`;
+    });
+    if (clienteId) selectCli.value = String(clienteId);
+  }
+
+  const selectTipo = document.getElementById('explorarDashboardTipo');
+  if (selectTipo) selectTipo.value = '';
+
+  const inputBusca = document.getElementById('explorarDashboardBuscaTexto');
+  if (inputBusca) inputBusca.value = '';
+  state.exploradorOcorrencias.filtroTexto = '';
+
+  abrirModal('modalExplorarDashboard');
+  await carregarExploradorOcorrencias();
+}
+
+async function carregarExploradorOcorrencias() {
+  const mes = document.getElementById('explorarDashboardMes')?.value || state.mesAtual || new Date().toISOString().slice(0, 7);
+  const clienteId = document.getElementById('explorarDashboardCliente')?.value || '';
+  const tipoCobertura = document.getElementById('explorarDashboardTipo')?.value || '';
+  const tbody = document.getElementById('explorarTabelaBody');
+  const miniKpis = document.getElementById('explorarMiniKpis');
+  const qtdEl = document.getElementById('explorarQtdExibida');
+
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando ocorrências detalhadas da competência...</td></tr>`;
+  }
+
+  let url = `/api/faltas?mes=${mes}`;
+  if (clienteId) url += `&cliente_id=${clienteId}`;
+  if (tipoCobertura) url += `&tipo_cobertura=${tipoCobertura}`;
+
+  try {
+    const res = await fetch(url);
+    const dados = await res.json();
+    state.exploradorOcorrencias.dados = dados || [];
+
+    // Calcular Mini KPIs
+    let totalOcorrencias = dados.length;
+    let totalDescobertos = 0;
+    let totalGlosa = 0;
+    let totalFreelancer = 0;
+    let custoFreelancer = 0;
+    let totalEfetivo = 0;
+
+    dados.forEach(d => {
+      if (d.houve_cobertura === 0) {
+        totalDescobertos++;
+        totalGlosa += parseFloat(d.valor_desconto_sugerido) || 0;
+      } else if (d.tipo_cobertura === 'freelancer') {
+        totalFreelancer++;
+        custoFreelancer += parseFloat(d.valor_pago_freelance) || 0;
+      } else if (d.tipo_cobertura === 'efetivo') {
+        totalEfetivo++;
+      }
+    });
+
+    if (miniKpis) {
+      miniKpis.innerHTML = `
+        <span class="bg-slate-200 text-slate-800 font-bold px-2 py-1 rounded text-[11px]"><i class="fa-solid fa-list-check mr-1"></i>${totalOcorrencias} Total</span>
+        <span class="bg-red-100 text-red-800 font-bold px-2 py-1 rounded text-[11px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${totalDescobertos} Glosas (${formatarMoeda(totalGlosa)})</span>
+        <span class="bg-amber-100 text-amber-900 font-bold px-2 py-1 rounded text-[11px]"><i class="fa-solid fa-user-clock mr-1"></i>${totalFreelancer} Freelance (${formatarMoeda(custoFreelancer)})</span>
+        <span class="bg-blue-100 text-blue-800 font-bold px-2 py-1 rounded text-[11px]"><i class="fa-solid fa-users mr-1"></i>${totalEfetivo} Efetivo</span>
+      `;
+    }
+
+    renderizarLinhasExplorador(state.exploradorOcorrencias.dados);
+  } catch (err) {
+    console.error('Erro ao carregar explorador de ocorrências:', err);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-red-500 font-bold">Erro ao buscar dados: ${err.message}</td></tr>`;
+  }
+}
+
+function filtrarTabelaExplorador(termo) {
+  state.exploradorOcorrencias.filtroTexto = (termo || '').toLowerCase().trim();
+  const termoLower = state.exploradorOcorrencias.filtroTexto;
+  if (!termoLower) {
+    renderizarLinhasExplorador(state.exploradorOcorrencias.dados);
+    return;
+  }
+
+  const filtrados = (state.exploradorOcorrencias.dados || []).filter(d => {
+    const colab = (d.colaborador_nome || '').toLowerCase();
+    const sub = (d.cobertor_efetivo_nome || d.freelancer_nome || '').toLowerCase();
+    const cli = (d.cliente_nome || '').toLowerCase();
+    const posto = (d.nome_posto || d.nome_cargo || '').toLowerCase();
+    const motivo = (d.motivo_falta || '').toLowerCase();
+    const criador = (d.criado_por || d.supervisor_exibicao || '').toLowerCase();
+    return colab.includes(termoLower) || sub.includes(termoLower) || cli.includes(termoLower) || posto.includes(termoLower) || motivo.includes(termoLower) || criador.includes(termoLower);
+  });
+
+  renderizarLinhasExplorador(filtrados);
+}
+
+function renderizarLinhasExplorador(lista) {
+  const tbody = document.getElementById('explorarTabelaBody');
+  const qtdEl = document.getElementById('explorarQtdExibida');
+  if (!tbody) return;
+
+  if (qtdEl) qtdEl.textContent = lista ? lista.length : 0;
+
+  if (!lista || lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrência encontrada para os filtros selecionados.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  lista.forEach(item => {
+    let badgeStatus = '';
+    let quemCobriuHtml = '';
+    let custoHtml = '';
+
+    if (item.houve_cobertura === 0) {
+      badgeStatus = `<span class="bg-red-100 text-red-800 border border-red-200 font-black px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>DESCOBERTO</span>`;
+      quemCobriuHtml = `<span class="text-red-500 italic font-semibold">Sem cobertura</span>`;
+      custoHtml = `
+        <div class="text-right">
+          <span class="font-black text-red-600 text-xs">${formatarMoeda(item.valor_desconto_sugerido || 0)}</span>
+          <div class="text-[10px] text-red-400 font-medium">Glosa Faturamento (${item.status_faturamento || 'Pendente'})</div>
+        </div>
+      `;
+    } else if (item.tipo_cobertura === 'freelancer') {
+      badgeStatus = `<span class="bg-amber-100 text-amber-900 border border-amber-200 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-user-clock mr-1"></i>FREELANCER</span>`;
+      quemCobriuHtml = `
+        <div>
+          <span class="font-bold text-slate-800">${item.freelancer_nome || 'Freelancer'}</span>
+          ${item.freelancer_telefone ? `<div class="text-[10px] text-slate-400"><i class="fa-solid fa-phone text-[9px] mr-1"></i>${item.freelancer_telefone}</div>` : ''}
+          ${item.freelancer_pix ? `<div class="text-[10px] text-slate-400 font-mono"><i class="fa-brands fa-pix text-emerald-600 mr-0.5"></i>${item.freelancer_pix}</div>` : ''}
+        </div>
+      `;
+      custoHtml = `
+        <div class="text-right">
+          <span class="font-black text-amber-700 text-xs">${formatarMoeda(item.valor_pago_freelance || 0)}</span>
+          <div class="text-[10px] text-slate-400 font-medium">${item.status_pagamento_freelance === 'Pago' ? '<span class="text-emerald-600 font-bold">Pago</span>' : '<span class="text-amber-600 font-bold">A Pagar</span>'}</div>
+        </div>
+      `;
+    } else {
+      badgeStatus = `<span class="bg-blue-100 text-blue-800 border border-blue-200 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-users mr-1"></i>EFETIVO</span>`;
+      quemCobriuHtml = `<span class="font-bold text-blue-900">${item.cobertor_efetivo_nome || 'Colaborador Efetivo'}</span>`;
+      custoHtml = `<div class="text-right text-slate-400 text-[11px] italic">Sem custo extra</div>`;
+    }
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0">
+        <td class="px-3 py-2.5 font-bold text-slate-800 whitespace-nowrap">
+          ${formatarData(item.data_falta)}
+        </td>
+        <td class="px-3 py-2.5">
+          <div class="font-bold text-slate-900">${item.cliente_nome}</div>
+          <div class="text-[10px] text-slate-400">${item.nome_unidade || 'Central'} - ${item.nome_posto || item.nome_cargo || 'Geral'}</div>
+        </td>
+        <td class="px-3 py-2.5">
+          <div class="font-bold text-slate-800">${item.colaborador_nome}</div>
+          <div class="text-[10px] text-slate-400">${item.nome_cargo || 'Função'} ${item.colaborador_cpf ? `• CPF: ${item.colaborador_cpf}` : ''}</div>
+        </td>
+        <td class="px-3 py-2.5">
+          <span class="text-slate-700">${item.motivo_falta || 'Falta injustificada'}</span>
+          ${item.cid_atestado ? `<div class="text-[10px] font-mono text-indigo-600 font-bold">CID: ${item.cid_atestado}</div>` : ''}
+          ${item.dias_afastamento > 1 ? `<span class="text-[10px] text-amber-700 font-semibold block">${item.dias_afastamento} dias de afastamento</span>` : ''}
+        </td>
+        <td class="px-3 py-2.5 text-center whitespace-nowrap">
+          ${badgeStatus}
+        </td>
+        <td class="px-3 py-2.5">
+          ${quemCobriuHtml}
+        </td>
+        <td class="px-3 py-2.5 whitespace-nowrap">
+          ${custoHtml}
+        </td>
+        <td class="px-3 py-2.5">
+          <div class="font-semibold text-slate-700 text-xs">${item.criado_por || item.supervisor_exibicao || 'Sistema'}</div>
+          <div class="text-[10px] text-slate-400">${item.origem_lancamento === 'mobile_supervisor' ? '📱 Mobile Supervisor' : '💻 Portal Web'}</div>
+        </td>
+        <td class="px-3 py-2.5 text-center whitespace-nowrap">
+          <button onclick="irParaApontamentoFalta(${item.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold p-1.5 rounded text-xs transition" title="Abrir esta ocorrência na aba de Apontamentos">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function irParaApontamentoFalta(faltaId) {
+  fecharModal('modalExplorarDashboard');
+  navegarPara('faltas');
+}
+
+function exportarExploradorExcel() {
+  const dados = state.exploradorOcorrencias.dados || [];
+  if (dados.length === 0) {
+    alert('Nenhum dado disponível para exportação.');
+    return;
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+  csvContent += "ID;Data;Cliente;Unidade;Posto;Funcao;Colaborador_Ausente;CPF;Motivo;CID;Status_Cobertura;Quem_Cobriu;Custo_Freelance;Valor_Glosa;Quem_Lancou;Origem\n";
+
+  dados.forEach(d => {
+    const statusCob = d.houve_cobertura === 0 ? 'Descoberto' : (d.tipo_cobertura === 'freelancer' ? 'Freelancer' : 'Efetivo');
+    const quemCob = d.houve_cobertura === 0 ? 'N/A' : (d.tipo_cobertura === 'freelancer' ? (d.freelancer_nome || '') : (d.cobertor_efetivo_nome || ''));
+    const row = [
+      d.id,
+      d.data_falta,
+      `"${(d.cliente_nome || '').replace(/"/g, '""')}"`,
+      `"${(d.nome_unidade || '').replace(/"/g, '""')}"`,
+      `"${(d.nome_posto || '').replace(/"/g, '""')}"`,
+      `"${(d.nome_cargo || '').replace(/"/g, '""')}"`,
+      `"${(d.colaborador_nome || '').replace(/"/g, '""')}"`,
+      `"${(d.colaborador_cpf || '').replace(/"/g, '""')}"`,
+      `"${(d.motivo_falta || '').replace(/"/g, '""')}"`,
+      `"${(d.cid_atestado || '').replace(/"/g, '""')}"`,
+      statusCob,
+      `"${quemCob.replace(/"/g, '""')}"`,
+      (d.valor_pago_freelance || 0).toFixed(2),
+      (d.valor_desconto_sugerido || 0).toFixed(2),
+      `"${(d.criado_por || d.supervisor_exibicao || '').replace(/"/g, '""')}"`,
+      d.origem_lancamento || 'web'
+    ];
+    csvContent += row.join(';') + '\n';
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  const mes = document.getElementById('explorarDashboardMes')?.value || 'geral';
+  link.setAttribute("download", `ocorrencias_dashboard_${mes}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// =============================================================================
+// 10. MÓDULO: SETOR COMERCIAL & NOVOS CONTRATOS (CRM / FUNIL / IMPLANTAÇÕES)
+// =============================================================================
+
+state.comercial = {
+  leads: [],
+  kpis: {},
+  view: 'kanban',
+  leadAtual: null,
+  ordens: []
+};
+
+async function carregarComercial() {
+  try {
+    const [resLeads, resKpis] = await Promise.all([
+      fetch('/api/comercial/leads'),
+      fetch('/api/comercial/kpis')
+    ]);
+
+    const dataLeads = await resLeads.json();
+    const dataKpis = await resKpis.json();
+
+    state.comercial.leads = Array.isArray(dataLeads) ? dataLeads : [];
+    state.comercial.kpis = dataKpis || {};
+
+    // Atualizar Cards de KPIs
+    atualizarKpisComercial(state.comercial.kpis);
+
+    // Renderizar visualização ativa
+    if (state.comercial.view === 'kanban') {
+      renderizarKanbanComercial();
+    } else {
+      renderizarTabelaComercial(state.comercial.leads);
+    }
+  } catch (err) {
+    console.error('Erro ao carregar dados comerciais:', err);
+  }
+}
+
+function atualizarKpisComercial(kpis) {
+  const elTotal = document.getElementById('kpiComercialTotalLeads');
+  const elNeg = document.getElementById('kpiComercialEmNegociacao');
+  const elGanhos = document.getElementById('kpiComercialContratosGanhos');
+  const elPipeline = document.getElementById('kpiComercialPipelineValor');
+  const elTaxa = document.getElementById('kpiComercialTaxaConversao');
+
+  if (elTotal) elTotal.textContent = kpis.total_leads || 0;
+  if (elNeg) elNeg.textContent = kpis.em_negociacao || 0;
+  if (elGanhos) elGanhos.textContent = kpis.ganhos || 0;
+  if (elPipeline) {
+    const v = Number(kpis.pipeline_estimado || 0);
+    elPipeline.textContent = v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+  if (elTaxa) elTaxa.textContent = `${kpis.taxa_conversao || 0}%`;
+}
+
+function alternarVisualizacaoComercial(tipo) {
+  state.comercial.view = tipo;
+  const btnK = document.getElementById('btnComercialViewKanban');
+  const btnT = document.getElementById('btnComercialViewTabela');
+  const viewK = document.getElementById('comercialKanbanContainer');
+  const viewT = document.getElementById('comercialTableContainer');
+
+  if (tipo === 'kanban') {
+    if (btnK) { btnK.className = 'px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs flex items-center gap-1.5 transition'; }
+    if (btnT) { btnT.className = 'px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-800 flex items-center gap-1.5 transition'; }
+    if (viewK) viewK.classList.remove('hidden');
+    if (viewT) viewT.classList.add('hidden');
+    renderizarKanbanComercial();
+  } else {
+    if (btnT) { btnT.className = 'px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs flex items-center gap-1.5 transition'; }
+    if (btnK) { btnK.className = 'px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-800 flex items-center gap-1.5 transition'; }
+    if (viewK) viewK.classList.add('hidden');
+    if (viewT) viewT.classList.remove('hidden');
+    filtrarTabelaComercial();
+  }
+}
+
+function renderizarKanbanComercial() {
+  const etapas = ['prospeccao', 'visita_tecnica', 'proposta', 'negociacao', 'ganho'];
+  const leads = state.comercial.leads || [];
+
+  etapas.forEach(etapa => {
+    const col = document.getElementById(`kanbanCol-${etapa}`);
+    const badge = document.getElementById(`badgeCount-${etapa}`);
+    if (!col) return;
+
+    const leadsEtapa = leads.filter(l => l.etapa === etapa);
+    if (badge) badge.textContent = leadsEtapa.length;
+
+    if (leadsEtapa.length === 0) {
+      col.innerHTML = `
+        <div class="py-8 text-center text-slate-400 border border-dashed border-slate-300 rounded-lg text-xs">
+          <i class="fa-regular fa-folder-open text-base mb-1 block"></i>
+          Nenhum lead nesta etapa
+        </div>`;
+      return;
+    }
+
+    col.innerHTML = leadsEtapa.map(lead => {
+      const valorFmt = Number(lead.valor_mensal_estimado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const dataCriacao = lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : '';
+
+      return `
+        <div class="bg-white rounded-xl p-3.5 shadow-xs border border-slate-200 hover:shadow-md transition space-y-2.5">
+          <div class="flex items-start justify-between gap-1.5">
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs leading-tight">${lead.razao_social}</h4>
+              ${lead.nome_fantasia ? `<span class="text-[10px] text-slate-400 block">${lead.nome_fantasia}</span>` : ''}
+            </div>
+            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 shrink-0">
+              ${lead.segmento || 'Geral'}
+            </span>
+          </div>
+
+          <div class="text-[11px] text-slate-600 space-y-1">
+            <div class="flex items-center gap-1.5 truncate">
+              <i class="fa-solid fa-user-tie text-slate-400 text-[10px]"></i>
+              <span>${lead.contato_nome || 'Não informado'} ${lead.contato_cargo ? `(${lead.contato_cargo})` : ''}</span>
+            </div>
+            ${lead.contato_telefone ? `
+            <div class="flex items-center gap-1.5 truncate">
+              <i class="fa-solid fa-phone text-slate-400 text-[10px]"></i>
+              <span class="font-mono text-[10px]">${lead.contato_telefone}</span>
+            </div>` : ''}
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <div>
+              <span class="text-slate-400 text-[10px] block">Vagas: <b>${lead.vagas_estimadas || 1}</b></span>
+              <b class="text-emerald-700">${valorFmt}</b>
+            </div>
+            <span class="text-[9px] text-slate-400 font-medium">${dataCriacao}</span>
+          </div>
+
+          <div class="pt-2 border-t border-slate-100 flex items-center gap-1.5">
+            <button onclick="abrirModalDetalhesLead(${lead.id})" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-1 px-2 rounded text-[10px] flex items-center justify-center gap-1 transition">
+              <i class="fa-solid fa-comments"></i> Detalhes
+            </button>
+            ${etapa === 'ganho' || etapa === 'negociacao' ? `
+              <button onclick="abrirModalEfetivarContrato(${lead.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-2.5 rounded text-[10px] flex items-center gap-1 shadow-xs transition" title="Efetivar Contrato & Gerar Implantação">
+                <i class="fa-solid fa-file-contract"></i> Efetivar
+              </button>
+            ` : `
+              <button onclick="avancarRapidoEtapaLead(${lead.id}, '${etapa}')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold p-1 px-2 rounded text-[10px] transition" title="Avançar etapa">
+                <i class="fa-solid fa-angles-right"></i>
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+  });
+}
+
+function renderizarTabelaComercial(leads) {
+  const tbody = document.getElementById('tabelaComercialBody');
+  if (!tbody) return;
+
+  if (leads.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Nenhum lead encontrado com os filtros aplicados.</td></tr>`;
+    return;
+  }
+
+  const etapasLabels = {
+    'prospeccao': { nome: '1. Prospecção', cor: 'bg-blue-100 text-blue-800' },
+    'visita_tecnica': { nome: '2. Visita Técnica', cor: 'bg-amber-100 text-amber-800' },
+    'proposta': { nome: '3. Proposta Enviada', cor: 'bg-indigo-100 text-indigo-800' },
+    'negociacao': { nome: '4. Em Negociação', cor: 'bg-purple-100 text-purple-800' },
+    'ganho': { nome: '5. Contrato Ganho', cor: 'bg-emerald-100 text-emerald-800' },
+    'perdido': { nome: 'Perdido', cor: 'bg-red-100 text-red-800' }
+  };
+
+  tbody.innerHTML = leads.map(l => {
+    const etapaInfo = etapasLabels[l.etapa] || { nome: l.etapa, cor: 'bg-slate-100 text-slate-800' };
+    const valorFmt = Number(l.valor_mensal_estimado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const ultimaInteracao = l.ultima_interacao 
+      ? `${new Date(l.ultima_interacao).toLocaleDateString('pt-BR')} - ${l.tipo_ultima_interacao || ''}`
+      : 'Nenhuma interação';
+
+    return `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-800">${l.razao_social}</div>
+          ${l.nome_fantasia ? `<div class="text-[11px] text-slate-400">${l.nome_fantasia}</div>` : ''}
+        </td>
+        <td class="px-4 py-3">
+          <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px]">${l.segmento || 'Geral'}</span>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-medium text-slate-700">${l.contato_nome || '-'}</div>
+          <div class="text-[10px] text-slate-400 font-mono">${l.contato_telefone || ''}</div>
+        </td>
+        <td class="px-4 py-3 text-center font-bold text-slate-700">${l.vagas_estimadas || 0}</td>
+        <td class="px-4 py-3 text-right font-bold text-emerald-700">${valorFmt}</td>
+        <td class="px-4 py-3 text-center">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${etapaInfo.cor}">${etapaInfo.nome}</span>
+        </td>
+        <td class="px-4 py-3 text-slate-500 text-[11px] truncate max-w-xs">${ultimaInteracao}</td>
+        <td class="px-4 py-3 text-right whitespace-nowrap space-x-1">
+          <button onclick="abrirModalDetalhesLead(${l.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 p-1.5 px-2.5 rounded font-bold text-xs transition" title="Ver Detalhes e Interações">
+            <i class="fa-solid fa-comments"></i>
+          </button>
+          <button onclick="abrirModalEfetivarContrato(${l.id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 px-2.5 rounded font-bold text-xs transition" title="Efetivar Contrato & Gerar Postos">
+            <i class="fa-solid fa-file-contract"></i>
+          </button>
+          <button onclick="abrirModalNovoLead(${l.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-xs transition" title="Editar Informações">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button onclick="excluirLeadComercial(${l.id}, '${(l.razao_social || '').replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 p-1.5 text-xs transition" title="Excluir Lead">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filtrarTabelaComercial() {
+  const busca = (document.getElementById('comercialBuscaTexto')?.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const segmento = document.getElementById('comercialFiltroSegmento')?.value || '';
+  const etapa = document.getElementById('comercialFiltroEtapa')?.value || '';
+
+  const filtrados = (state.comercial.leads || []).filter(l => {
+    const matchBusca = !busca || 
+      (l.razao_social || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(busca) ||
+      (l.nome_fantasia || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(busca) ||
+      (l.contato_nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(busca) ||
+      (l.endereco || '').toLowerCase().includes(busca);
+
+    const matchSeg = !segmento || l.segmento === segmento;
+    const matchEtapa = !etapa || l.etapa === etapa;
+
+    return matchBusca && matchSeg && matchEtapa;
+  });
+
+  renderizarTabelaComercial(filtrados);
+}
+
+function abrirModalNovoLead(id = null) {
+  const form = document.getElementById('formNovoLeadComercial');
+  if (form) form.reset();
+
+  const titulo = document.getElementById('tituloModalLead');
+  const editId = document.getElementById('leadEditId');
+
+  if (id) {
+    const lead = (state.comercial.leads || []).find(x => x.id === id);
+    if (!lead) return alert('Lead não encontrado.');
+    if (titulo) titulo.textContent = 'Editar Oportunidade / Lead';
+    if (editId) editId.value = lead.id;
+
+    document.getElementById('leadRazaoSocial').value = lead.razao_social || '';
+    document.getElementById('leadNomeFantasia').value = lead.nome_fantasia || '';
+    document.getElementById('leadCnpj').value = lead.cnpj || '';
+    document.getElementById('leadSegmento').value = lead.segmento || 'Facilities & Condomínios';
+    document.getElementById('leadContatoNome').value = lead.contato_nome || '';
+    document.getElementById('leadContatoCargo').value = lead.contato_cargo || '';
+    document.getElementById('leadContatoTelefone').value = lead.contato_telefone || '';
+    document.getElementById('leadContatoEmail').value = lead.contato_email || '';
+    document.getElementById('leadOrigem').value = lead.origem || 'Prospecção Ativa';
+    document.getElementById('leadVagasEstimadas').value = lead.vagas_estimadas || '';
+    document.getElementById('leadValorEstimado').value = lead.valor_mensal_estimado || '';
+    document.getElementById('leadEndereco').value = lead.endereco || '';
+    document.getElementById('leadObservacoes').value = lead.observacoes || '';
+  } else {
+    if (titulo) titulo.textContent = 'Cadastrar Nova Oportunidade / Lead';
+    if (editId) editId.value = '';
+  }
+
+  document.getElementById('modalNovoLeadComercial').classList.remove('hidden');
+}
+
+async function salvarNovoLead(e) {
+  e.preventDefault();
+  const id = document.getElementById('leadEditId')?.value;
+  const payload = {
+    razao_social: document.getElementById('leadRazaoSocial').value.trim(),
+    nome_fantasia: document.getElementById('leadNomeFantasia').value.trim(),
+    cnpj: document.getElementById('leadCnpj').value.trim(),
+    segmento: document.getElementById('leadSegmento').value,
+    contato_nome: document.getElementById('leadContatoNome').value.trim(),
+    contato_cargo: document.getElementById('leadContatoCargo').value.trim(),
+    contato_telefone: document.getElementById('leadContatoTelefone').value.trim(),
+    contato_email: document.getElementById('leadContatoEmail').value.trim(),
+    origem: document.getElementById('leadOrigem').value,
+    vagas_estimadas: parseInt(document.getElementById('leadVagasEstimadas').value) || 1,
+    valor_mensal_estimado: parseFloat(document.getElementById('leadValorEstimado').value) || 0,
+    endereco: document.getElementById('leadEndereco').value.trim(),
+    observacoes: document.getElementById('leadObservacoes').value.trim()
+  };
+
+  try {
+    const url = id ? `/api/comercial/leads/${id}` : '/api/comercial/leads';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoLeadComercial');
+      await carregarComercial();
+      alert(id ? 'Lead atualizado com sucesso!' : 'Novo lead registrado no funil comercial!');
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao salvar lead'));
+    }
+  } catch (err) {
+    alert('Erro ao comunicar com o servidor: ' + err.message);
+  }
+}
+
+async function abrirModalDetalhesLead(id) {
+  try {
+    const res = await fetch(`/api/comercial/leads/${id}`);
+    const lead = await res.json();
+    if (!lead || !lead.id) return alert('Detalhes do lead não encontrados.');
+
+    state.comercial.leadAtual = lead;
+
+    document.getElementById('detalhesLeadTitulo').textContent = lead.razao_social;
+    document.getElementById('detalhesLeadSubtitulo').textContent = lead.nome_fantasia 
+      ? `Nome Fantasia: ${lead.nome_fantasia} | Criado em ${new Date(lead.created_at).toLocaleDateString('pt-BR')}`
+      : `Criado em ${new Date(lead.created_at).toLocaleDateString('pt-BR')}`;
+
+    document.getElementById('detalhesLeadSegmentoBadge').textContent = lead.segmento || 'Geral';
+    document.getElementById('detalhesLeadEtapaBadge').textContent = lead.etapa.toUpperCase();
+
+    document.getElementById('detalhesLeadContato').textContent = lead.contato_nome || '-';
+    document.getElementById('detalhesLeadCargo').textContent = lead.contato_cargo || '-';
+    document.getElementById('detalhesLeadTelefone').textContent = lead.contato_telefone || '-';
+    document.getElementById('detalhesLeadEmail').textContent = lead.contato_email || '-';
+    document.getElementById('detalhesLeadVagas').textContent = lead.vagas_estimadas || 0;
+    document.getElementById('detalhesLeadValor').textContent = Number(lead.valor_mensal_estimado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.getElementById('detalhesLeadOrigem').textContent = lead.origem || '-';
+    document.getElementById('detalhesLeadEndereco').textContent = lead.endereco || 'Não informado';
+    document.getElementById('detalhesLeadObs').textContent = lead.observacoes || 'Nenhuma observação registrada.';
+
+    if (document.getElementById('detalhesLeadMoverSelect')) {
+      document.getElementById('detalhesLeadMoverSelect').value = lead.etapa || 'prospeccao';
+    }
+
+    renderizarTimelineInteracoes(lead.interacoes || []);
+
+    document.getElementById('modalDetalhesLead').classList.remove('hidden');
+  } catch (err) {
+    alert('Erro ao abrir detalhes do lead: ' + err.message);
+  }
+}
+
+function renderizarTimelineInteracoes(interacoes) {
+  const container = document.getElementById('detalhesLeadTimelineContainer');
+  const count = document.getElementById('detalhesLeadTotalInteracoes');
+  if (count) count.textContent = interacoes.length;
+  if (!container) return;
+
+  if (interacoes.length === 0) {
+    container.innerHTML = `
+      <div class="py-6 text-center text-slate-400 bg-white border border-slate-200 rounded-xl">
+        <i class="fa-regular fa-comment-dots text-xl mb-1 block"></i>
+        Nenhuma interação registrada ainda. Registre a primeira acima!
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = interacoes.map(item => {
+    const dataFmt = new Date(item.created_at).toLocaleString('pt-BR');
+    const dataProx = item.data_proximo_contato ? new Date(item.data_proximo_contato).toLocaleDateString('pt-BR') : null;
+
+    return `
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-dot text-blue-500 text-[9px]"></i>
+            ${item.tipo}
+          </span>
+          <span class="text-[10px] text-slate-400 font-mono">${dataFmt}</span>
+        </div>
+        <p class="text-slate-600 text-[11px] whitespace-pre-wrap leading-relaxed">${item.descricao}</p>
+        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+          <span>Por: <b>${item.usuario_nome || 'Operador'}</b></span>
+          ${dataProx ? `<span class="bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-medium">Próximo Contato: ${dataProx}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function salvarNovaInteracaoLead(e) {
+  e.preventDefault();
+  const lead = state.comercial.leadAtual;
+  if (!lead || !lead.id) return;
+
+  const payload = {
+    tipo: document.getElementById('leadInteracaoTipo').value,
+    descricao: document.getElementById('leadInteracaoDescricao').value.trim(),
+    proximo_passo: document.getElementById('leadInteracaoProximoPasso').value.trim(),
+    data_proximo_contato: document.getElementById('leadInteracaoDataProximo').value || null
+  };
+
+  try {
+    const res = await fetch(`/api/comercial/leads/${lead.id}/interacoes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('leadInteracaoDescricao').value = '';
+      document.getElementById('leadInteracaoProximoPasso').value = '';
+      document.getElementById('leadInteracaoDataProximo').value = '';
+      await abrirModalDetalhesLead(lead.id);
+      await carregarComercial();
+    } else {
+      alert('Erro ao registrar interação: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+async function salvarMudancaEtapaLeadAtual() {
+  const lead = state.comercial.leadAtual;
+  if (!lead || !lead.id) return;
+  const novaEtapa = document.getElementById('detalhesLeadMoverSelect').value;
+
+  try {
+    const res = await fetch(`/api/comercial/leads/${lead.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ etapa: novaEtapa })
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('detalhesLeadEtapaBadge').textContent = novaEtapa.toUpperCase();
+      await carregarComercial();
+      alert('Etapa atualizada com sucesso!');
+    } else {
+      alert('Erro: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+async function avancarRapidoEtapaLead(leadId, etapaAtual) {
+  const fluxo = ['prospeccao', 'visita_tecnica', 'proposta', 'negociacao', 'ganho'];
+  const idx = fluxo.indexOf(etapaAtual);
+  if (idx < 0 || idx >= fluxo.length - 1) return;
+  const proxima = fluxo[idx + 1];
+
+  try {
+    const res = await fetch(`/api/comercial/leads/${leadId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ etapa: proxima })
+    });
+    const json = await res.json();
+    if (json.success) {
+      await carregarComercial();
+    } else {
+      alert('Erro ao avançar etapa: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function editarLeadAtual() {
+  const lead = state.comercial.leadAtual;
+  if (!lead) return;
+  fecharModal('modalDetalhesLead');
+  abrirModalNovoLead(lead.id);
+}
+
+function iniciarEfetivacaoLeadAtual() {
+  const lead = state.comercial.leadAtual;
+  if (!lead) return;
+  fecharModal('modalDetalhesLead');
+  abrirModalEfetivarContrato(lead.id);
+}
+
+async function excluirLeadComercial(id, nome) {
+  if (!confirm(`Deseja realmente remover o lead "${nome}" do funil comercial?`)) return;
+  try {
+    const res = await fetch(`/api/comercial/leads/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarComercial();
+      alert('Lead removido com sucesso!');
+    } else {
+      alert('Erro ao remover: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// 10.2 EFETIVAÇÃO DE CONTRATO & ORDENS DE IMPLANTAÇÃO
+// -------------------------------------------------------------
+
+function abrirModalEfetivarContrato(leadId) {
+  const lead = (state.comercial.leads || []).find(x => x.id === leadId) || state.comercial.leadAtual;
+  if (!lead) return alert('Lead não encontrado.');
+
+  document.getElementById('efetivarLeadId').value = lead.id;
+  document.getElementById('efetivarRazaoSocial').value = lead.razao_social || '';
+  document.getElementById('efetivarNomeFantasia').value = lead.nome_fantasia || lead.razao_social || '';
+  document.getElementById('efetivarCnpj').value = lead.cnpj || '';
+  document.getElementById('efetivarTelefone').value = lead.contato_telefone || '';
+  document.getElementById('efetivarEmailFinanceiro').value = lead.contato_email || '';
+  document.getElementById('efetivarEnderecoOperacional').value = lead.endereco || '';
+  document.getElementById('efetivarGestorCliente').value = lead.contato_nome || '';
+
+  // Gerar número sugerido de contrato e data inicial padrão (ex: daqui 7 dias úteis)
+  const hoje = new Date();
+  hoje.setDate(hoje.getDate() + 7);
+  const dataSugerida = hoje.toISOString().split('T')[0];
+  document.getElementById('efetivarDataInicioOperacao').value = dataSugerida;
+  document.getElementById('efetivarNumeroContrato').value = `CT-${new Date().getFullYear()}/${String(Math.floor(Math.random() * 900) + 100)}`;
+  document.getElementById('efetivarDiaFechamento').value = '20';
+
+  // Limpar container e adicionar linhas de postos iniciais
+  const container = document.getElementById('efetivacaoPostosContainer');
+  if (container) container.innerHTML = '';
+
+  const funcaoSugerida = (lead.segmento && lead.segmento.includes('Limpeza')) ? 'Auxiliar de Limpeza' : 'Porteiro';
+  const valorUnitarioSugerido = lead.valor_mensal_estimado && lead.vagas_estimadas 
+    ? (lead.valor_mensal_estimado / lead.vagas_estimadas).toFixed(2)
+    : 4500.00;
+
+  adicionarLinhaPostoEfetivacao({
+    unidade: 'Unidade Principal',
+    nome: 'Posto Central',
+    funcao: funcaoSugerida,
+    escala: '12x36 Diurno',
+    vagas: lead.vagas_estimadas || 2,
+    valor: valorUnitarioSugerido
+  });
+
+  document.getElementById('modalEfetivarContratoComercial').classList.remove('hidden');
+}
+
+function adicionarLinhaPostoEfetivacao(dados = {}) {
+  const container = document.getElementById('efetivacaoPostosContainer');
+  if (!container) return;
+
+  const rowId = 'postoRow_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+
+  const row = document.createElement('div');
+  row.id = rowId;
+  row.className = 'bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2 relative';
+  row.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Unidade / Local *</label>
+        <input type="text" name="postoUnidade" required value="${dados.unidade || 'Matriz'}" placeholder="Ex: Matriz / Sede" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Nome do Posto *</label>
+        <input type="text" name="postoNome" required value="${dados.nome || 'Portaria Principal'}" placeholder="Ex: Portaria Principal" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Função Contratada *</label>
+        <input type="text" name="postoFuncao" required value="${dados.funcao || 'Porteiro'}" placeholder="Ex: Porteiro, Vigilante, Limpeza" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none">
+      </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+      <div>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Escala de Trabalho</label>
+        <select name="postoEscala" class="w-full border border-slate-300 rounded px-2 py-1.5 text-xs focus:outline-none bg-white">
+          <option value="12x36 Diurno" ${dados.escala === '12x36 Diurno' ? 'selected' : ''}>12x36 Diurno</option>
+          <option value="12x36 Noturno" ${dados.escala === '12x36 Noturno' ? 'selected' : ''}>12x36 Noturno</option>
+          <option value="5x2 Seg a Sex" ${dados.escala === '5x2 Seg a Sex' ? 'selected' : ''}>5x2 Segunda a Sexta</option>
+          <option value="6x1" ${dados.escala === '6x1' ? 'selected' : ''}>6x1</option>
+          <option value="44h Semanais" ${dados.escala === '44h Semanais' ? 'selected' : ''}>44h Semanais</option>
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Vagas Contratadas (Limite) *</label>
+        <input type="number" name="postoQtdVagas" required min="1" value="${dados.vagas || 1}" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none font-bold text-slate-800">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Valor Unitário (R$)</label>
+        <input type="number" step="0.01" name="postoValorUnitario" value="${dados.valor || 4500}" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none font-mono">
+      </div>
+      <div class="flex justify-end">
+        <button type="button" onclick="removerLinhaPostoEfetivacao('${rowId}')" class="text-red-500 hover:text-red-700 font-semibold text-xs py-1.5 px-2 rounded hover:bg-red-50 transition flex items-center gap-1">
+          <i class="fa-solid fa-trash-can"></i> Remover Posto
+        </button>
+      </div>
+    </div>
+  `;
+
+  container.appendChild(row);
+}
+
+function removerLinhaPostoEfetivacao(rowId) {
+  const row = document.getElementById(rowId);
+  const container = document.getElementById('efetivacaoPostosContainer');
+  if (container && container.children.length <= 1) {
+    return alert('O contrato precisa ter ao menos um posto de trabalho cadastrado.');
+  }
+  if (row) row.remove();
+}
+
+async function salvarEfetivacaoContrato(e) {
+  e.preventDefault();
+
+  const container = document.getElementById('efetivacaoPostosContainer');
+  const rows = container ? container.children : [];
+  if (rows.length === 0) {
+    return alert('Por favor, adicione ao menos um posto de trabalho contratado.');
+  }
+
+  const postos = [];
+  for (const r of rows) {
+    const unidade = r.querySelector('[name="postoUnidade"]')?.value.trim();
+    const nome = r.querySelector('[name="postoNome"]')?.value.trim();
+    const funcao = r.querySelector('[name="postoFuncao"]')?.value.trim();
+    const escala = r.querySelector('[name="postoEscala"]')?.value;
+    const qtdVagas = parseInt(r.querySelector('[name="postoQtdVagas"]')?.value) || 1;
+    const valorUnitario = parseFloat(r.querySelector('[name="postoValorUnitario"]')?.value) || 0;
+
+    if (!nome || !funcao) {
+      return alert('Preencha os campos obrigatórios de todos os postos de trabalho.');
+    }
+
+    postos.push({
+      nome_unidade: unidade,
+      nome_posto: nome,
+      nome_cargo: funcao,
+      escala,
+      quantidade_vagas: qtdVagas,
+      valor_unitario: valorUnitario
+    });
+  }
+
+  const payload = {
+    lead_id: document.getElementById('efetivarLeadId').value || null,
+    razao_social: document.getElementById('efetivarRazaoSocial').value.trim(),
+    nome_fantasia: document.getElementById('efetivarNomeFantasia').value.trim(),
+    cnpj: document.getElementById('efetivarCnpj').value.trim(),
+    inscricao_estadual: document.getElementById('efetivarInscricao').value.trim(),
+    telefone: document.getElementById('efetivarTelefone').value.trim(),
+    email: document.getElementById('efetivarEmailFinanceiro').value.trim(),
+    endereco: document.getElementById('efetivarEnderecoOperacional').value.trim(),
+    gestor_cliente: document.getElementById('efetivarGestorCliente').value.trim(),
+    numero_contrato: document.getElementById('efetivarNumeroContrato').value.trim(),
+    data_inicio_operacao: document.getElementById('efetivarDataInicioOperacao').value,
+    dia_fechamento_folha: parseInt(document.getElementById('efetivarDiaFechamento').value) || 20,
+    postos
+  };
+
+  try {
+    const res = await fetch('/api/comercial/efetivar-contrato', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEfetivarContratoComercial');
+      alert(`🎉 SUCESSO!\n\nCliente "${payload.nome_fantasia}" e ${postos.length} postos de trabalho foram ativados no SISFAC!\n\nAs 5 tarefas da Ordem de Implantação foram geradas e o comunicado urgente foi disparado no Mural da empresa.`);
+      await carregarComercial();
+      await carregarClientesComPostos();
+      await verificarComunicadosNaoLidos();
+    } else {
+      alert('Erro ao efetivar contrato: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+async function abrirModalOrdensImplantacao() {
+  const container = document.getElementById('ordensImplantacaoContainer');
+  if (container) {
+    container.innerHTML = `<div class="py-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Carregando ordens de implantação...</div>`;
+  }
+  document.getElementById('modalOrdensImplantacao').classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/comercial/implantacoes');
+    const ordens = await res.json();
+    state.comercial.ordens = Array.isArray(ordens) ? ordens : [];
+
+    if (state.comercial.ordens.length === 0) {
+      container.innerHTML = `
+        <div class="py-12 text-center text-slate-400 bg-slate-50 border border-slate-200 rounded-xl">
+          <i class="fa-solid fa-clipboard-check text-2xl mb-2 block"></i>
+          Nenhuma ordem de implantação em andamento no momento.
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = state.comercial.ordens.map(ordem => {
+      const inicioFmt = ordem.data_inicio_operacao ? new Date(ordem.data_inicio_operacao + 'T00:00:00').toLocaleDateString('pt-BR') : '-';
+      const tarefas = ordem.tarefas || [];
+      const totalTarefas = tarefas.length || 5;
+      const tarefasConcluidas = tarefas.filter(t => t.status === 'concluido').length;
+      const progressoPct = Math.round((tarefasConcluidas / totalTarefas) * 100);
+
+      const statusBadges = {
+        'pendente': 'bg-amber-100 text-amber-800',
+        'em_andamento': 'bg-blue-100 text-blue-800',
+        'concluido': 'bg-emerald-100 text-emerald-800'
+      };
+
+      const setoresIcons = {
+        'rh': 'fa-solid fa-users text-blue-600',
+        'beneficios': 'fa-solid fa-bus text-emerald-600',
+        'compras': 'fa-solid fa-boxes-stacked text-teal-600',
+        'operacional': 'fa-solid fa-shield-halved text-indigo-600',
+        'faturamento': 'fa-solid fa-file-invoice-dollar text-amber-600'
+      };
+
+      return `
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-slate-800 text-sm">${ordem.cliente_nome}</h4>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ordem.status === 'concluido' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}">
+                  ${ordem.status === 'concluido' ? 'Operação Implantada' : 'Implantação Ativa'}
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-0.5">
+                Contrato: <b>${ordem.numero_contrato || '-'}</b> | Início das Operações: <b class="text-orange-700">${inicioFmt}</b>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-xs font-bold text-slate-700">${tarefasConcluidas}/${totalTarefas} tarefas (${progressoPct}%)</span>
+              <div class="w-36 bg-slate-200 rounded-full h-2 mt-1 overflow-hidden">
+                <div class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: ${progressoPct}%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid das 5 Tarefas Setoriais -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs">
+            ${tarefas.map(t => {
+              const icon = setoresIcons[t.setor_responsavel] || 'fa-solid fa-list-check text-slate-600';
+              const badgeCor = statusBadges[t.status] || 'bg-slate-100 text-slate-800';
+
+              return `
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between gap-2">
+                  <div>
+                    <div class="flex items-center justify-between gap-1 mb-1">
+                      <span class="font-bold uppercase tracking-wider text-[10px] text-slate-500 flex items-center gap-1">
+                        <i class="${icon}"></i> ${t.setor_responsavel.toUpperCase()}
+                      </span>
+                      <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badgeCor}">
+                        ${t.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                    <div class="font-bold text-slate-800 text-[11px] leading-tight">${t.titulo_tarefa}</div>
+                    <p class="text-[10px] text-slate-500 mt-1 leading-normal">${t.descricao || ''}</p>
+                  </div>
+
+                  <div class="pt-2 border-t border-slate-200 flex items-center justify-between gap-1">
+                    <select onchange="atualizarStatusTarefaImplantacao(${t.id}, this.value, '${(ordem.cliente_nome || '').replace(/'/g, "\\'")}')" class="border border-slate-300 rounded px-1.5 py-1 text-[10px] bg-white focus:outline-none">
+                      <option value="pendente" ${t.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                      <option value="em_andamento" ${t.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
+                      <option value="concluido" ${t.status === 'concluido' ? 'selected' : ''}>Concluído</option>
+                    </select>
+                    <span class="text-[9px] text-slate-400">Prazo: ${t.data_limite ? new Date(t.data_limite + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="py-6 text-center text-red-500">Erro ao carregar ordens: ${err.message}</div>`;
+  }
+}
+
+async function atualizarStatusTarefaImplantacao(tarefaId, novoStatus, clienteNome) {
+  try {
+    const res = await fetch(`/api/comercial/implantacoes/tarefas/${tarefaId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: novoStatus })
+    });
+    const json = await res.json();
+    if (json.success) {
+      await abrirModalOrdensImplantacao();
+    } else {
+      alert('Erro ao atualizar tarefa: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =============================================================================
+// 11. MÓDULO: MURAL DE COMUNICADOS CORPORATIVOS
+// =============================================================================
+
+state.comunicados = {
+  lista: [],
+  filtro: 'todos',
+  comunicadoAuditoria: null
+};
+
+async function carregarComunicados() {
+  const container = document.getElementById('comunicadosFeedContainer');
+  if (container) {
+    container.innerHTML = `<div class="py-12 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Carregando avisos corporativos...</div>`;
+  }
+
+  // Ajustar botão "Novo Comunicado" conforme permissão
+  const btnNovo = document.getElementById('btnNovoComunicado');
+  if (btnNovo) {
+    const pode = isUsuarioAdminMaster() || (state.usuarioLogado?.pode_enviar_comunicados === 1);
+    btnNovo.style.display = pode ? 'flex' : 'none';
+  }
+
+  try {
+    const usuarioId = state.usuarioLogado?.id || '';
+    const res = await fetch(`/api/comunicados?usuario_id=${usuarioId}`);
+    const data = await res.json();
+    state.comunicados.lista = Array.isArray(data.comunicados) ? data.comunicados : [];
+
+    atualizarBadgesComunicados(data.nao_lidos_count || 0);
+    renderizarFeedComunicados(state.comunicados.filtro);
+  } catch (err) {
+    console.error('Erro ao carregar comunicados:', err);
+    if (container) {
+      container.innerHTML = `<div class="py-6 text-center text-red-500">Erro ao carregar comunicados.</div>`;
+    }
+  }
+}
+
+async function verificarComunicadosNaoLidos() {
+  try {
+    const usuarioId = state.usuarioLogado?.id || '';
+    const res = await fetch(`/api/comunicados?usuario_id=${usuarioId}`);
+    const data = await res.json();
+    atualizarBadgesComunicados(data.nao_lidos_count || 0);
+  } catch (e) {
+    // Silencioso
+  }
+}
+
+function atualizarBadgesComunicados(count) {
+  const bHeader = document.getElementById('headerComunicadosBadge');
+  const bNav = document.getElementById('navBadgeComunicados');
+  const bFiltro = document.getElementById('comunicadosFiltroNaoLidosCount');
+  const kpiNaoLidos = document.getElementById('kpiComunicadosNaoLidos');
+  const kpiTotal = document.getElementById('kpiComunicadosTotal');
+  const kpiTaxa = document.getElementById('kpiComunicadosTaxaLeitura');
+
+  if (bHeader) {
+    bHeader.textContent = count;
+    bHeader.classList.toggle('hidden', count === 0);
+  }
+  if (bNav) {
+    bNav.textContent = count;
+    bNav.classList.toggle('hidden', count === 0);
+  }
+  if (bFiltro) bFiltro.textContent = count;
+  if (kpiNaoLidos) kpiNaoLidos.textContent = count;
+
+  const total = state.comunicados.lista?.length || 0;
+  if (kpiTotal) kpiTotal.textContent = total;
+
+  if (kpiTaxa) {
+    const lidos = total - count;
+    const taxa = total > 0 ? Math.round((lidos / total) * 100) : 100;
+    kpiTaxa.textContent = `${taxa}%`;
+  }
+}
+
+function filtrarComunicadosFeed(filtro) {
+  state.comunicados.filtro = filtro;
+
+  const btnTodos = document.getElementById('btnFiltroComunicadosTodos');
+  const btnNao = document.getElementById('btnFiltroComunicadosNaoLidos');
+  const btnUrg = document.getElementById('btnFiltroComunicadosUrgentes');
+
+  [btnTodos, btnNao, btnUrg].forEach(b => {
+    if (b) {
+      b.className = 'px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-800 transition';
+    }
+  });
+
+  if (filtro === 'todos' && btnTodos) btnTodos.className = 'px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs transition';
+  if (filtro === 'nao_lidos' && btnNao) btnNao.className = 'px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs transition';
+  if (filtro === 'urgente' && btnUrg) btnUrg.className = 'px-3 py-1.5 rounded-md bg-white text-slate-800 shadow-xs transition';
+
+  renderizarFeedComunicados(filtro);
+}
+
+function renderizarFeedComunicados(filtro = 'todos') {
+  const container = document.getElementById('comunicadosFeedContainer');
+  if (!container) return;
+
+  let lista = state.comunicados.lista || [];
+
+  if (filtro === 'nao_lidos') {
+    lista = lista.filter(c => !c.ja_leu);
+  } else if (filtro === 'urgente') {
+    lista = lista.filter(c => c.prioridade === 'urgente' || c.categoria === 'urgente');
+  }
+
+  if (lista.length === 0) {
+    container.innerHTML = `
+      <div class="py-12 text-center text-slate-400 bg-white border border-slate-200 rounded-2xl p-6">
+        <i class="fa-regular fa-bell text-3xl text-slate-300 mb-2 block"></i>
+        <span class="font-semibold text-slate-600 text-sm">Nenhum comunicado encontrado para este filtro.</span>
+        <p class="text-xs text-slate-400 mt-1">Você está em dia com todas as notícias e orientações corporativas!</p>
+      </div>`;
+    return;
+  }
+
+  const prioridadesEstilos = {
+    'urgente': {
+      border: 'border-red-300 bg-red-50/20',
+      badge: 'bg-red-100 text-red-800 border border-red-200',
+      icon: 'fa-solid fa-triangle-exclamation text-red-600',
+      texto: 'URGENTE'
+    },
+    'importante': {
+      border: 'border-amber-300 bg-amber-50/20',
+      badge: 'bg-amber-100 text-amber-800 border border-amber-200',
+      icon: 'fa-solid fa-circle-exclamation text-amber-600',
+      texto: 'IMPORTANTE'
+    },
+    'normal': {
+      border: 'border-slate-200 bg-white',
+      badge: 'bg-blue-100 text-blue-800 border border-blue-200',
+      icon: 'fa-solid fa-bullhorn text-blue-600',
+      texto: 'INFORMATIVO'
+    }
+  };
+
+  const isAdminOuEmissor = isUsuarioAdminMaster() || (state.usuarioLogado?.pode_enviar_comunicados === 1);
+
+  container.innerHTML = lista.map(c => {
+    const estilo = prioridadesEstilos[c.prioridade] || prioridadesEstilos['normal'];
+    const dataCriacao = new Date(c.created_at).toLocaleString('pt-BR');
+    const dataLeitura = c.data_leitura ? new Date(c.data_leitura).toLocaleString('pt-BR') : null;
+
+    return `
+      <div class="rounded-2xl border ${estilo.border} p-5 shadow-xs space-y-4 transition hover:shadow-md">
+        <!-- Topo: Categoria, Prioridade, Data -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${estilo.badge}">
+              <i class="${estilo.icon}"></i> ${estilo.texto}
+            </span>
+            <span class="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded">
+              ${c.categoria || 'Geral'}
+            </span>
+            ${c.setor_alvo && c.setor_alvo !== 'TODOS' ? `
+              <span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded">
+                Destinado: ${c.setor_alvo.toUpperCase()}
+              </span>
+            ` : ''}
+          </div>
+          <div class="text-[11px] text-slate-400 font-medium">
+            Publicado em ${dataCriacao} por <b>${c.criado_por_nome || 'Diretoria'}</b> (${c.criado_por_setor || 'Admin'})
+          </div>
+        </div>
+
+        <!-- Título e Mensagem -->
+        <div>
+          <h3 class="font-black text-base text-slate-900 mb-2 leading-snug">${c.titulo}</h3>
+          <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">${c.mensagem}</p>
+        </div>
+
+        <!-- BARRA DE REAÇÕES COM EMOJIS (INTERATIVO) -->
+        <div class="pt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-100/80">
+          <!-- Pílulas de Emojis que já possuem reações -->
+          ${(c.reacoes || []).map(r => `
+            <button type="button" onclick="alternarReacaoComunicado(${c.id}, '${r.emoji}')"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition border ${
+                r.user_reacted 
+                  ? 'bg-blue-50 border-blue-400 text-blue-800 shadow-xs ring-2 ring-blue-400/30' 
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+              }" 
+              title="${r.usuarios && r.usuarios.length ? r.usuarios.join(', ') : 'Reagir com ' + r.emoji}">
+              <span class="text-sm leading-none">${r.emoji}</span>
+              <span class="text-[11px] font-bold ${r.user_reacted ? 'text-blue-700' : 'text-slate-600'}">${r.count}</span>
+            </button>
+          `).join('')}
+
+          <!-- Seletor Rápido de Emojis (+ Reagir) -->
+          <div class="relative inline-block" id="emojiPickerWrap_${c.id}">
+            <button type="button" onclick="toggleEmojiPickerMenu(${c.id})" 
+              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition"
+              title="Reagir com emoji">
+              <i class="fa-regular fa-face-smile text-amber-500"></i>
+              <span class="text-[11px] font-medium">+ Reagir</span>
+            </button>
+
+            <!-- Popover de Emojis Rápidos -->
+            <div id="emojiPopover_${c.id}" class="hidden absolute left-0 bottom-full mb-1.5 z-30 bg-white rounded-full shadow-lg border border-slate-200 px-2 py-1 flex items-center gap-1.5 animate-fade-in">
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '👍')" class="hover:scale-130 transition p-1 text-base leading-none" title="Joinha / Ciente">👍</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '❤️')" class="hover:scale-130 transition p-1 text-base leading-none" title="Adorei / Parabéns">❤️</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '👏')" class="hover:scale-130 transition p-1 text-base leading-none" title="Palmas / Reconhecimento">👏</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '🚀')" class="hover:scale-130 transition p-1 text-base leading-none" title="Foguete / Pra cima">🚀</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '🔥')" class="hover:scale-130 transition p-1 text-base leading-none" title="Sensacional / Bora">🔥</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '🎯')" class="hover:scale-130 transition p-1 text-base leading-none" title="Na Meta / Foco">🎯</button>
+            </div>
+          </div>
+
+          <!-- Resumo de quem reagiu -->
+          ${(() => {
+            const totalReacoes = (c.reacoes || []).reduce((acc, curr) => acc + curr.count, 0);
+            if (totalReacoes === 0) return '<span class="text-[11px] text-slate-400 ml-1 italic hidden sm:inline">Deixe sua reação!</span>';
+            const todosUsuarios = Array.from(new Set((c.reacoes || []).flatMap(r => r.usuarios || [])));
+            const nomesTexto = todosUsuarios.slice(0, 3).join(', ') + (todosUsuarios.length > 3 ? ` e mais ${todosUsuarios.length - 3}` : '');
+            return `<span class="text-[11px] text-slate-500 ml-1 font-medium hidden sm:inline"><i class="fa-solid fa-heart text-rose-500/80 mr-1 text-[10px]"></i>${nomesTexto} reagiu</span>`;
+          })()}
+        </div>
+
+        <!-- Rodapé com Confirmação de Leitura e Auditoria -->
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            ${c.ja_leu ? `
+              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 font-bold text-xs border border-emerald-200">
+                <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                Leitura Confirmada em ${dataLeitura}
+              </span>
+            ` : `
+              <button onclick="confirmarLeituraComunicado(${c.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition animate-pulse">
+                <i class="fa-solid fa-check-double"></i>
+                Confirmar Leitura e Ciente
+              </button>
+            `}
+          </div>
+
+          <div class="flex items-center gap-2">
+            ${isAdminOuEmissor ? `
+              <button onclick="abrirAuditoriaLeiturasComunicado(${c.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 flex items-center gap-1.5 transition" title="Ver quem já leu este comunicado">
+                <i class="fa-solid fa-users-viewfinder text-cyan-600"></i>
+                Auditoria (${c.total_leituras || 0} lidos)
+              </button>
+              ${isUsuarioAdminMaster() ? `
+                <button onclick="abrirModalEditarComunicado(${c.id}, ${JSON.stringify(c.titulo)}, ${JSON.stringify(c.mensagem)}, ${JSON.stringify(c.categoria || 'geral')}, ${JSON.stringify(c.prioridade || 'normal')})" class="text-blue-500 hover:text-blue-700 p-1.5 text-xs transition" title="Editar comunicado">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="excluirComunicado(${c.id})" class="text-red-400 hover:text-red-600 p-1.5 text-xs transition" title="Excluir comunicado">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              ` : ''}
+
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleEmojiPickerMenu(comunicadoId) {
+  const popover = document.getElementById(`emojiPopover_${comunicadoId}`);
+  if (!popover) return;
+  const estaAberto = !popover.classList.contains('hidden');
+  document.querySelectorAll('[id^="emojiPopover_"]').forEach(el => el.classList.add('hidden'));
+  if (!estaAberto) {
+    popover.classList.remove('hidden');
+  }
+}
+
+// Fechar emoji picker ao clicar fora
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[id^="emojiPickerWrap_"]')) {
+    document.querySelectorAll('[id^="emojiPopover_"]').forEach(el => el.classList.add('hidden'));
+  }
+});
+
+async function alternarReacaoComunicado(comunicadoId, emoji) {
+  const popover = document.getElementById(`emojiPopover_${comunicadoId}`);
+  if (popover) popover.classList.add('hidden');
+
+  const usuario = state.usuarioLogado;
+  if (!usuario) {
+    alert('Você precisa estar autenticado para reagir a comunicados.');
+    return;
+  }
+
+  // Atualização otimista imediata na interface
+  const com = (state.comunicados.lista || []).find(x => x.id === comunicadoId);
+  const meuNome = usuario.nome || 'Eu';
+
+  if (com) {
+    if (!com.reacoes) com.reacoes = [];
+    const idx = com.reacoes.findIndex(r => r.emoji === emoji);
+    if (idx !== -1) {
+      if (com.reacoes[idx].user_reacted) {
+        com.reacoes[idx].count = Math.max(0, com.reacoes[idx].count - 1);
+        com.reacoes[idx].user_reacted = false;
+        com.reacoes[idx].usuarios = (com.reacoes[idx].usuarios || []).filter(n => n !== meuNome);
+        if (com.reacoes[idx].count === 0) {
+          com.reacoes.splice(idx, 1);
+        }
+      } else {
+        com.reacoes[idx].count++;
+        com.reacoes[idx].user_reacted = true;
+        if (!com.reacoes[idx].usuarios) com.reacoes[idx].usuarios = [];
+        com.reacoes[idx].usuarios.push(meuNome);
+      }
+    } else {
+      com.reacoes.push({
+        emoji,
+        count: 1,
+        user_reacted: true,
+        usuarios: [meuNome]
+      });
+    }
+    renderizarFeedComunicados(state.comunicados.filtro);
+  }
+
+  try {
+    const res = await fetch(`/api/comunicados/${comunicadoId}/reacoes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario_id: usuario.id,
+        usuario_nome: usuario.nome,
+        usuario_login: usuario.login,
+        emoji
+      })
+    });
+    const json = await res.json();
+    if (json.success && json.reacoes && com) {
+      com.reacoes = json.reacoes;
+      renderizarFeedComunicados(state.comunicados.filtro);
+    }
+  } catch (err) {
+    console.error('Erro ao registrar reação:', err);
+  }
+}
+
+function abrirModalNovoComunicado() {
+  const form = document.getElementById('formNovoComunicado');
+  if (form) form.reset();
+  const bloco = document.getElementById('blocoUsuariosEspecificosComunicado');
+  if (bloco) bloco.classList.add('hidden');
+  document.getElementById('modalNovoComunicado').classList.remove('hidden');
+}
+
+function atualizarOpcoesAudienteComunicado(valor) {
+  const bloco = document.getElementById('blocoUsuariosEspecificosComunicado');
+  const container = document.getElementById('listaCheckboxesUsuariosComunicado');
+  if (!bloco || !container) return;
+
+  if (valor === 'usuarios_especificos') {
+    bloco.classList.remove('hidden');
+    if (state.usuarios && state.usuarios.length > 0) {
+      renderizarCheckboxesUsuariosComunicado(state.usuarios);
+    } else {
+      container.innerHTML = '<div class="p-2 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Carregando usuários...</div>';
+      fetch('/api/usuarios')
+        .then(r => r.json())
+        .then(us => {
+          state.usuarios = Array.isArray(us) ? us : [];
+          renderizarCheckboxesUsuariosComunicado(state.usuarios);
+        })
+        .catch(() => {
+          container.innerHTML = '<div class="p-2 text-rose-500 text-xs">Erro ao carregar lista de usuários.</div>';
+        });
+    }
+  } else {
+    bloco.classList.add('hidden');
+  }
+}
+
+function renderizarCheckboxesUsuariosComunicado(usuarios) {
+  const container = document.getElementById('listaCheckboxesUsuariosComunicado');
+  if (!container) return;
+  const ativos = (usuarios || []).filter(u => u.ativo === 1 || u.ativo === undefined);
+  if (ativos.length === 0) {
+    container.innerHTML = '<div class="p-2 text-slate-400 text-xs">Nenhum usuário cadastrado.</div>';
+    return;
+  }
+  container.innerHTML = ativos.map(u => `
+    <label class="flex items-center gap-1.5 p-1 hover:bg-slate-50 rounded cursor-pointer select-none">
+      <input type="checkbox" name="usuarioComunicadoCheckbox" value="${u.id}" class="rounded text-blue-600 focus:ring-blue-500">
+      <span class="truncate font-semibold text-slate-700 text-[11px]">${u.nome} <span class="text-[9px] text-slate-400">(${u.setor || 'Geral'})</span></span>
+    </label>
+  `).join('');
+}
+
+async function salvarNovoComunicado(e) {
+  e.preventDefault();
+  const alvoValor = document.getElementById('comunicadoSetorAlvo').value;
+  let destinatarios_tipo = 'todos';
+  let setor_alvo = null;
+  let destinatarios_alvo_json = null;
+
+  if (alvoValor === 'todos') {
+    destinatarios_tipo = 'todos';
+  } else if (alvoValor === 'usuarios_especificos') {
+    destinatarios_tipo = 'usuarios';
+    const checked = Array.from(document.querySelectorAll('input[name="usuarioComunicadoCheckbox"]:checked')).map(cb => parseInt(cb.value, 10));
+    if (checked.length === 0) {
+      return alert('Por favor, selecione ao menos um usuário que receberá o comunicado.');
+    }
+    destinatarios_alvo_json = JSON.stringify(checked);
+  } else {
+    destinatarios_tipo = 'setor';
+    setor_alvo = alvoValor;
+    destinatarios_alvo_json = JSON.stringify([alvoValor]);
+  }
+
+  const payload = {
+    titulo: document.getElementById('comunicadoTitulo').value.trim(),
+    categoria: document.getElementById('comunicadoCategoria').value,
+    prioridade: document.getElementById('comunicadoPrioridade').value,
+    setor_alvo: setor_alvo,
+    destinatarios_tipo: destinatarios_tipo,
+    destinatarios_alvo_json: destinatarios_alvo_json,
+    mensagem: document.getElementById('comunicadoMensagem').value.trim(),
+    autor_id: state.usuarioLogado?.id,
+    autor_nome: state.usuarioLogado?.nome,
+    autor_login: state.usuarioLogado?.login,
+    autor_setor: state.usuarioLogado?.setor
+  };
+
+  try {
+    const res = await fetch('/api/comunicados', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoComunicado');
+      alert('Comunicado corporativo publicado com sucesso para a equipe!');
+      await carregarComunicados();
+    } else {
+      alert('Erro: ' + (json.message || 'Não foi possível publicar'));
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+async function confirmarLeituraComunicado(comunicadoId) {
+  try {
+    const res = await fetch(`/api/comunicados/${comunicadoId}/confirmar-leitura`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario_id: state.usuarioLogado?.id,
+        usuario_nome: state.usuarioLogado?.nome,
+        usuario_setor: state.usuarioLogado?.setor
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      await carregarComunicados();
+    } else {
+      alert('Erro ao confirmar leitura: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function abrirAuditoriaLeiturasComunicado(comunicadoId) {
+  document.getElementById('modalAuditoriaLeiturasComunicado').classList.remove('hidden');
+  const tbodyLidos = document.getElementById('auditoriaTabelaLidosBody');
+  const tbodyPend = document.getElementById('auditoriaTabelaPendentesBody');
+  if (tbodyLidos) tbodyLidos.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando relatório...</td></tr>`;
+
+  try {
+    const res = await fetch(`/api/comunicados/${comunicadoId}/leituras`);
+    const data = await res.json();
+    state.comunicados.comunicadoAuditoria = data;
+
+    document.getElementById('auditoriaComunicadoTitulo').textContent = `Assunto: "${data.comunicado?.titulo || ''}"`;
+
+    const totalUsuarios = data.total_usuarios || 1;
+    const qtdLidos = data.total_leituras || 0;
+    const taxa = Math.round((qtdLidos / totalUsuarios) * 100);
+
+    const txtAdesao = document.getElementById('auditoriaAdesaoTexto');
+    const barraAdesao = document.getElementById('auditoriaAdesaoBarra');
+    const bQtdLidos = document.getElementById('auditoriaQtdLidos');
+    const bQtdPend = document.getElementById('auditoriaQtdPendentes');
+
+    if (txtAdesao) txtAdesao.textContent = `${taxa}% (${qtdLidos} de ${totalUsuarios} colaboradores confirmaram)`;
+    if (barraAdesao) barraAdesao.style.width = `${taxa}%`;
+    if (bQtdLidos) bQtdLidos.textContent = (data.lidos || []).length;
+    if (bQtdPend) bQtdPend.textContent = (data.pendentes || []).length;
+
+    // Renderizar Lidos
+    if (tbodyLidos) {
+      if ((data.lidos || []).length === 0) {
+        tbodyLidos.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400">Nenhum operador confirmou a leitura ainda.</td></tr>`;
+      } else {
+        tbodyLidos.innerHTML = data.lidos.map(u => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2.5 font-bold text-slate-800">${u.nome}</td>
+            <td class="px-4 py-2.5 font-mono text-slate-600">${u.login}</td>
+            <td class="px-4 py-2.5 uppercase font-semibold text-[10px] text-slate-500">${u.setor}</td>
+            <td class="px-4 py-2.5 text-right font-mono font-bold text-emerald-700">${new Date(u.data_leitura).toLocaleString('pt-BR')}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Renderizar Pendentes
+    if (tbodyPend) {
+      if ((data.pendentes || []).length === 0) {
+        tbodyPend.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Todos os colaboradores já confirmaram a leitura!</td></tr>`;
+      } else {
+        tbodyPend.innerHTML = data.pendentes.map(u => `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2.5 font-medium text-slate-700">${u.nome}</td>
+            <td class="px-4 py-2.5 font-mono text-slate-500">${u.login}</td>
+            <td class="px-4 py-2.5 uppercase text-[10px] text-slate-500">${u.setor}</td>
+            <td class="px-4 py-2.5 text-right"><span class="bg-amber-100 text-amber-800 font-bold text-[10px] px-2 py-0.5 rounded-full">Pendente de Leitura</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    alternarAbaAuditoria('lidos');
+  } catch (err) {
+    alert('Erro ao carregar auditoria de leituras: ' + err.message);
+  }
+}
+
+function alternarAbaAuditoria(aba) {
+  const btnLidos = document.getElementById('btnAuditoriaLidos');
+  const btnPend = document.getElementById('btnAuditoriaPendentes');
+  const cLidos = document.getElementById('auditoriaContainerLidos');
+  const cPend = document.getElementById('auditoriaContainerPendentes');
+
+  if (aba === 'lidos') {
+    if (btnLidos) btnLidos.className = 'px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 flex items-center gap-1.5 transition';
+    if (btnPend) btnPend.className = 'px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5 transition';
+    if (cLidos) cLidos.classList.remove('hidden');
+    if (cPend) cPend.classList.add('hidden');
+  } else {
+    if (btnPend) btnPend.className = 'px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 flex items-center gap-1.5 transition';
+    if (btnLidos) btnLidos.className = 'px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5 transition';
+    if (cLidos) cLidos.classList.add('hidden');
+    if (cPend) cPend.classList.remove('hidden');
+  }
+}
+
+async function excluirComunicado(id) {
+  if (!confirm('Deseja realmente excluir este comunicado corporativo?')) return;
+  try {
+    const res = await fetch(`/api/comunicados/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarComunicados();
+      alert('Comunicado removido com sucesso!');
+    } else {
+      alert('Erro ao excluir: ' + json.message);
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =============================================================
+// REAJUSTES EM MASSA DE BENEFÍCIOS (VA E VT POR SETOR)
+// =============================================================
+
+function abrirModalReajusteMassaVA() {
+  const modal = document.getElementById('modalReajusteMassaVA');
+  if (!modal) return;
+
+  const compAtual = document.getElementById('benefAnoMes')?.value || new Date().toISOString().slice(0, 7);
+  const labelComp = document.getElementById('reajusteVACompetenciaLabel');
+  if (labelComp) labelComp.innerText = compAtual;
+
+  // Popular selects de setor, cliente e cargo
+  const selSetor = document.getElementById('reajusteVASetorId');
+  if (selSetor) {
+    selSetor.innerHTML = '<option value="">Selecione o Setor / Posto...</option>';
+    (state.postos || []).forEach(p => {
+      selSetor.innerHTML += `<option value="${p.id}">${escapeHtml(p.nome_posto)} (${p.cliente_nome || ''})</option>`;
+    });
+  }
+
+  const selCliente = document.getElementById('reajusteVAClienteId');
+  if (selCliente) {
+    selCliente.innerHTML = '<option value="">Selecione o Cliente...</option>';
+    (state.clientes || []).forEach(c => {
+      selCliente.innerHTML += `<option value="${c.id}">${escapeHtml(c.nome_fantasia || c.nome_razao_social)}</option>`;
+    });
+  }
+
+  const selCargo = document.getElementById('reajusteVACargoId');
+  if (selCargo) {
+    selCargo.innerHTML = '<option value="">Selecione o Cargo...</option>';
+    (state.cargos || []).forEach(cg => {
+      selCargo.innerHTML += `<option value="${cg.id}">${escapeHtml(cg.nome_cargo)}</option>`;
+    });
+  }
+
+  document.getElementById('reajusteVAEscopo').value = 'todos';
+  aoMudarEscopoReajusteVA();
+  document.getElementById('reajusteVANovoValor').value = '';
+  modal.classList.remove('hidden');
+}
+
+function aoMudarEscopoReajusteVA() {
+  const escopo = document.getElementById('reajusteVAEscopo')?.value || 'todos';
+  const boxSetor = document.getElementById('boxReajusteVASetor');
+  const boxCliente = document.getElementById('boxReajusteVACliente');
+  const boxCargo = document.getElementById('boxReajusteVACargo');
+
+  if (boxSetor) boxSetor.classList.toggle('hidden', escopo !== 'setor');
+  if (boxCliente) boxCliente.classList.toggle('hidden', escopo !== 'cliente');
+  if (boxCargo) boxCargo.classList.toggle('hidden', escopo !== 'cargo');
+
+  atualizarContadorImpactoVA();
+}
+
+function atualizarContadorImpactoVA() {
+  const escopo = document.getElementById('reajusteVAEscopo')?.value || 'todos';
+  const colabs = (state.colaboradores || []).filter(c => c.ativo === 1 && c.status_colaborador !== 'Demitido');
+  let filtrados = [];
+
+  if (escopo === 'todos') {
+    filtrados = colabs;
+  } else if (escopo === 'setor') {
+    const postoId = parseInt(document.getElementById('reajusteVASetorId')?.value, 10);
+    filtrados = colabs.filter(c => c.posto_trabalho_id === postoId);
+  } else if (escopo === 'cliente') {
+    const clienteId = parseInt(document.getElementById('reajusteVAClienteId')?.value, 10);
+    filtrados = colabs.filter(c => c.cliente_id === clienteId);
+  } else if (escopo === 'cargo') {
+    const cargoId = parseInt(document.getElementById('reajusteVACargoId')?.value, 10);
+    filtrados = colabs.filter(c => c.cargo_id === cargoId);
+  }
+
+  const el = document.getElementById('reajusteVAContadorImpacto');
+  if (el) {
+    el.innerText = `${filtrados.length} colaborador(es)`;
+  }
+}
+
+async function executarReajusteMassaVA(e) {
+  e.preventDefault();
+  const escopo = document.getElementById('reajusteVAEscopo')?.value || 'todos';
+  const novoValor = parseFloat(document.getElementById('reajusteVANovoValor')?.value);
+  if (isNaN(novoValor) || novoValor <= 0) {
+    alert('Informe um novo valor diário de VA válido maior que zero.');
+    return;
+  }
+
+  const payload = {
+    escopo,
+    novo_valor_diario_va: novoValor,
+    atualizar_folha_mes: document.getElementById('reajusteVAAtualizarFolhaMes')?.checked || false,
+    ano_mes: document.getElementById('benefAnoMes')?.value || new Date().toISOString().slice(0, 7)
+  };
+
+  if (escopo === 'setor') {
+    payload.posto_trabalho_id = parseInt(document.getElementById('reajusteVASetorId')?.value, 10);
+    if (!payload.posto_trabalho_id) {
+      alert('Selecione o setor/posto de trabalho para aplicar o reajuste.');
+      return;
+    }
+  } else if (escopo === 'cliente') {
+    payload.cliente_id = parseInt(document.getElementById('reajusteVAClienteId')?.value, 10);
+    if (!payload.cliente_id) {
+      alert('Selecione o cliente para aplicar o reajuste.');
+      return;
+    }
+  } else if (escopo === 'cargo') {
+    payload.cargo_id = parseInt(document.getElementById('reajusteVACargoId')?.value, 10);
+    if (!payload.cargo_id) {
+      alert('Selecione o cargo/função para aplicar o reajuste.');
+      return;
+    }
+  }
+
+  if (!confirm(`Confirma o reajuste do Vale Alimentação para R$ ${novoValor.toFixed(2)}/dia para os colaboradores selecionados?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/beneficios/reajuste-massa-va', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(json.message || 'Reajuste de VA aplicado com sucesso!');
+      fecharModal('modalReajusteMassaVA');
+      await carregarDadosBase();
+      if (typeof carregarBeneficios === 'function') {
+        await carregarBeneficios();
+      }
+    } else {
+      alert(json.message || 'Erro ao aplicar reajuste de VA.');
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+// =============================================================
+// REAJUSTE EM MASSA DO VT SELECIONANDO SETOR POR SETOR
+// =============================================================
+
+function abrirModalReajusteMassaVT() {
+  const modal = document.getElementById('modalReajusteMassaVT');
+  if (!modal) return;
+
+  const compAtual = document.getElementById('benefAnoMes')?.value || new Date().toISOString().slice(0, 7);
+  const labelComp = document.getElementById('reajusteVTCompetenciaLabel');
+  if (labelComp) labelComp.innerText = compAtual;
+
+  const selSetor = document.getElementById('reajusteVTSetorId');
+  if (selSetor) {
+    selSetor.innerHTML = '<option value="">Selecione o Setor / Posto de Trabalho...</option>';
+    (state.postos || []).forEach(p => {
+      const colabsNoPosto = (state.colaboradores || []).filter(c => c.posto_trabalho_id === p.id && c.ativo === 1).length;
+      selSetor.innerHTML += `<option value="${p.id}" data-qtd="${colabsNoPosto}">${escapeHtml(p.nome_posto)} — ${escapeHtml(p.cliente_nome || '')} (${colabsNoPosto} colaboradores alocados)</option>`;
+    });
+  }
+
+  document.getElementById('reajusteVTTipo').value = 'tarifa_unitaria';
+  aoMudarTipoReajusteVT();
+  document.getElementById('reajusteVTNovaTarifa').value = '';
+  document.getElementById('reajusteVTNovoValorDiario').value = '';
+  atualizarContadorImpactoVT();
+
+  modal.classList.remove('hidden');
+}
+
+function aoMudarTipoReajusteVT() {
+  const tipo = document.getElementById('reajusteVTTipo')?.value || 'tarifa_unitaria';
+  const boxTarifa = document.getElementById('boxReajusteVTValorTarifa');
+  const boxDiario = document.getElementById('boxReajusteVTValorDiario');
+
+  if (boxTarifa) boxTarifa.classList.toggle('hidden', tipo !== 'tarifa_unitaria');
+  if (boxDiario) boxDiario.classList.toggle('hidden', tipo !== 'valor_diario_fixo');
+}
+
+function atualizarContadorImpactoVT() {
+  const postoId = parseInt(document.getElementById('reajusteVTSetorId')?.value, 10);
+  const colabs = (state.colaboradores || []).filter(c => c.ativo === 1 && c.status_colaborador !== 'Demitido');
+  const noSetor = postoId ? colabs.filter(c => c.posto_trabalho_id === postoId) : [];
+
+  const el = document.getElementById('reajusteVTContadorImpacto');
+  if (el) {
+    el.innerText = `${noSetor.length} colaborador(es)`;
+  }
+}
+
+async function executarReajusteMassaVT(e) {
+  e.preventDefault();
+  const postoId = parseInt(document.getElementById('reajusteVTSetorId')?.value, 10);
+  if (!postoId) {
+    alert('Por favor, selecione o setor / posto de trabalho a ser reajustado.');
+    return;
+  }
+
+  const tipoReajuste = document.getElementById('reajusteVTTipo')?.value || 'tarifa_unitaria';
+  const novaTarifa = parseFloat(document.getElementById('reajusteVTNovaTarifa')?.value);
+  const novoValorDiario = parseFloat(document.getElementById('reajusteVTNovoValorDiario')?.value);
+
+  if (tipoReajuste === 'tarifa_unitaria' && (isNaN(novaTarifa) || novaTarifa <= 0)) {
+    alert('Informe uma nova tarifa unitária de transporte válida maior que zero.');
+    return;
+  }
+  if (tipoReajuste === 'valor_diario_fixo' && (isNaN(novoValorDiario) || novoValorDiario <= 0)) {
+    alert('Informe um novo valor diário de transporte fixo válido maior que zero.');
+    return;
+  }
+
+  const payload = {
+    escopo: 'setor',
+    posto_trabalho_id: postoId,
+    tipo_reajuste: tipoReajuste,
+    nova_tarifa: novaTarifa,
+    novo_valor_diario: novoValorDiario,
+    atualizar_folha_mes: document.getElementById('reajusteVTAtualizarFolhaMes')?.checked || false,
+    ano_mes: document.getElementById('benefAnoMes')?.value || new Date().toISOString().slice(0, 7)
+  };
+
+  const selSetor = document.getElementById('reajusteVTSetorId');
+  const nomeSetor = selSetor.options[selSetor.selectedIndex]?.text || 'setor selecionado';
+
+  if (!confirm(`Confirma a alteração em massa do VT para todos os colaboradores do setor:\n"${nomeSetor}"?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/beneficios/reajuste-massa-vt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(json.message || 'Reajuste de VT no setor aplicado com sucesso!');
+      fecharModal('modalReajusteMassaVT');
+      await carregarDadosBase();
+      if (typeof carregarBeneficios === 'function') {
+        await carregarBeneficios();
+      }
+    } else {
+      alert(json.message || 'Erro ao aplicar reajuste de VT.');
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+// =============================================================
+// GESTÃO DE FORNECEDORES & CARTELA DE PRODUTOS E PREÇOS
+// =============================================================
+
+state.fornecedores = [];
+state.produtosCartela = [];
+
+async function carregarFornecedoresECartela() {
+  try {
+    const [resForn, resProd] = await Promise.all([
+      fetch('/api/fornecedores'),
+      fetch('/api/produtos')
+    ]);
+
+    if (resForn.ok) state.fornecedores = await resForn.json();
+    if (resProd.ok) state.produtosCartela = await resProd.json();
+
+    popularSelectFornecedoresCartela();
+    atualizarKpisCartela();
+    renderizarFornecedores(state.fornecedores);
+    filtrarCartelaProdutos();
+  } catch (err) {
+    console.error('Erro ao carregar fornecedores e cartela:', err);
+  }
+}
+
+function popularSelectFornecedoresCartela() {
+  const selFiltro = document.getElementById('cartelaFiltroFornecedor');
+  const selProdCad = document.getElementById('prodCadFornecedorId');
+  const selProdEdit = document.getElementById('prodEditFornecedorId');
+
+  const valorFiltroAtual = selFiltro?.value || '';
+
+  if (selFiltro) {
+    selFiltro.innerHTML = '<option value="">Todos os Fornecedores</option>';
+    (state.fornecedores || []).forEach(f => {
+      selFiltro.innerHTML += `<option value="${f.id}">${escapeHtml(f.nome_empresa)}</option>`;
+    });
+    selFiltro.value = valorFiltroAtual;
+  }
+
+  const optionsForn = (state.fornecedores || []).map(f => `<option value="${f.id}">${escapeHtml(f.nome_empresa)} (${escapeHtml(f.tipo_fornecedor || 'Geral')})</option>`).join('');
+
+  if (selProdCad) {
+    selProdCad.innerHTML = '<option value="">Selecione o Fornecedor...</option>' + optionsForn;
+  }
+  if (selProdEdit) {
+    selProdEdit.innerHTML = '<option value="">Selecione o Fornecedor...</option>' + optionsForn;
+  }
+}
+
+function atualizarKpisCartela() {
+  const fornCount = (state.fornecedores || []).length;
+  const prodCount = (state.produtosCartela || []).length;
+
+  let somaPrecos = 0;
+  const categoriasSet = new Set();
+  (state.produtosCartela || []).forEach(p => {
+    somaPrecos += (parseFloat(p.preco_anual_fechado) || 0);
+    if (p.categoria) categoriasSet.add(p.categoria);
+  });
+
+  const media = prodCount > 0 ? somaPrecos / prodCount : 0;
+
+  const elForn = document.getElementById('kpiCartelaTotalFornecedores');
+  const elProd = document.getElementById('kpiCartelaTotalProdutos');
+  const elMedia = document.getElementById('kpiCartelaPrecoMedio');
+  const elCat = document.getElementById('kpiCartelaCategoriasAtivas');
+
+  if (elForn) elForn.innerText = fornCount;
+  if (elProd) elProd.innerText = prodCount;
+  if (elMedia) elMedia.innerText = `R$ ${media.toFixed(2).replace('.', ',')}`;
+  if (elCat) elCat.innerText = categoriasSet.size;
+}
+
+function renderizarFornecedores(fornecedores = state.fornecedores) {
+  const grid = document.getElementById('gridCardsFornecedores');
+  if (!grid) return;
+
+  const termoBusca = (document.getElementById('filtroBuscaFornecedor')?.value || '').toLowerCase().trim();
+  let lista = fornecedores || [];
+
+  if (termoBusca) {
+    lista = lista.filter(f => 
+      (f.nome_empresa && f.nome_empresa.toLowerCase().includes(termoBusca)) || 
+      (f.razao_social && f.razao_social.toLowerCase().includes(termoBusca)) || 
+      (f.cnpj && f.cnpj.includes(termoBusca))
+    );
+  }
+
+  if (!lista || lista.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-full py-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
+        <i class="fa-solid fa-truck text-3xl text-slate-300 mb-2 block"></i>
+        Nenhum fornecedor parceiro cadastrado ainda.<br>
+        <button type="button" onclick="abrirModalNovoFornecedor()" class="mt-2 text-teal-700 font-bold underline cursor-pointer">
+          Clique aqui para cadastrar o primeiro fornecedor.
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = lista.map(f => `
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
+      <div>
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
+              ${escapeHtml(f.tipo_fornecedor || 'Geral')}
+            </span>
+            <h4 class="font-bold text-slate-900 text-sm mt-1.5 line-clamp-1" title="${escapeHtml(f.nome_empresa)}">
+              ${escapeHtml(f.nome_empresa)}
+            </h4>
+          </div>
+          <span class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 whitespace-nowrap" title="Total de itens na cartela deste fornecedor">
+            <i class="fa-solid fa-box text-teal-600 mr-1"></i>${f.total_produtos || 0} itens
+          </span>
+        </div>
+
+        <div class="mt-2.5 space-y-1 text-xs text-slate-600">
+          ${f.cnpj ? `<p class="flex items-center gap-1.5"><i class="fa-solid fa-building text-slate-400 w-3.5"></i> <span class="font-mono text-[11px]">${escapeHtml(f.cnpj)}</span></p>` : ''}
+          ${f.contato || f.telefone ? `<p class="flex items-center gap-1.5"><i class="fa-solid fa-phone text-slate-400 w-3.5"></i> ${escapeHtml(f.contato ? f.contato + ' - ' : '')}${escapeHtml(f.telefone || '')}</p>` : ''}
+          ${f.email ? `<p class="flex items-center gap-1.5 truncate"><i class="fa-solid fa-envelope text-slate-400 w-3.5"></i> ${escapeHtml(f.email)}</p>` : ''}
+          <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Prazo: <b>${f.prazo_entrega_dias || 3} dias</b></span>
+            <span>Pgto: <b class="text-teal-700">${escapeHtml(f.condicoes_pagamento || '30 dias')}</b></span>
+          </div>
+          ${f.chave_pix ? `<p class="text-[11px] bg-emerald-50 text-emerald-800 p-1 rounded font-mono truncate"><i class="fa-brands fa-pix mr-1"></i>PIX: ${escapeHtml(f.chave_pix)}</p>` : ''}
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2.5 border-t border-slate-100 gap-1 text-xs">
+        <button type="button" onclick="filtrarCartelaPorFornecedorCard(${f.id})" class="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1 py-1 px-2 rounded hover:bg-teal-50 transition cursor-pointer" title="Ver apenas os produtos deste fornecedor na cartela abaixo">
+          <i class="fa-solid fa-list-check"></i> Ver Cartela
+        </button>
+
+        <div class="flex items-center gap-1">
+          <button type="button" onclick="abrirModalNovoProdutoCartela(${f.id})" class="text-slate-600 hover:text-teal-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Adicionar 1 Produto para este Fornecedor">
+            <i class="fa-solid fa-plus-circle"></i>
+          </button>
+          <button type="button" onclick="abrirModalCadastroLoteProdutos(${f.id})" class="text-slate-600 hover:text-indigo-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Cadastrar Vários Produtos para este Fornecedor (Massa)">
+            <i class="fa-solid fa-list-check"></i>
+          </button>
+          <button type="button" onclick="abrirModalImportarProdutosCartela(${f.id})" class="text-slate-600 hover:text-emerald-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Importar Planilha Excel para este Fornecedor">
+            <i class="fa-solid fa-file-excel"></i>
+          </button>
+          <button type="button" onclick="abrirModalEditarFornecedor(${f.id})" class="text-slate-600 hover:text-blue-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Editar Dados do Fornecedor">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button type="button" onclick="excluirFornecedor(${f.id})" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Excluir / Inativar Fornecedor">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filtrarCartelaPorFornecedorCard(fornecedorId) {
+  const sel = document.getElementById('cartelaFiltroFornecedor');
+  if (sel) {
+    sel.value = String(fornecedorId);
+    filtrarCartelaProdutos();
+    const tabela = document.getElementById('tituloTabelaCartela');
+    if (tabela) {
+      tabela.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+}
+
+function filtrarCartelaProdutos() {
+  const fornId = document.getElementById('cartelaFiltroFornecedor')?.value || '';
+  const cat = document.getElementById('cartelaFiltroCategoria')?.value || '';
+  const busca = (document.getElementById('cartelaBuscaTexto')?.value || '').toLowerCase().trim();
+
+  let lista = state.produtosCartela || [];
+
+  if (fornId) {
+    lista = lista.filter(p => String(p.fornecedor_id) === String(fornId));
+  }
+  if (cat) {
+    lista = lista.filter(p => p.categoria === cat);
+  }
+  if (busca) {
+    lista = lista.filter(p => 
+      (p.descricao || '').toLowerCase().includes(busca) ||
+      (p.codigo_referencia || '').toLowerCase().includes(busca) ||
+      (p.marca || '').toLowerCase().includes(busca) ||
+      (p.fornecedor_nome || '').toLowerCase().includes(busca)
+    );
+  }
+
+  const fornNome = fornId ? (state.fornecedores || []).find(f => String(f.id) === String(fornId))?.nome_empresa : '';
+  const tituloEl = document.getElementById('tituloTabelaCartela');
+  if (tituloEl) {
+    tituloEl.innerText = fornNome ? `Cartela de Produtos - ${fornNome}` : 'Cartela Consolidada de Produtos & Preços';
+  }
+
+  const contEl = document.getElementById('contadorItensCartela');
+  if (contEl) {
+    contEl.innerText = `${lista.length} item(ns)`;
+  }
+
+  renderizarTabelaCartela(lista);
+}
+
+function renderizarTabelaCartela(produtos) {
+  const tbody = document.getElementById('tabelaCartelaProdutosBody');
+  if (!tbody) return;
+
+  if (!produtos || produtos.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" class="py-8 text-center text-slate-400 text-xs">
+          <i class="fa-solid fa-boxes-stacked text-2xl text-slate-300 mb-1 block"></i>
+          Nenhum produto encontrado com os filtros atuais.<br>
+          <button type="button" onclick="abrirModalNovoProdutoCartela()" class="mt-2 text-teal-700 font-bold underline cursor-pointer">
+            Clique aqui para adicionar um produto à cartela.
+          </button>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = produtos.map(p => `
+    <tr class="hover:bg-slate-50/80 transition" id="row-prod-${p.id}">
+      <td class="py-2.5 px-3 text-center"><input type="checkbox" class="chk-produto-row w-3.5 h-3.5 rounded text-teal-600 cursor-pointer" value="${p.id}" onchange="atualizarBtnExcluirLote()"></td>
+      <td class="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">${p.id}</td>
+      <td class="py-2.5 px-3 font-mono text-[11px] font-bold text-slate-700">${escapeHtml(p.codigo_referencia || '—')}</td>
+      <td class="py-2.5 px-3 font-semibold text-slate-900">${escapeHtml(p.descricao)}</td>
+      <td class="py-2.5 px-3 text-slate-600">${escapeHtml(p.marca || '—')}</td>
+      <td class="py-2.5 px-3">
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+          ${escapeHtml(p.categoria || 'Geral')}
+        </span>
+      </td>
+      <td class="py-2.5 px-3 text-center font-bold text-slate-600 text-xs">${escapeHtml(p.unidade_medida || 'UN')}</td>
+      <td class="py-2.5 px-3 text-right">
+        <span class="font-black text-sm text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+          R$ ${(parseFloat(p.preco_anual_fechado) || 0).toFixed(2).replace('.', ',')}
+        </span>
+      </td>
+      <td class="py-2.5 px-3 text-slate-700 text-xs font-medium">
+        <i class="fa-solid fa-truck text-slate-400 mr-1 text-[11px]"></i>${escapeHtml(p.fornecedor_nome || 'Não vinculado')}
+      </td>
+      <td class="py-2.5 px-3 text-center">
+        <div class="flex items-center justify-center gap-1">
+          <button type="button" onclick="abrirModalEditarProdutoCartela(${p.id})" class="text-teal-600 hover:text-teal-800 p-1.5 rounded hover:bg-teal-50 transition cursor-pointer" title="Editar Preço e Dados do Produto">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button type="button" onclick="excluirProdutoCartela(${p.id})" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition cursor-pointer" title="Excluir Produto da Cartela">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrirModalNovoFornecedor() {
+  const form = document.getElementById('formNovoFornecedor');
+  if (form) form.reset();
+  const inputPrazo = document.getElementById('fornCadPrazo');
+  if (inputPrazo) inputPrazo.value = '3';
+  const inputCond = document.getElementById('fornCadCondicoes');
+  if (inputCond) inputCond.value = '30 dias';
+
+  abrirModal('modalNovoFornecedor');
+}
+
+async function salvarNovoFornecedor(e) {
+  e.preventDefault();
+  const nome = document.getElementById('fornCadNome')?.value.trim();
+  if (!nome) {
+    alert('Razão Social / Nome da empresa é obrigatório.');
+    return;
+  }
+
+  const payload = {
+    nome_empresa: nome,
+    cnpj: document.getElementById('fornCadCnpj')?.value.trim(),
+    tipo_fornecedor: document.getElementById('fornCadTipo')?.value,
+    contato: document.getElementById('fornCadContato')?.value.trim(),
+    telefone: document.getElementById('fornCadTelefone')?.value.trim(),
+    email: document.getElementById('fornCadEmail')?.value.trim(),
+    prazo_entrega_dias: parseInt(document.getElementById('fornCadPrazo')?.value, 10) || 3,
+    condicoes_pagamento: document.getElementById('fornCadCondicoes')?.value.trim() || '30 dias',
+    chave_pix: document.getElementById('fornCadChavePix')?.value.trim(),
+    observacoes: document.getElementById('fornCadObs')?.value.trim()
+  };
+
+  try {
+    const res = await fetch('/api/fornecedores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoFornecedor');
+      await carregarFornecedoresECartela();
+      alert('Fornecedor cadastrado com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao cadastrar fornecedor.');
+    }
+  } catch (err) {
+    alert('Erro de rede: ' + err.message);
+  }
+}
+
+async function abrirModalEditarFornecedor(id) {
+  const forn = (state.fornecedores || []).find(f => f.id === id);
+  if (!forn) return;
+
+  document.getElementById('fornEditId').value = forn.id;
+  document.getElementById('fornEditNome').value = forn.nome_empresa || '';
+  document.getElementById('fornEditCnpj').value = forn.cnpj || '';
+  document.getElementById('fornEditTipo').value = forn.tipo_fornecedor || 'Limpeza & Químicos';
+  document.getElementById('fornEditContato').value = forn.contato || '';
+  document.getElementById('fornEditTelefone').value = forn.telefone || '';
+  document.getElementById('fornEditPrazo').value = forn.prazo_entrega_dias || 3;
+  document.getElementById('fornEditEmail').value = forn.email || '';
+  document.getElementById('fornEditCondicoes').value = forn.condicoes_pagamento || '30 dias';
+  document.getElementById('fornEditChavePix').value = forn.chave_pix || '';
+  document.getElementById('fornEditObs').value = forn.observacoes || forn.dados_bancarios || '';
+
+  abrirModal('modalEditarFornecedor');
+}
+
+async function salvarEdicaoFornecedor(e) {
+  e.preventDefault();
+  const id = document.getElementById('fornEditId')?.value;
+  if (!id) return;
+
+  const payload = {
+    nome_empresa: document.getElementById('fornEditNome')?.value.trim(),
+    cnpj: document.getElementById('fornEditCnpj')?.value.trim(),
+    tipo_fornecedor: document.getElementById('fornEditTipo')?.value,
+    contato: document.getElementById('fornEditContato')?.value.trim(),
+    telefone: document.getElementById('fornEditTelefone')?.value.trim(),
+    email: document.getElementById('fornEditEmail')?.value.trim(),
+    prazo_entrega_dias: parseInt(document.getElementById('fornEditPrazo')?.value, 10) || 3,
+    condicoes_pagamento: document.getElementById('fornEditCondicoes')?.value.trim() || '30 dias',
+    chave_pix: document.getElementById('fornEditChavePix')?.value.trim(),
+    observacoes: document.getElementById('fornEditObs')?.value.trim()
+  };
+
+  try {
+    const res = await fetch(`/api/fornecedores/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarFornecedor');
+      await carregarFornecedoresECartela();
+      alert('Dados do fornecedor atualizados com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao atualizar fornecedor.');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function excluirFornecedor(id) {
+  const forn = (state.fornecedores || []).find(f => f.id === id);
+  if (!forn) return;
+
+  if (!confirm(`Deseja realmente inativar o fornecedor "${forn.nome_empresa}"?`)) return;
+
+  try {
+    const res = await fetch(`/api/fornecedores/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarFornecedoresECartela();
+      alert('Fornecedor inativado com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao inativar.');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function abrirModalNovoProdutoCartela(fornecedorIdPadrao) {
+  const form = document.getElementById('formNovoProdutoCartela');
+  if (form) form.reset();
+
+  popularSelectFornecedoresCartela();
+
+  const selForn = document.getElementById('prodCadFornecedorId');
+  if (selForn) {
+    if (fornecedorIdPadrao) {
+      selForn.value = String(fornecedorIdPadrao);
+    } else {
+      const filtroAtual = document.getElementById('cartelaFiltroFornecedor')?.value;
+      if (filtroAtual) selForn.value = filtroAtual;
+    }
+  }
+
+  abrirModal('modalNovoProdutoCartela');
+}
+
+async function salvarNovoProdutoCartela(e) {
+  e.preventDefault();
+  const fornId = document.getElementById('prodCadFornecedorId')?.value;
+  const desc = document.getElementById('prodCadDescricao')?.value.trim();
+  const preco = parseFloat(document.getElementById('prodCadPreco')?.value);
+
+  if (!fornId) {
+    alert('Por favor, selecione o fornecedor do produto.');
+    return;
+  }
+  if (!desc) {
+    alert('A descrição do produto é obrigatória.');
+    return;
+  }
+  if (isNaN(preco) || preco < 0) {
+    alert('Informe um preço unitário válido.');
+    return;
+  }
+
+  const payload = {
+    fornecedor_id: parseInt(fornId, 10),
+    descricao: desc,
+    codigo_referencia: document.getElementById('prodCadCodigo')?.value.trim(),
+    marca: document.getElementById('prodCadMarca')?.value.trim(),
+    unidade_medida: document.getElementById('prodCadUnidade')?.value || 'UN',
+    categoria: document.getElementById('prodCadCategoria')?.value || 'Limpeza Geral',
+    preco_anual_fechado: preco
+  };
+
+  try {
+    const res = await fetch('/api/produtos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalNovoProdutoCartela');
+      await carregarFornecedoresECartela();
+      alert('Produto cadastrado na cartela com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao cadastrar produto.');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// -------------------------------------------------------------
+// IMPORTAÇÃO DE PRODUTOS DA CARTELA POR PLANILHA (.XLSX, .CSV)
+// -------------------------------------------------------------
+function baixarModeloImportacaoProdutos() {
+  const wb = XLSX.utils.book_new();
+
+  // Aba 1: Modelo de Produtos
+  const dadosExemplo = [
+    {
+      'Fornecedor_Nome_ou_ID': 'Distribuidora Nacional de Químicos & Descartáveis',
+      'Descricao_Produto': 'Detergente Neutro Concentrado 5L',
+      'Categoria': 'Limpeza Geral',
+      'Unidade': 'GL 5L',
+      'Preco_Unitario': 24.90,
+      'Codigo_SKU': 'DET-NEU-5L',
+      'Marca': 'Ypê'
+    },
+    {
+      'Fornecedor_Nome_ou_ID': 'Distribuidora Nacional de Químicos & Descartáveis',
+      'Descricao_Produto': 'Desinfetante Floral Lavanda 5L',
+      'Categoria': 'Limpeza Geral',
+      'Unidade': 'GL 5L',
+      'Preco_Unitario': 28.50,
+      'Codigo_SKU': 'DES-LAV-5L',
+      'Marca': 'Ypê'
+    },
+    {
+      'Fornecedor_Nome_ou_ID': 'SegurMaster EPIs e Proteção Individual',
+      'Descricao_Produto': 'Luva de Látex Amarela Tam M',
+      'Categoria': 'EPIs & Segurança',
+      'Unidade': 'PAR',
+      'Preco_Unitario': 4.50,
+      'Codigo_SKU': 'LUV-LAT-M',
+      'Marca': 'Volk'
+    },
+    {
+      'Fornecedor_Nome_ou_ID': 'SegurMaster EPIs e Proteção Individual',
+      'Descricao_Produto': 'Óculos de Proteção Incolor Anti-risco',
+      'Categoria': 'EPIs & Segurança',
+      'Unidade': 'UN',
+      'Preco_Unitario': 8.90,
+      'Codigo_SKU': 'OCU-INC-01',
+      'Marca': 'Kalipso'
+    },
+    {
+      'Fornecedor_Nome_ou_ID': 'Botas Fortex & Calçados de Segurança',
+      'Descricao_Produto': 'Calçado de Segurança Biqueira PVC Tam 41',
+      'Categoria': 'Calçados & Sapatos',
+      'Unidade': 'PAR',
+      'Preco_Unitario': 68.00,
+      'Codigo_SKU': 'BOT-PVC-41',
+      'Marca': 'Fortex'
+    }
+  ];
+
+  const wsModelo = XLSX.utils.json_to_sheet(dadosExemplo);
+  wsModelo['!cols'] = [
+    { wch: 38 }, // Fornecedor
+    { wch: 42 }, // Descricao
+    { wch: 22 }, // Categoria
+    { wch: 10 }, // Unidade
+    { wch: 16 }, // Preco
+    { wch: 15 }, // SKU
+    { wch: 18 }  // Marca
+  ];
+  XLSX.utils.book_append_sheet(wb, wsModelo, 'Modelo_Produtos');
+
+  // Aba 2: Lista de Fornecedores Cadastrados para consulta
+  const listaForn = (state.fornecedores || []).map(f => ({
+    'ID': f.id,
+    'Razao_Social_Nome': f.nome_empresa,
+    'Tipo_Segmento': f.tipo_fornecedor || 'Geral',
+    'CNPJ': f.cnpj || ''
+  }));
+  const wsForn = XLSX.utils.json_to_sheet(listaForn.length > 0 ? listaForn : [{ ID: 1, Razao_Social_Nome: 'Nenhum fornecedor cadastrado ainda' }]);
+  wsForn['!cols'] = [{ wch: 8 }, { wch: 42 }, { wch: 25 }, { wch: 20 }];
+  XLSX.utils.book_append_sheet(wb, wsForn, 'Fornecedores_Cadastrados');
+
+  XLSX.writeFile(wb, 'Modelo_Importacao_Produtos_Cartela.xlsx');
+}
+
+function abrirModalImportarProdutosCartela(fornecedorIdPadrao = null) {
+  const fileInput = document.getElementById('inputArquivoImportarProdutos');
+  if (fileInput) fileInput.value = '';
+
+  const previewBox = document.getElementById('previewImportarProdutosContainer');
+  if (previewBox) previewBox.classList.add('hidden');
+
+  const btnConfirmar = document.getElementById('btnConfirmarImportacaoProdutos');
+  if (btnConfirmar) {
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Confirmar e Cadastrar Produtos';
+  }
+
+  state.produtosImportacaoPrevia = [];
+
+  // Popular select de fornecedores
+  const selForn = document.getElementById('importarProdFornecedorPadrao');
+  if (selForn) {
+    selForn.innerHTML = '<option value="">-- Detectar pela coluna "Fornecedor" da planilha (ou vincular global) --</option>';
+    (state.fornecedores || []).forEach(f => {
+      selForn.innerHTML += `<option value="${f.id}">[ID: ${f.id}] ${escapeHtml(f.nome_empresa)} (${escapeHtml(f.tipo_fornecedor || 'Geral')})</option>`;
+    });
+    if (fornecedorIdPadrao) {
+      selForn.value = String(fornecedorIdPadrao);
+    } else {
+      const filtroAtual = document.getElementById('cartelaFiltroFornecedor')?.value;
+      if (filtroAtual) selForn.value = filtroAtual;
+    }
+  }
+
+  abrirModal('modalImportarProdutosCartela');
+}
+
+function processarArquivoImportacaoProdutos(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (!rawRows || rawRows.length === 0) {
+        alert('A planilha selecionada está vazia ou não possui linhas de dados.');
+        return;
+      }
+
+      const fornecedores = state.fornecedores || [];
+      const fornecedorPadraoId = document.getElementById('importarProdFornecedorPadrao')?.value;
+      const fornecedorPadraoObj = fornecedores.find(f => f.id == fornecedorPadraoId);
+
+      const parsedItems = [];
+
+      rawRows.forEach((row, idx) => {
+        // Encontrar chaves case-insensitive e sem acentos
+        const keys = Object.keys(row);
+        const findVal = (regex) => {
+          const k = keys.find(key => regex.test(key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()));
+          return k ? String(row[k]).trim() : '';
+        };
+
+        const descricao = findVal(/descri|produto|item/) || findVal(/^nome$/);
+        const rawPreco = findVal(/pre[cç]o|valor|unitario|custo|anual/);
+        const categoria = findVal(/categ/) || 'Limpeza Geral';
+        const unidade = (findVal(/unid|medida/) || 'UN').toUpperCase();
+        const sku = findVal(/sku|cod|ref/);
+        const marca = findVal(/marca|fabric/);
+        const rawForn = findVal(/fornec|distribuidor/);
+
+        // Tratamento de preço
+        let preco = null;
+        if (rawPreco) {
+          const limpo = rawPreco.replace('R$', '').replace(/\s+/g, '').replace(',', '.');
+          const pFloat = parseFloat(limpo);
+          if (!isNaN(pFloat) && pFloat >= 0) {
+            preco = pFloat;
+          }
+        }
+
+        // Resolução de fornecedor
+        let resolvedFornId = null;
+        let resolvedFornNome = null;
+
+        if (fornecedorPadraoObj) {
+          resolvedFornId = fornecedorPadraoObj.id;
+          resolvedFornNome = fornecedorPadraoObj.nome_empresa;
+        } else if (rawForn) {
+          // Tentar por ID numérico
+          const maybeId = parseInt(rawForn, 10);
+          const fById = !isNaN(maybeId) ? fornecedores.find(f => f.id === maybeId) : null;
+          if (fById) {
+            resolvedFornId = fById.id;
+            resolvedFornNome = fById.nome_empresa;
+          } else {
+            // Tentar por nome aproximado
+            const fByName = fornecedores.find(f => f.nome_empresa.toLowerCase().includes(rawForn.toLowerCase()) || rawForn.toLowerCase().includes(f.nome_empresa.toLowerCase()));
+            if (fByName) {
+              resolvedFornId = fByName.id;
+              resolvedFornNome = fByName.nome_empresa;
+            } else {
+              resolvedFornNome = rawForn;
+            }
+          }
+        } else if (fornecedores.length === 1) {
+          resolvedFornId = fornecedores[0].id;
+          resolvedFornNome = fornecedores[0].nome_empresa;
+        }
+
+        const valido = Boolean(descricao && preco !== null && preco >= 0 && resolvedFornId);
+        let statusMsg = 'Pronto';
+        let statusClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+
+        if (!descricao) {
+          statusMsg = 'Sem Descrição';
+          statusClass = 'text-rose-700 bg-rose-50 border-rose-200';
+        } else if (preco === null) {
+          statusMsg = 'Preço Inválido';
+          statusClass = 'text-amber-700 bg-amber-50 border-amber-200';
+        } else if (!resolvedFornId) {
+          statusMsg = 'Fornecedor Pendente';
+          statusClass = 'text-blue-700 bg-blue-50 border-blue-200';
+        }
+
+        parsedItems.push({
+          linha: idx + 1,
+          fornecedor_id: resolvedFornId,
+          fornecedor_nome: resolvedFornNome || 'A Definir',
+          descricao,
+          categoria,
+          unidade_medida: unidade,
+          preco_anual_fechado: preco,
+          codigo_referencia: sku,
+          marca,
+          valido,
+          statusMsg,
+          statusClass
+        });
+      });
+
+      state.produtosImportacaoPrevia = parsedItems;
+      renderizarPreviewImportacaoProdutos();
+    } catch (err) {
+      alert('Erro ao ler a planilha: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderizarPreviewImportacaoProdutos() {
+  const container = document.getElementById('previewImportarProdutosContainer');
+  const tbody = document.getElementById('previewImportarProdutosBody');
+  const badgeValidos = document.getElementById('previewImportarProdutosQtdValidos');
+  const badgeErros = document.getElementById('previewImportarProdutosQtdErros');
+  const btnConfirmar = document.getElementById('btnConfirmarImportacaoProdutos');
+
+  if (!container || !tbody) return;
+
+  const itens = state.produtosImportacaoPrevia || [];
+  if (itens.length === 0) {
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+
+  const validos = itens.filter(i => i.valido);
+  const invalidos = itens.filter(i => !i.valido);
+
+  badgeValidos.textContent = `${validos.length} item(ns) válido(s)`;
+  if (invalidos.length > 0) {
+    badgeErros.classList.remove('hidden');
+    badgeErros.textContent = `${invalidos.length} com pendência`;
+  } else {
+    badgeErros.classList.add('hidden');
+  }
+
+  tbody.innerHTML = itens.map(item => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-2 text-center text-slate-400 font-mono">${item.linha}</td>
+      <td class="p-2 font-bold ${item.fornecedor_id ? 'text-slate-800' : 'text-amber-700'}">${escapeHtml(item.fornecedor_nome)}</td>
+      <td class="p-2 font-semibold text-slate-900">${escapeHtml(item.descricao || '(Vazio)')}</td>
+      <td class="p-2 text-slate-600">${escapeHtml(item.categoria)}</td>
+      <td class="p-2 text-slate-700 font-bold">${escapeHtml(item.unidade_medida)}</td>
+      <td class="p-2 text-right font-black ${item.preco_anual_fechado !== null ? 'text-teal-700' : 'text-rose-600'}">
+        ${item.preco_anual_fechado !== null ? formatarMoeda(item.preco_anual_fechado) : 'Inválido'}
+      </td>
+      <td class="p-2 font-mono text-[10px] text-slate-500">${escapeHtml(item.codigo_referencia || '-')}</td>
+      <td class="p-2 text-slate-600">${escapeHtml(item.marca || '-')}</td>
+      <td class="p-2 text-center">
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${item.statusClass}">
+          ${escapeHtml(item.statusMsg)}
+        </span>
+      </td>
+    </tr>
+  `).join('');
+
+  if (btnConfirmar) {
+    if (validos.length > 0) {
+      btnConfirmar.disabled = false;
+      btnConfirmar.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> Confirmar e Cadastrar ${validos.length} Produto(s)`;
+    } else {
+      btnConfirmar.disabled = true;
+      btnConfirmar.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Nenhum Produto Válido para Inserir';
+    }
+  }
+}
+
+async function confirmarImportacaoProdutos() {
+  const itens = (state.produtosImportacaoPrevia || []).filter(i => i.valido);
+  if (itens.length === 0) {
+    alert('Nenhum item válido para importar. Verifique se a descrição, preço e fornecedor estão preenchidos.');
+    return;
+  }
+
+  const btnConfirmar = document.getElementById('btnConfirmarImportacaoProdutos');
+  if (btnConfirmar) {
+    btnConfirmar.disabled = true;
+    btnConfirmar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cadastrando no banco...';
+  }
+
+  try {
+    const res = await fetch('/api/produtos/lote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ produtos: itens })
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalImportarProdutosCartela');
+      await carregarFornecedoresECartela();
+      alert(`Sucesso! ${json.count} produto(s) foram inseridos na cartela.`);
+    } else {
+      alert(json.message || 'Erro ao importar produtos.');
+      if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> Tentar Novamente (${itens.length} produtos)`;
+      }
+    }
+  } catch (err) {
+    alert('Erro de conexão ao importar produtos: ' + err.message);
+    if (btnConfirmar) btnConfirmar.disabled = false;
+  }
+}
+
+// -------------------------------------------------------------
+// CADASTRO EM MASSA DE MÚLTIPLOS PRODUTOS (TABELA DINÂMICA)
+// -------------------------------------------------------------
+function abrirModalCadastroLoteProdutos(fornecedorIdPadrao = null) {
+  // Popular select de fornecedores
+  const selForn = document.getElementById('loteProdFornecedorPadrao');
+  if (selForn) {
+    selForn.innerHTML = '<option value="">-- Selecione o Fornecedor Principal --</option>';
+    (state.fornecedores || []).forEach(f => {
+      selForn.innerHTML += `<option value="${f.id}">[ID: ${f.id}] ${escapeHtml(f.nome_empresa)} (${escapeHtml(f.tipo_fornecedor || 'Geral')})</option>`;
+    });
+    if (fornecedorIdPadrao) {
+      selForn.value = String(fornecedorIdPadrao);
+    } else {
+      const filtroAtual = document.getElementById('cartelaFiltroFornecedor')?.value;
+      if (filtroAtual) selForn.value = filtroAtual;
+    }
+  }
+
+  const tbody = document.getElementById('tabelaLoteProdutosBody');
+  if (tbody) tbody.innerHTML = '';
+
+  adicionarLinhaProdutoLote(3);
+  abrirModal('modalCadastroLoteProdutos');
+}
+
+function adicionarLinhaProdutoLote(qtd = 1) {
+  const tbody = document.getElementById('tabelaLoteProdutosBody');
+  if (!tbody) return;
+
+  for (let i = 0; i < qtd; i++) {
+    const rowNum = tbody.children.length + 1;
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+    tr.innerHTML = `
+      <td class="p-2 text-center text-slate-400 font-mono font-bold num-linha-lote">${rowNum}</td>
+      <td class="p-1.5">
+        <input type="text" class="lote-desc w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Ex: Desinfetante Floral 5L" required>
+      </td>
+      <td class="p-1.5">
+        <select class="lote-cat w-full border border-slate-300 rounded px-1.5 py-1 text-xs bg-white focus:outline-none">
+          <option value="Limpeza Geral">Limpeza Geral</option>
+          <option value="Químicos Pesados">Químicos Pesados</option>
+          <option value="Descartáveis & Papéis">Descartáveis & Papéis</option>
+          <option value="EPIs & Segurança">EPIs & Segurança</option>
+          <option value="Uniformes & Vestuário">Uniformes & Vestuário</option>
+          <option value="Calçados & Sapatos">Calçados & Sapatos</option>
+          <option value="Equipamentos & Utensílios">Equipamentos & Utensílios</option>
+          <option value="Demais / Outros">Demais / Outros</option>
+        </select>
+      </td>
+      <td class="p-1.5">
+        <select class="lote-unid w-full border border-slate-300 rounded px-1.5 py-1 text-xs bg-white focus:outline-none">
+          <option value="UN">UN</option>
+          <option value="GL 5L">GL 5L</option>
+          <option value="CX">CX</option>
+          <option value="PCT">PCT</option>
+          <option value="PAR">PAR</option>
+          <option value="KG">KG</option>
+          <option value="L">L</option>
+          <option value="RL">RL</option>
+        </select>
+      </td>
+      <td class="p-1.5">
+        <input type="number" step="0.01" min="0" class="lote-preco w-full border border-slate-300 rounded px-2 py-1 text-xs font-black text-indigo-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0.00" required>
+      </td>
+      <td class="p-1.5">
+        <input type="text" class="lote-sku w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-mono focus:outline-none" placeholder="SKU">
+      </td>
+      <td class="p-1.5">
+        <input type="text" class="lote-marca w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none" placeholder="Marca">
+      </td>
+      <td class="p-1.5 text-center">
+        <button type="button" onclick="removerLinhaProdutoLote(this)" class="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer" title="Remover esta linha">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  atualizarContadorLinhasLote();
+}
+
+function removerLinhaProdutoLote(btn) {
+  const tr = btn.closest('tr');
+  if (tr) tr.remove();
+
+  // Renumerar
+  const tbody = document.getElementById('tabelaLoteProdutosBody');
+  if (tbody) {
+    Array.from(tbody.querySelectorAll('.num-linha-lote')).forEach((td, idx) => {
+      td.textContent = idx + 1;
+    });
+  }
+
+  atualizarContadorLinhasLote();
+}
+
+function limparLinhasProdutoLote() {
+  const tbody = document.getElementById('tabelaLoteProdutosBody');
+  if (tbody) {
+    tbody.innerHTML = '';
+    adicionarLinhaProdutoLote(1);
+  }
+}
+
+function atualizarContadorLinhasLote() {
+  const tbody = document.getElementById('tabelaLoteProdutosBody');
+  const contador = document.getElementById('contadorLinhasLoteProdutos');
+  if (tbody && contador) {
+    const total = tbody.children.length;
+    contador.textContent = `${total} linha(s) adicionada(s)`;
+  }
+}
+
+async function salvarProdutosLote() {
+  const fornecedorId = document.getElementById('loteProdFornecedorPadrao')?.value;
+  if (!fornecedorId) {
+    alert('Por favor, selecione o Fornecedor padrão para os produtos.');
+    document.getElementById('loteProdFornecedorPadrao')?.focus();
+    return;
+  }
+
+  const tbody = document.getElementById('tabelaLoteProdutosBody');
+  if (!tbody || tbody.children.length === 0) {
+    alert('Adicione ao menos uma linha de produto.');
+    return;
+  }
+
+  const rows = Array.from(tbody.children);
+  const produtos = [];
+  const erros = [];
+
+  rows.forEach((tr, idx) => {
+    const desc = tr.querySelector('.lote-desc')?.value.trim();
+    const cat = tr.querySelector('.lote-cat')?.value || 'Limpeza Geral';
+    const unid = tr.querySelector('.lote-unid')?.value || 'UN';
+    const rawPreco = tr.querySelector('.lote-preco')?.value;
+    const sku = tr.querySelector('.lote-sku')?.value.trim();
+    const marca = tr.querySelector('.lote-marca')?.value.trim();
+
+    // Se a linha estiver totalmente em branco, ignora
+    if (!desc && !rawPreco && !sku && !marca) return;
+
+    if (!desc) {
+      erros.push(`Linha #${idx + 1}: Informe a descrição do produto.`);
+      return;
+    }
+    const preco = parseFloat(rawPreco);
+    if (isNaN(preco) || preco < 0) {
+      erros.push(`Linha #${idx + 1} (${desc}): Informe um preço unitário válido.`);
+      return;
+    }
+
+    produtos.push({
+      fornecedor_id: parseInt(fornecedorId, 10),
+      descricao: desc,
+      categoria: cat,
+      unidade_medida: unid,
+      preco_anual_fechado: preco,
+      codigo_referencia: sku,
+      marca
+    });
+  });
+
+  if (erros.length > 0) {
+    alert('Corrija as seguintes inconsistências antes de salvar:\n\n' + erros.slice(0, 5).join('\n'));
+    return;
+  }
+
+  if (produtos.length === 0) {
+    alert('Nenhum produto preenchido para salvar.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/produtos/lote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fornecedor_id: parseInt(fornecedorId, 10), produtos })
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalCadastroLoteProdutos');
+      await carregarFornecedoresECartela();
+      alert(`Sucesso! ${json.count} produto(s) cadastrado(s) na cartela.`);
+    } else {
+      alert(json.message || 'Erro ao cadastrar produtos em massa.');
+    }
+  } catch (err) {
+    alert('Erro de rede: ' + err.message);
+  }
+}
+
+async function abrirModalEditarProdutoCartela(id) {
+  const prod = (state.produtosCartela || []).find(p => p.id === id);
+  if (!prod) return;
+
+  popularSelectFornecedoresCartela();
+
+  document.getElementById('prodEditId').value = prod.id;
+  document.getElementById('prodEditFornecedorId').value = prod.fornecedor_id || '';
+  document.getElementById('prodEditDescricao').value = prod.descricao || '';
+  document.getElementById('prodEditCodigo').value = prod.codigo_referencia || '';
+  document.getElementById('prodEditMarca').value = prod.marca || '';
+  document.getElementById('prodEditUnidade').value = prod.unidade_medida || 'UN';
+  document.getElementById('prodEditCategoria').value = prod.categoria || 'Limpeza Geral';
+  document.getElementById('prodEditPreco').value = (parseFloat(prod.preco_anual_fechado) || 0).toFixed(2);
+
+  abrirModal('modalEditarProdutoCartela');
+}
+
+async function salvarEdicaoProdutoCartela(e) {
+  e.preventDefault();
+  const id = document.getElementById('prodEditId')?.value;
+  if (!id) return;
+
+  const fornId = document.getElementById('prodEditFornecedorId')?.value;
+  const desc = document.getElementById('prodEditDescricao')?.value.trim();
+  const preco = parseFloat(document.getElementById('prodEditPreco')?.value);
+
+  if (!fornId || !desc || isNaN(preco) || preco < 0) {
+    alert('Fornecedor, descrição e preço válido são obrigatórios.');
+    return;
+  }
+
+  const payload = {
+    fornecedor_id: parseInt(fornId, 10),
+    descricao: desc,
+    codigo_referencia: document.getElementById('prodEditCodigo')?.value.trim(),
+    marca: document.getElementById('prodEditMarca')?.value.trim(),
+    unidade_medida: document.getElementById('prodEditUnidade')?.value || 'UN',
+    categoria: document.getElementById('prodEditCategoria')?.value || 'Limpeza Geral',
+    preco_anual_fechado: preco
+  };
+
+  try {
+    const res = await fetch(`/api/produtos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarProdutoCartela');
+      await carregarFornecedoresECartela();
+      alert('Produto atualizado na cartela com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao atualizar produto.');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+async function excluirProdutoCartela(id) {
+  const prod = (state.produtosCartela || []).find(p => p.id === id);
+  if (!prod) return;
+
+  if (!confirm(`Deseja remover o produto "${prod.descricao}" da cartela?`)) return;
+
+  try {
+    const res = await fetch(`/api/produtos/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await carregarFornecedoresECartela();
+      alert('Produto removido da cartela com sucesso!');
+    } else {
+      alert(json.message || 'Erro ao remover produto.');
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =============================================================
+// EXPORTAÇÃO COMPLETA DA BASE DE COLABORADORES & RE-IMPORTAÇÃO SEM DUPLICIDADE
+// =============================================================
+
+async function exportarBaseCompletaColaboradoresExcel() {
+  try {
+    const res = await fetch('/api/colaboradores?status=todos');
+    const colaboradores = await res.json();
+    if (!Array.isArray(colaboradores) || colaboradores.length === 0) {
+      return alert('Nenhum colaborador encontrado para exportação.');
+    }
+
+    const dadosPlanilha = colaboradores.map(c => {
+      let linhasResumo = c.linhas_onibus || '';
+      let linhasJsonStr = '';
+      if (c.linhas_transporte_json) {
+        linhasJsonStr = typeof c.linhas_transporte_json === 'string' ? c.linhas_transporte_json : JSON.stringify(c.linhas_transporte_json);
+      }
+      return {
+        'ID_Colaborador': c.id,
+        'Nome': c.nome || '',
+        'CPF': c.cpf || '',
+        'Cargo': c.cargo_nome || '',
+        'Cargo_ID': c.cargo_id || '',
+        'Cliente': c.cliente_nome || '',
+        'Cliente_ID': c.cliente_id || '',
+        'Posto': c.posto_nome || '',
+        'Posto_ID': c.posto_id || '',
+        'Escala': c.escala || '',
+        'Data_Admissao': c.data_admissao || '',
+        'Telefone': c.telefone || '',
+        'Status': c.status || 'ativo',
+        'Valor_Diario_VA': parseFloat(c.valor_diario_va || 0) || 0,
+        'Linhas_Transporte_Resumo': linhasResumo,
+        'Valor_Passagem_VT': parseFloat(c.valor_passagem_unitaria || 0) || 0,
+        'Qtd_Passagens_Dia': parseInt(c.quantidade_passagens_dia || 0, 10) || 0,
+        'Total_Diario_VT': parseFloat(c.total_diario_vt || (c.valor_passagem_unitaria * c.quantidade_passagens_dia) || 0) || 0,
+        'Linhas_Transporte_JSON': linhasJsonStr
+      };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dadosPlanilha);
+    XLSX.utils.book_append_sheet(wb, ws, 'Colaboradores_Base_Completa');
+    const hoje = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Base_Completa_Colaboradores_${hoje}.xlsx`);
+  } catch (err) {
+    alert('Erro ao exportar base de colaboradores: ' + err.message);
+  }
+}
+
+// =============================================================
+// MÓDULO DE SEGURANÇA E SAÚDE DO TRABALHO (SST - NR-01)
+// =============================================================
+
+async function carregarPainelSST() {
+  try {
+    const res = await fetch('/api/sst/documentos');
+    const docs = await res.json();
+    state.sstDocumentos = Array.isArray(docs) ? docs : [];
+
+    // Atualizar Indicadores (KPIs)
+    const total = state.sstDocumentos.length;
+    const pendentes = state.sstDocumentos.filter(d => (d.status_assinatura || '').toLowerCase() === 'pendente').length;
+    const assinados = state.sstDocumentos.filter(d => (d.status_assinatura || '').toLowerCase() === 'assinado').length;
+    const arquivados = state.sstDocumentos.filter(d => (d.arquivo_status || d.status_arquivo || '').toLowerCase() === 'arquivado').length;
+
+    const elTotal = document.getElementById('kpiSSTTotalDocs');
+    const elPend = document.getElementById('kpiSSTPendentesAssinatura');
+    const elAssin = document.getElementById('kpiSSTAssinados');
+    const elArq = document.getElementById('kpiSSTArquivados');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elPend) elPend.textContent = pendentes;
+    if (elAssin) elAssin.textContent = assinados;
+    if (elArq) elArq.textContent = arquivados;
+
+    filtrarDocumentosSST();
+    carregarCronogramaPadraoSST();
+  } catch (err) {
+    console.error('Erro ao carregar documentos de SST:', err);
+  }
+}
+
+function escapeJsString(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function trocarSubAbaSST(subId) {
+  const chave = subId.startsWith('sst-') ? subId.replace(/^sst-/, '') : subId;
+  const abas = ['docs', 'modelos', 'cronograma'];
+
+  abas.forEach(aba => {
+    const btn = document.getElementById(`subTabBtn-sst-${aba}`);
+    const cont = document.getElementById(`subConteudo-sst-${aba}`);
+    const ativa = (aba === chave);
+
+    if (btn) {
+      if (ativa) {
+        btn.classList.add('text-amber-700', 'border-b-2', 'border-amber-600');
+        btn.classList.remove('text-slate-500', 'border-transparent');
+      } else {
+        btn.classList.remove('text-amber-700', 'border-b-2', 'border-amber-600');
+        btn.classList.add('text-slate-500');
+      }
+    }
+
+    if (cont) {
+      if (ativa) cont.classList.remove('hidden');
+      else cont.classList.add('hidden');
+    }
+  });
+
+  if (chave === 'modelos') {
+    carregarModelosOSSST();
+  } else if (chave === 'cronograma') {
+    carregarCronogramaPadraoSST();
+  }
+}
+
+function filtrarDocumentosSST() {
+  const busca = (document.getElementById('filtroSSTBusca')?.value || '').toLowerCase().trim();
+  const tipo = document.getElementById('filtroSSTTipo')?.value || 'todos';
+  const statusAssin = document.getElementById('filtroSSTStatusAssinatura')?.value || 'todos';
+  const statusArq = document.getElementById('filtroSSTStatusArquivo')?.value || 'todos';
+
+  let docs = state.sstDocumentos || [];
+
+  if (busca) {
+    docs = docs.filter(d => {
+      const colab = (d.colaborador_nome || '').toLowerCase();
+      const cpf = (d.colaborador_cpf || '').toLowerCase();
+      const cargo = (d.cargo_nome || '').toLowerCase();
+      const cli = (d.cliente_nome || '').toLowerCase();
+      const tit = (d.titulo || '').toLowerCase();
+      return colab.includes(busca) || cpf.includes(busca) || cargo.includes(busca) || cli.includes(busca) || tit.includes(busca);
+    });
+  }
+
+  if (tipo !== 'todos') {
+    docs = docs.filter(d => {
+      const t = (d.tipo_documento || '').toUpperCase();
+      if (tipo === 'TREINAMENTO_INTRODUTORIO' || tipo === 'lista_presenca') {
+        return t === 'TREINAMENTO_INTRODUTORIO' || t === 'LISTA_PRESENCA';
+      }
+      if (tipo === 'ORDEM_SERVICO' || tipo === 'ordem_servico') {
+        return t === 'ORDEM_SERVICO';
+      }
+      return t === tipo.toUpperCase();
+    });
+  }
+
+  if (statusAssin !== 'todos') {
+    docs = docs.filter(d => (d.status_assinatura || '').toLowerCase() === statusAssin.toLowerCase());
+  }
+
+  if (statusArq !== 'todos') {
+    docs = docs.filter(d => {
+      const sa = (d.arquivo_status || d.status_arquivo || '').toLowerCase();
+      return sa === statusArq.toLowerCase();
+    });
+  }
+
+  renderizarTabelaSST(docs);
+}
+
+function renderizarTabelaSST(docs) {
+  const tbody = document.getElementById('tabelaSSTBody');
+  if (!tbody) return;
+
+  if (!docs || docs.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center py-10 text-slate-400">
+          <i class="fa-solid fa-file-shield text-3xl mb-2 text-slate-300 block"></i>
+          Nenhum documento de SST encontrado com os filtros aplicados.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = docs.map(d => {
+    const isLP = (d.tipo_documento || '').toUpperCase().includes('TREINAMENTO') || (d.tipo_documento || '').toLowerCase().includes('presenca');
+    const tipoBadge = isLP
+      ? '<span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-clipboard-check"></i> Treinamento NR-01</span>'
+      : '<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-file-shield"></i> Ordem de Serviço</span>';
+
+    const statusAssin = (d.status_assinatura || '').toLowerCase();
+    let assinBadge = '';
+    if (statusAssin === 'assinado') {
+      assinBadge = '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-check"></i> Assinado</span>';
+    } else if (statusAssin === 'dispensado') {
+      assinBadge = '<span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">Dispensado</span>';
+    } else {
+      assinBadge = '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-clock"></i> Pendente</span>';
+    }
+
+    const arqStatus = (d.arquivo_status || d.status_arquivo || '').toLowerCase();
+    let arqBadge = '';
+    if (arqStatus === 'arquivado') {
+      const cx = d.localizacao_caixa || d.caixa_arquivo || 'Físico';
+      arqBadge = `<span class="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1" title="Arquivado na ${cx}"><i class="fa-solid fa-box-archive"></i> Arquivado (${cx})</span>`;
+    } else if (arqStatus === 'solicitado') {
+      arqBadge = '<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-paper-plane"></i> Aguardando Guarda</span>';
+    } else {
+      arqBadge = '<span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-circle-dot"></i> Não Arquivado</span>';
+    }
+
+    const dataAdmissaoFormatada = d.data_admissao ? formatarData(d.data_admissao) : '-';
+    const dataEmissaoFormatada = d.data_geracao ? formatarData(d.data_geracao.slice(0, 10)) : (d.data_criacao ? formatarData(d.data_criacao.slice(0, 10)) : dataAdmissaoFormatada);
+
+    return `
+      <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+        <!-- 1. Colaborador / CPF -->
+        <td class="py-3 px-4">
+          <div class="font-bold text-slate-900 text-xs hover:text-indigo-600 cursor-pointer flex items-center gap-1.5" onclick="visualizarDocumentoSST(${d.id})" title="Clique para abrir e visualizar este documento">
+            <span>${escapeHtml(d.colaborador_nome)}</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-indigo-400"></i>
+          </div>
+          <div class="font-mono text-[10px] text-slate-500 mt-0.5">
+            ${escapeHtml(d.colaborador_cpf || 'Sem CPF')}
+          </div>
+        </td>
+        <!-- 2. Função & Cliente -->
+        <td class="py-3 px-4">
+          <div class="font-semibold text-slate-800 text-xs">${escapeHtml(d.cargo_nome || 'Operacional')}</div>
+          <div class="text-[10px] text-slate-500">${escapeHtml(d.cliente_nome || 'Base / Matriz')} • ${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</div>
+        </td>
+        <!-- 3. Tipo de Documento -->
+        <td class="py-3 px-4">
+          ${tipoBadge}
+          <div class="text-[10px] text-slate-400 mt-0.5 font-mono">Reg. #${d.id.toString().padStart(5, '0')}</div>
+        </td>
+        <!-- 4. Data Geração -->
+        <td class="py-3 px-4">
+          <div class="text-xs text-slate-800 font-semibold">${dataEmissaoFormatada}</div>
+          <div class="text-[10px] text-slate-400">Admissão: ${dataAdmissaoFormatada}</div>
+        </td>
+        <!-- 5. Assinatura -->
+        <td class="py-3 px-4 text-center">
+          ${assinBadge}
+          ${d.data_assinatura ? `<div class="text-[9px] text-slate-400 mt-0.5">${formatarData(d.data_assinatura)}</div>` : ''}
+        </td>
+        <!-- 6. Status Arquivo -->
+        <td class="py-3 px-4 text-center">
+          ${arqBadge}
+        </td>
+        <!-- 7. Ações Operacionais -->
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center justify-end gap-1.5 flex-wrap">
+            <button onclick="visualizarDocumentoSST(${d.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Visualizar Documento em formato A4 para impressão">
+              <i class="fa-solid fa-file-lines"></i> Visualizar (A4)
+            </button>
+            <button onclick="abrirModalEditarDocumentoSST(${d.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" title="Editar Conteúdo / Cronograma">
+              <i class="fa-solid fa-pen-to-square"></i> Editar
+            </button>
+            ${arqStatus !== 'arquivado' ? `
+              <button onclick="abrirModalSolicitarArquivamento(${d.id}, ${d.colaborador_id}, '${d.tipo_documento}', '${escapeJsString(d.titulo)}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-2 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" title="Informar ao Arquivo que documento está disponível">
+                <i class="fa-solid fa-box-archive"></i> Enviar ao Arquivo
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function visualizarDocumentoSST(id) {
+  try {
+    let d = (state.sstDocumentos || []).find(x => x.id == id);
+    if (!d || !d.conteudo) {
+      const res = await fetch(`/api/sst/documentos/${id}`);
+      d = await res.json();
+    }
+    state.docSSTVisualizando = d;
+
+    if (!d || !d.id) return alert('Documento não encontrado.');
+
+    const isLP = (d.tipo_documento || '').toUpperCase().includes('TREINAMENTO') || (d.tipo_documento || '').toLowerCase().includes('presenca');
+
+    const barraTit = document.getElementById('visualizarSSTTituloBarra');
+    const barraSub = document.getElementById('visualizarSSTSubtituloBarra');
+    if (barraTit) barraTit.textContent = d.titulo || (isLP ? 'Lista de Presença - Treinamento NR-01' : 'Ordem de Serviço (OS NR-01)');
+    if (barraSub) barraSub.textContent = `Colaborador: ${d.colaborador_nome} | Função: ${d.cargo_nome || 'Operacional'} | Cliente: ${d.cliente_nome || 'Matriz'}`;
+
+    const btnEditar = document.getElementById('btnEditarDocSSTModal');
+    if (btnEditar) btnEditar.onclick = () => editarDocumentoSSTAtual();
+
+    const arqStatus = (d.arquivo_status || d.status_arquivo || '').toLowerCase();
+    const btnArq = document.getElementById('btnArquivarDocSSTModal');
+    if (btnArq) {
+      if (arqStatus === 'arquivado') {
+        btnArq.classList.add('hidden');
+      } else {
+        btnArq.classList.remove('hidden');
+        btnArq.onclick = () => solicitarArquivamentoDocAtual();
+      }
+    }
+
+    const area = document.getElementById('areaImpressaoSST');
+    if (!area) return;
+
+    let conteudo = d.conteudo || {};
+    if (!conteudo || Object.keys(conteudo).length === 0) {
+      try { conteudo = JSON.parse(d.conteudo_json || '{}'); } catch(e) { conteudo = {}; }
+    }
+
+    const dataEmissao = d.data_geracao ? formatarData(d.data_geracao.slice(0, 10)) : (d.data_criacao ? formatarData(d.data_criacao.slice(0, 10)) : new Date().toLocaleDateString('pt-BR'));
+    const dataAdmissao = d.data_admissao ? formatarData(d.data_admissao) : 'Não informada';
+    const statusAssin = (d.status_assinatura || '').toUpperCase();
+
+    if (isLP) {
+      let cronogramaLinhas = '';
+      if (Array.isArray(conteudo.cronograma)) {
+        cronogramaLinhas = conteudo.cronograma.map(c => `• ${c.modulo || ''}: ${c.tema || ''} (${c.carga_horaria || ''} - ${c.instrutor || ''})`).join('\n');
+      } else {
+        cronogramaLinhas = conteudo.conteudo_programatico || conteudo.cronograma || '• Módulo 1: Apresentação da Empresa e Política de Segurança e Saúde no Trabalho.\n• Módulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\n• Módulo 3: Riscos Físicos, Químicos, Biológicos, Ergonômicos e Riscos de Acidentes específicos da função.\n• Módulo 4: NR-06 - Equipamentos de Proteção Individual (EPI): Guarda, higienização e obrigatoriedade de uso.\n• Módulo 5: Procedimentos de Emergência, Primeiros Socorros e Comunicação Imediata de Acidentes (CAT).\n• Módulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.';
+      }
+
+      area.innerHTML = `
+        <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+          <div class="border-b-2 border-slate-900 pb-4 mb-5 flex justify-between items-start">
+            <div class="flex items-center gap-3">
+              <div class="w-14 h-14 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
+              </div>
+              <div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
+                <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
+              </div>
+            </div>
+            <div class="text-right text-[11px] font-mono text-slate-600">
+              <div><b>DATA EMISSÃO:</b> ${dataEmissao}</div>
+              <div><b>REGISTRO SST:</b> #${d.id.toString().padStart(5, '0')}</div>
+              <div><b>STATUS:</b> <span>${statusAssin}</span></div>
+            </div>
+          </div>
+
+          <div class="text-center my-4 pb-2 border-b border-slate-300">
+            <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
+              LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST
+            </h1>
+            <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
+          </div>
+
+          <div class="mb-4 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
+            <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-id-card"></i> 1. Dados Cadastrais do Colaborador
+            </div>
+            <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
+              <div><span class="text-slate-500">Nome Completo:</span> <b class="text-slate-900">${escapeHtml(d.colaborador_nome)}</b></div>
+              <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">${escapeHtml(d.colaborador_cpf || 'Não informado')}</b></div>
+              <div><span class="text-slate-500">Função / Cargo:</span> <b class="text-slate-900">${escapeHtml(d.cargo_nome || 'Operacional')}</b></div>
+              <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${dataAdmissao}</b></div>
+              <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">${escapeHtml(d.cliente_nome || 'Base Operacional')}</b></div>
+              <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</b></div>
+            </div>
+          </div>
+
+          <div class="mb-4 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
+            <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & Conteúdo Programático</span>
+              <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga Horária: ${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '06 Horas')}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-2 text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
+              <div><b>Instrutor:</b> ${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'SESMT / Técnico de Segurança')}</div>
+              <div><b>Local:</b> ${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Base Operacional / Posto de Serviço')}</div>
+            </div>
+            <div class="text-xs text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
+${escapeHtml(cronogramaLinhas)}
+            </div>
+          </div>
+
+          <div class="mb-6 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
+            <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento Introdutório de Segurança e Saúde no Trabalho acima especificado, compreendendo os riscos inerentes à minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteção e procedimentos estabelecidos.</p>
+          </div>
+
+          <div class="mt-12 pt-6 grid grid-cols-2 gap-8 text-center text-xs">
+            <div>
+              <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 48px;">
+                ${statusAssin === 'ASSINADO' ? `<span class="text-emerald-700 font-bold font-mono text-[11px]"><i class="fa-solid fa-signature mr-1"></i>ASSINADO EM ${formatarData(d.data_assinatura)}</span>` : ''}
+              </div>
+              <div class="font-bold text-slate-900 uppercase">${escapeHtml(d.colaborador_nome)}</div>
+              <div class="text-[11px] text-slate-500">Colaborador(a) / Assinatura do Treinando</div>
+              <div class="text-[10px] text-slate-400 font-mono">CPF: ${escapeHtml(d.colaborador_cpf || '---')}</div>
+            </div>
+
+            <div>
+              <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 48px;">
+                <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
+              </div>
+              <div class="font-bold text-slate-900 uppercase">${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'SESMT / Instrutor TST')}</div>
+              <div class="text-[11px] text-slate-500">Responsável pela Aplicação do Treinamento</div>
+              <div class="text-[10px] text-slate-400">${escapeHtml(conteudo.instrutor_registro || 'Registro SESMT / MTE')}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      let riscos = conteudo.riscos_ocupacionais || conteudo.riscos || [];
+      let epis = conteudo.epis_obrigatorios || conteudo.epis || [];
+
+      const riscosHtml = riscos.length > 0 ? riscos.map(r => {
+        const txt = typeof r === 'object' ? `${r.tipo ? `[${r.tipo.toUpperCase()}] ` : ''}${r.descricao || r.nome}` : r;
+        return `<div class="p-1.5 bg-slate-50 rounded border border-slate-200 text-[11px] text-slate-700">• ${escapeHtml(txt)}</div>`;
+      }).join('') : '<div class="text-slate-500 text-[11px] italic p-2 bg-slate-50 rounded">Riscos ocupacionais conforme PGR da empresa e rotina operacional do posto.</div>';
+
+      const episHtml = epis.length > 0 ? epis.map(e => {
+        const txt = typeof e === 'object' ? `${e.nome || e.epi} ${e.ca ? `(CA: ${e.ca})` : ''}` : e;
+        return `<div class="p-1 bg-white rounded border border-slate-200 text-[11px] text-slate-800 font-semibold">• ${escapeHtml(txt)}</div>`;
+      }).join('') : '<div class="text-slate-500 text-[11px] italic p-2 bg-slate-50 rounded">EPIs definidos conforme a função e riscos do cliente.</div>';
+
+      area.innerHTML = `
+        <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+          <div class="border-b-2 border-slate-900 pb-4 mb-4 flex justify-between items-start">
+            <div class="flex items-center gap-3">
+              <div class="w-14 h-14 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
+              </div>
+              <div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
+                <div class="text-[10px] text-slate-500">Ordem de Serviço de Segurança do Trabalho - NR-01 / Portaria MTP nº 4.219/2022</div>
+              </div>
+            </div>
+            <div class="text-right text-[11px] font-mono text-slate-600">
+              <div><b>EMISSÃO:</b> ${dataEmissao}</div>
+              <div><b>ORDEM DE SERVIÇO:</b> #${d.id.toString().padStart(5, '0')}</div>
+              <div><b>STATUS:</b> <span>${statusAssin}</span></div>
+            </div>
+          </div>
+
+          <div class="text-center my-3 pb-2 border-b border-slate-300">
+            <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
+              ORDEM DE SERVIÇO SOBRE SEGURANÇA E SAÚDE NO TRABALHO (OS - NR-01)
+            </h1>
+            <p class="text-xs text-slate-600 mt-0.5">Em cumprimento ao subitem 1.4.1 da NR-01 e aos Artigos 157 e 158 da CLT</p>
+          </div>
+
+          <div class="mb-3 bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs leading-relaxed">
+            <div class="font-bold text-slate-800 uppercase mb-1.5 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-user-check"></i> 1. Identificação do Trabalhador e da Função
+            </div>
+            <div class="grid grid-cols-2 gap-y-1 gap-x-4">
+              <div><span class="text-slate-500">Colaborador:</span> <b class="text-slate-900">${escapeHtml(d.colaborador_nome)}</b></div>
+              <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">${escapeHtml(d.colaborador_cpf || 'Não informado')}</b></div>
+              <div><span class="text-slate-500">Função Registrada:</span> <b class="text-slate-900">${escapeHtml(d.cargo_nome || 'Operacional')}</b></div>
+              <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${dataAdmissao}</b></div>
+              <div><span class="text-slate-500">Cliente / Contratante:</span> <b class="text-slate-900">${escapeHtml(d.cliente_nome || 'Cliente Operacional')}</b></div>
+              <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</b></div>
+              ${conteudo.titulo_modelo ? `<div class="col-span-2 pt-1 border-t border-slate-200/80"><span class="text-slate-500">Modelo da Ordem de Serviço:</span> <b class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(conteudo.titulo_modelo)}</b></div>` : ''}
+            </div>
+          </div>
+
+          <div class="mb-3 text-xs">
+            <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-briefcase"></i> 2. Descrição das Atividades Desenvolvidas
+            </div>
+            <div class="text-slate-700 bg-slate-50/70 p-2.5 rounded border border-slate-200 whitespace-pre-line leading-relaxed">
+${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução das atividades operacionais específicas da função, garantindo os padrões técnicos, de asseio, conservação e vigilância do posto de trabalho.')}
+            </div>
+          </div>
+
+          <div class="mb-3 text-xs">
+            <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> 3. Riscos Ocupacionais Identificados (PGR / GRO)
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+              ${riscosHtml}
+            </div>
+          </div>
+
+          <div class="mb-3 text-xs">
+            <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-vest"></i> 4. Equipamentos de Proteção Individual (EPI) de Uso Obrigatório
+            </div>
+            <div class="space-y-1 bg-slate-50/50 p-2 rounded border border-slate-200">
+              ${episHtml}
+            </div>
+          </div>
+
+          <div class="mb-3 text-xs">
+            <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i> 5. Medidas Preventivas e Procedimentos de Segurança
+            </div>
+            <div class="text-slate-700 bg-emerald-50/20 p-2.5 rounded border border-emerald-100 whitespace-pre-line leading-relaxed">
+${escapeHtml(conteudo.medidas_preventivas || '• Utilizar obrigatoriamente todos os EPIs fornecidos durante a execução das atividades no posto;\n• Não manusear produtos químicos ou maquinários sem capacitação e leitura prévia da FISPQ/rótulo;\n• Manter as vias de circulação desobstruídas e comunicar prontamente riscos ambientais;\n• Participar de todos os exames médicos periódicos e treinamentos de reciclagem convocados.')}
+            </div>
+          </div>
+
+          <div class="mb-3 text-xs">
+            <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
+              <i class="fa-solid fa-ban text-rose-600"></i> 6. Proibições e Penalidades (Art. 158 da CLT)
+            </div>
+            <div class="text-slate-700 bg-rose-50/20 p-2.5 rounded border border-rose-100 whitespace-pre-line leading-relaxed">
+${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É terminantemente proibido operar equipamentos sem autorização expressa da supervisão;\n• Proibido fumar ou consumir alimentos em áreas operacionais ou de risco químico;\n• A recusa injustificada do empregado ao uso do EPI ou ao cumprimento das normas de segurança constitui ato faltoso (CLT, Art. 158), sujeito a penalidades que variam de advertência por escrito, suspensão disciplinar até demissão por justa causa (CLT, Art. 482).')}
+            </div>
+          </div>
+
+          <div class="mb-4 p-2.5 border border-slate-300 rounded-lg text-[10px] text-slate-700 leading-relaxed text-justify bg-slate-50">
+            <div class="font-bold uppercase text-slate-900 mb-1">7. Termo de Recebimento, Ciência e Responsabilidade</div>
+            <p>${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || 'Declaro ter recebido uma via da presente Ordem de Serviço, tomando pleno conhecimento dos riscos da função e das medidas preventivas a serem adotadas. Comprometo-me a cumprir integralmente todas as determinações aqui contidas, zelando pela minha segurança e dos demais colaboradores.')}</p>
+          </div>
+
+          <div class="mt-8 pt-4 grid grid-cols-2 gap-8 text-center text-xs">
+            <div>
+              <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
+                ${statusAssin === 'ASSINADO' ? `<span class="text-emerald-700 font-bold font-mono text-[11px]"><i class="fa-solid fa-signature mr-1"></i>ASSINADO EM ${formatarData(d.data_assinatura)}</span>` : ''}
+              </div>
+              <div class="font-bold text-slate-900 uppercase">${escapeHtml(d.colaborador_nome)}</div>
+              <div class="text-[11px] text-slate-500">Assinatura do Trabalhador</div>
+              <div class="text-[10px] text-slate-400 font-mono">CPF: ${escapeHtml(d.colaborador_cpf || '---')}</div>
+            </div>
+
+            <div>
+              <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
+                <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
+              </div>
+              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="text-[11px] text-slate-500">SESMT / Segurança do Trabalho</div>
+              <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    abrirModal('modalVisualizarDocumentoSST');
+  } catch (err) {
+    alert('Erro ao visualizar documento: ' + err.message);
+  }
+}
+
+function editarDocumentoSSTAtual() {
+  if (!state.docSSTVisualizando) return;
+  const id = state.docSSTVisualizando.id;
+  fecharModal('modalVisualizarDocumentoSST');
+  abrirModalEditarDocumentoSST(id);
+}
+
+function solicitarArquivamentoDocAtual() {
+  if (!state.docSSTVisualizando) return;
+  const d = state.docSSTVisualizando;
+  fecharModal('modalVisualizarDocumentoSST');
+  abrirModalSolicitarArquivamento(d.id, d.colaborador_id, d.tipo_documento, d.titulo);
+}
+
+function imprimirDocumentoA4SST() {
+  document.body.classList.add('imprimindo-documento-sst');
+  const cleanup = () => {
+    document.body.classList.remove('imprimindo-documento-sst');
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(cleanup, 3500);
+  window.print();
+}
+
+async function abrirModalEditarDocumentoSST(id) {
+  fecharModal('modalVisualizarDocumentoSST');
+
+  let doc = (state.sstDocumentos || []).find(d => d.id == id);
+  if (!doc) {
+    const res = await fetch(`/api/sst/documentos/${id}`);
+    doc = await res.json();
+  }
+  if (!doc || !doc.id) return alert('Documento não encontrado.');
+
+  document.getElementById('editSSTDocId').value = doc.id;
+  document.getElementById('editSSTTipoDoc').value = doc.tipo_documento;
+  document.getElementById('editSSTTitulo').value = doc.titulo || '';
+  document.getElementById('editSSTStatusAssinatura').value = (doc.status_assinatura || 'Pendente').toLowerCase() === 'assinado' ? 'Assinado' : 'Pendente';
+  document.getElementById('editSSTDataAssinatura').value = doc.data_assinatura || '';
+
+  const titModal = document.getElementById('tituloModalEditarSST');
+  const subModal = document.getElementById('subtituloModalEditarSST');
+  if (titModal) titModal.textContent = `Editar Documento de SST (#${doc.id})`;
+  if (subModal) subModal.textContent = `Colaborador: ${doc.colaborador_nome} (${doc.cargo_nome || 'Operacional'})`;
+
+  let conteudo = doc.conteudo || {};
+  if (!conteudo || Object.keys(conteudo).length === 0) {
+    try { conteudo = JSON.parse(doc.conteudo_json || '{}'); } catch(e) { conteudo = {}; }
+  }
+
+  const container = document.getElementById('containerCamposEdicaoSST');
+  if (!container) return;
+
+  const isLP = (doc.tipo_documento || '').toUpperCase().includes('TREINAMENTO') || (doc.tipo_documento || '').toLowerCase().includes('presenca');
+
+  if (isLP) {
+    let cronogramaLinhas = '';
+    if (Array.isArray(conteudo.cronograma)) {
+      cronogramaLinhas = conteudo.cronograma.map(c => `• ${c.modulo || ''}: ${c.tema || ''} (${c.carga_horaria || ''} - ${c.instrutor || ''})`).join('\n');
+    } else {
+      cronogramaLinhas = conteudo.conteudo_programatico || conteudo.cronograma || '';
+    }
+
+    container.innerHTML = `
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Carga Horária</label>
+          <input type="text" id="editSSTCargaHoraria" value="${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '04 Horas')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Instrutor / Resp. Técnico</label>
+          <input type="text" id="editSSTInstrutor" value="${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'Cleverson Almeida')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Registro DRT / MTE</label>
+          <input type="text" id="editSSTInstrutorRegistro" value="${escapeHtml(conteudo.instrutor_registro || 'TST, DRT 0073086 / MG')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
+        </div>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Local de Realização</label>
+        <input type="text" id="editSSTLocal" value="${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Sede Village / Posto de Trabalho')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Cronograma e Conteúdo Programático</label>
+        <textarea id="editSSTCronograma" rows="6" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(cronogramaLinhas || '• Módulo 1: Apresentação da Empresa e Política de Segurança e Saúde no Trabalho.\n• Módulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\n• Módulo 3: Riscos Físicos, Químicos, Biológicos, Ergonômicos e Riscos de Acidentes específicos da função.\n• Módulo 4: NR-06 - Equipamentos de Proteção Individual (EPI): Guarda, higienização e obrigatoriedade de uso.\n• Módulo 5: Procedimentos de Emergência, Primeiros Socorros e Comunicação Imediata de Acidentes (CAT).\n• Módulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.')}</textarea>
+      </div>
+    `;
+  } else {
+    const riscosList = Array.isArray(conteudo.riscos_ocupacionais) ? conteudo.riscos_ocupacionais : (Array.isArray(conteudo.riscos) ? conteudo.riscos : []);
+    const episList = Array.isArray(conteudo.epis_obrigatorios) ? conteudo.epis_obrigatorios : (Array.isArray(conteudo.epis) ? conteudo.epis : []);
+
+    const txtRiscos = riscosList.map(r => typeof r === 'object' ? `${r.tipo ? `[${r.tipo.toUpperCase()}] ` : ''}${r.descricao || r.nome}` : r).join('\n');
+    const txtEpis = episList.map(e => typeof e === 'object' ? `${e.nome || e.epi} ${e.ca ? `(CA: ${e.ca})` : ''}` : e).join('\n');
+
+    container.innerHTML = `
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Descrição das Atividades da Função</label>
+        <textarea id="editSSTAtividades" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || '')}</textarea>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Riscos Ocupacionais (um por linha)</label>
+          <textarea id="editSSTRiscos" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: [FÍSICO] Ruído contínuo&#10;[ERGONÔMICO] Postura inadequada">${escapeHtml(txtRiscos)}</textarea>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">EPIs Obrigatórios (um por linha)</label>
+          <textarea id="editSSTEPIs" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: Calçado de segurança com biqueira (CA: 12345)&#10;Luva nitrílica">${escapeHtml(txtEpis)}</textarea>
+        </div>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Medidas Preventivas e Procedimentos de Segurança</label>
+        <textarea id="editSSTMedidas" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.medidas_preventivas || '')}</textarea>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Proibições e Atos Inseguros (Art. 158 CLT)</label>
+        <textarea id="editSSTProibicoes" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '')}</textarea>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Termo de Ciência e Compromisso</label>
+        <textarea id="editSSTTermo" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || '')}</textarea>
+      </div>
+    `;
+  }
+
+  abrirModal('modalEditarDocumentoSST');
+}
+
+async function salvarEdicaoDocumentoSST(e) {
+  e.preventDefault();
+  const id = document.getElementById('editSSTDocId').value;
+  const tipo = document.getElementById('editSSTTipoDoc').value;
+  const titulo = document.getElementById('editSSTTitulo').value.trim();
+  const statusAssinatura = document.getElementById('editSSTStatusAssinatura').value;
+  const dataAssinatura = document.getElementById('editSSTDataAssinatura').value;
+
+  const docOriginal = (state.sstDocumentos || []).find(d => d.id == id);
+  let conteudo = docOriginal?.conteudo || {};
+  if (!conteudo || Object.keys(conteudo).length === 0) {
+    try { conteudo = JSON.parse(docOriginal?.conteudo_json || '{}'); } catch (err) {}
+  }
+
+  const isLP = (tipo || '').toUpperCase().includes('TREINAMENTO') || (tipo || '').toLowerCase().includes('presenca');
+
+  if (isLP) {
+    conteudo.carga_horaria_total = document.getElementById('editSSTCargaHoraria')?.value.trim() || '04 Horas';
+    conteudo.carga_horaria = conteudo.carga_horaria_total;
+    conteudo.instrutor_nome = document.getElementById('editSSTInstrutor')?.value.trim() || 'Cleverson Almeida';
+    conteudo.instrutor = conteudo.instrutor_nome;
+    conteudo.instrutor_registro = document.getElementById('editSSTInstrutorRegistro')?.value.trim() || 'TST, DRT 0073086 / MG';
+    conteudo.local_treinamento = document.getElementById('editSSTLocal')?.value.trim() || '';
+    conteudo.local = conteudo.local_treinamento;
+    conteudo.conteudo_programatico = document.getElementById('editSSTCronograma')?.value.trim() || '';
+  } else {
+    conteudo.descricao_atividades = document.getElementById('editSSTAtividades')?.value.trim() || '';
+    conteudo.atividades = conteudo.descricao_atividades;
+    
+    const riscosTxt = document.getElementById('editSSTRiscos')?.value.trim();
+    if (riscosTxt !== undefined) {
+      conteudo.riscos_ocupacionais = riscosTxt.split('\n').map(s => s.trim()).filter(Boolean);
+      conteudo.riscos = conteudo.riscos_ocupacionais;
+    }
+
+    const episTxt = document.getElementById('editSSTEPIs')?.value.trim();
+    if (episTxt !== undefined) {
+      conteudo.epis_obrigatorios = episTxt.split('\n').map(s => s.trim()).filter(Boolean);
+      conteudo.epis = conteudo.epis_obrigatorios;
+    }
+
+    conteudo.medidas_preventivas = document.getElementById('editSSTMedidas')?.value.trim() || '';
+    conteudo.normas_proibicoes = document.getElementById('editSSTProibicoes')?.value.trim() || '';
+    conteudo.proibicoes = conteudo.normas_proibicoes;
+    conteudo.termo_compromisso = document.getElementById('editSSTTermo')?.value.trim() || '';
+    conteudo.termo_responsabilidade = conteudo.termo_compromisso;
+  }
+
+  try {
+    const res = await fetch(`/api/sst/documentos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        titulo: titulo,
+        status_assinatura: statusAssinatura,
+        data_assinatura: dataAssinatura || null,
+        conteudo: conteudo,
+        conteudo_json: JSON.stringify(conteudo)
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarDocumentoSST');
+      alert('Documento de SST atualizado com sucesso!');
+      await carregarPainelSST();
+      if (state.docSSTVisualizando && state.docSSTVisualizando.id == id) {
+        visualizarDocumentoSST(id);
+      }
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao atualizar documento.'));
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+async function carregarModelosOSSST() {
+  try {
+    const res = await fetch('/api/sst/modelos-os');
+    const modelos = await res.json();
+    state.sstModelosOS = Array.isArray(modelos) ? modelos : [];
+
+    const grid = document.getElementById('gridModelosOS');
+    if (!grid) return;
+
+    if (state.sstModelosOS.length === 0) {
+      grid.innerHTML = '<div class="col-span-3 text-center py-10 text-slate-400">Nenhum modelo de Ordem de Serviço cadastrado.</div>';
+      return;
+    }
+
+    grid.innerHTML = state.sstModelosOS.map(m => {
+      const riscosList = Array.isArray(m.riscos_identificados) ? m.riscos_identificados : (Array.isArray(m.riscos_ocupacionais) ? m.riscos_ocupacionais : []);
+      const episList = Array.isArray(m.epis_obrigatorios) ? m.epis_obrigatorios : [];
+      const tituloCard = m.titulo_modelo || m.nome_funcao;
+
+      return `
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition space-y-3 flex flex-col justify-between">
+          <div>
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <span class="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                <i class="fa-solid fa-file-shield text-purple-600"></i> ${escapeHtml(tituloCard)}
+              </span>
+              <span class="bg-purple-50 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-200 shrink-0">
+                ${escapeHtml(m.nome_cargo || m.nome_funcao)}
+              </span>
+            </div>
+            ${m.titulo_modelo && m.nome_funcao !== m.titulo_modelo ? `<div class="text-[11px] font-medium text-slate-500 mb-2">Função base: <b>${escapeHtml(m.nome_funcao)}</b></div>` : ''}
+            <p class="text-xs text-slate-600 line-clamp-3 leading-relaxed mb-3">
+              ${escapeHtml(m.descricao_atividades || 'Sem descrição cadastrada.')}
+            </p>
+            <div class="flex items-center gap-2 text-[10px]">
+              <span class="bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>${riscosList.length} Riscos Mapeados
+              </span>
+              <span class="bg-blue-50 text-blue-800 font-bold px-2 py-0.5 rounded border border-blue-200">
+                <i class="fa-solid fa-vest mr-1"></i>${episList.length} EPIs Obrigatórios
+              </span>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <button onclick="abrirModalModeloOS(${m.id})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-pencil"></i> Editar Modelo
+            </button>
+            <button onclick="excluirModeloOS(${m.id})" class="text-xs font-semibold text-rose-500 hover:text-rose-700 cursor-pointer" title="Inativar modelo">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Erro ao carregar modelos de OS:', err);
+  }
+}
+
+function adicionarLinhaRiscoModeloOS(tipo = 'Acidente', desc = '') {
+  const container = document.getElementById('listaRiscosModeloOS');
+  if (!container) return;
+
+  const div = document.createElement('div');
+  div.className = 'linha-risco-item flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs';
+  div.innerHTML = `
+    <select class="risco-tipo border border-slate-300 rounded-md px-2 py-1 text-xs bg-slate-50 font-semibold text-slate-700 w-36 shrink-0 focus:outline-none">
+      <option value="Físico" ${tipo === 'Físico' ? 'selected' : ''}>Físico</option>
+      <option value="Químico" ${tipo === 'Químico' ? 'selected' : ''}>Químico</option>
+      <option value="Biológico" ${tipo === 'Biológico' ? 'selected' : ''}>Biológico</option>
+      <option value="Ergonômico" ${tipo === 'Ergonômico' ? 'selected' : ''}>Ergonômico</option>
+      <option value="Acidente" ${tipo === 'Acidente' ? 'selected' : ''}>Acidente / Mecânico</option>
+    </select>
+    <input type="text" class="risco-desc w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Ruído contínuo, postura inadequada, contato com produtos de limpeza..." value="${escapeHtml(desc)}">
+    <button type="button" onclick="this.closest('.linha-risco-item').remove()" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Remover este risco">
+      <i class="fa-solid fa-trash-can text-xs"></i>
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+function adicionarLinhaEPIModeloOS(nome = '', ca = '') {
+  const container = document.getElementById('listaEPIsModeloOS');
+  if (!container) return;
+
+  const div = document.createElement('div');
+  div.className = 'linha-epi-item flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs';
+  div.innerHTML = `
+    <input type="text" class="epi-nome w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Calçado de segurança com biqueira, Luvas nitrílicas..." value="${escapeHtml(nome)}">
+    <input type="text" class="epi-ca w-32 shrink-0 border border-slate-300 rounded-md px-2.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="C.A. (opcional)" value="${escapeHtml(ca)}">
+    <button type="button" onclick="this.closest('.linha-epi-item').remove()" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Remover este EPI">
+      <i class="fa-solid fa-trash-can text-xs"></i>
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+function abrirModalModeloOS(id = null) {
+  const form = document.getElementById('formModeloOS');
+  if (form) form.reset();
+
+  const containerRiscos = document.getElementById('listaRiscosModeloOS');
+  if (containerRiscos) containerRiscos.innerHTML = '';
+  const containerEPIs = document.getElementById('listaEPIsModeloOS');
+  if (containerEPIs) containerEPIs.innerHTML = '';
+
+  const selCargo = document.getElementById('modeloOSCargoId');
+  if (selCargo) {
+    selCargo.innerHTML = '<option value="">-- Vincular a um Cargo do Sistema (Opcional) --</option>';
+    (state.cargos || []).forEach(cg => {
+      selCargo.innerHTML += `<option value="${cg.id}">${escapeHtml(cg.nome_cargo)}</option>`;
+    });
+
+    selCargo.onchange = function() {
+      const cId = parseInt(this.value, 10);
+      const cObj = (state.cargos || []).find(c => c.id === cId);
+      if (cObj) {
+        const inpFuncao = document.getElementById('modeloOSNomeFuncao');
+        const inpTitulo = document.getElementById('modeloOSTitulo');
+        if (inpFuncao && !inpFuncao.value) inpFuncao.value = cObj.nome_cargo;
+        if (inpTitulo && !inpTitulo.value) inpTitulo.value = cObj.nome_cargo;
+      }
+    };
+  }
+
+  const tit = document.getElementById('tituloModalModeloOS');
+
+  if (id) {
+    const mod = (state.sstModelosOS || []).find(m => m.id == id);
+    if (!mod) return alert('Modelo não encontrado.');
+
+    if (tit) tit.textContent = 'Editar Modelo de Ordem de Serviço (OS)';
+    document.getElementById('modeloOSEditId').value = mod.id;
+    document.getElementById('modeloOSTitulo').value = mod.titulo_modelo || mod.nome_funcao || '';
+    document.getElementById('modeloOSNomeFuncao').value = mod.nome_funcao || '';
+    if (selCargo) selCargo.value = mod.cargo_id || '';
+    document.getElementById('modeloOSAtividades').value = mod.descricao_atividades || '';
+
+    const riscosList = Array.isArray(mod.riscos_identificados) ? mod.riscos_identificados : (Array.isArray(mod.riscos_ocupacionais) ? mod.riscos_ocupacionais : []);
+    const episList = Array.isArray(mod.epis_obrigatorios) ? mod.epis_obrigatorios : [];
+
+    if (riscosList.length > 0) {
+      riscosList.forEach(r => {
+        const tipo = typeof r === 'object' ? (r.tipo || 'Acidente') : 'Acidente';
+        const desc = typeof r === 'object' ? (r.descricao || r.nome || '') : r;
+        adicionarLinhaRiscoModeloOS(tipo, desc);
+      });
+    } else {
+      adicionarLinhaRiscoModeloOS('Acidente', '');
+    }
+
+    if (episList.length > 0) {
+      episList.forEach(e => {
+        const nome = typeof e === 'object' ? (e.nome || e.epi || '') : e;
+        const ca = typeof e === 'object' ? (e.ca || '') : '';
+        adicionarLinhaEPIModeloOS(nome, ca);
+      });
+    } else {
+      adicionarLinhaEPIModeloOS('', '');
+    }
+
+    document.getElementById('modeloOSMedidas').value = mod.medidas_preventivas || '';
+    document.getElementById('modeloOSProibicoes').value = mod.normas_proibicoes || mod.proibicoes || '';
+    document.getElementById('modeloOSTermo').value = mod.termo_compromisso || mod.termo_responsabilidade || '';
+  } else {
+    if (tit) tit.textContent = 'Cadastrar Novo Modelo de Ordem de Serviço (OS)';
+    document.getElementById('modeloOSEditId').value = '';
+    document.getElementById('modeloOSTitulo').value = '';
+    document.getElementById('modeloOSNomeFuncao').value = '';
+    adicionarLinhaRiscoModeloOS('Acidente', '');
+    adicionarLinhaEPIModeloOS('', '');
+    document.getElementById('modeloOSTermo').value = 'Declaro ter recebido uma via da presente Ordem de Serviço, bem como as devidas instruções e orientações sobre prevenção de acidentes e uso correto dos Equipamentos de Proteção Individual fornecidos gratuitamente pela empresa. Comprometo-me a cumprir integralmente todas as recomendações de segurança descritas neste documento, sob pena de incorrer nas sanções disciplinares previstas em lei.';
+  }
+
+  abrirModal('modalModeloOS');
+}
+
+async function salvarModeloOS(e) {
+  e.preventDefault();
+  const id = document.getElementById('modeloOSEditId').value;
+  const tituloModelo = document.getElementById('modeloOSTitulo').value.trim();
+  const nomeFuncao = document.getElementById('modeloOSNomeFuncao').value.trim();
+  const cargoId = document.getElementById('modeloOSCargoId').value || null;
+  const atividades = document.getElementById('modeloOSAtividades').value.trim();
+  const medidas = document.getElementById('modeloOSMedidas').value.trim();
+  const proibicoes = document.getElementById('modeloOSProibicoes').value.trim();
+  const termo = document.getElementById('modeloOSTermo').value.trim();
+
+  // Coleta riscos das linhas dinâmicas
+  const containerRiscos = document.getElementById('listaRiscosModeloOS');
+  const riscosArray = [];
+  if (containerRiscos) {
+    containerRiscos.querySelectorAll('.linha-risco-item').forEach(row => {
+      const tipo = row.querySelector('.risco-tipo')?.value || 'Acidente';
+      const desc = row.querySelector('.risco-desc')?.value?.trim();
+      if (desc) riscosArray.push({ tipo, descricao: desc });
+    });
+  }
+
+  // Coleta EPIs das linhas dinâmicas
+  const containerEPIs = document.getElementById('listaEPIsModeloOS');
+  const episArray = [];
+  if (containerEPIs) {
+    containerEPIs.querySelectorAll('.linha-epi-item').forEach(row => {
+      const nome = row.querySelector('.epi-nome')?.value?.trim();
+      const ca = row.querySelector('.epi-ca')?.value?.trim();
+      if (nome) episArray.push({ nome, ca: ca || '' });
+    });
+  }
+
+  const payload = {
+    titulo_modelo: tituloModelo,
+    nome_funcao: nomeFuncao,
+    cargo_id: cargoId ? parseInt(cargoId, 10) : null,
+    descricao_atividades: atividades,
+    riscos_identificados: riscosArray,
+    riscos_ocupacionais_json: JSON.stringify(riscosArray),
+    epis_obrigatorios: episArray,
+    epis_obrigatorios_json: JSON.stringify(episArray),
+    medidas_preventivas: medidas,
+    normas_proibicoes: proibicoes,
+    proibicoes: proibicoes,
+    termo_compromisso: termo,
+    termo_responsabilidade: termo
+  };
+
+  try {
+    const url = id ? `/api/sst/modelos-os/${id}` : '/api/sst/modelos-os';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalModeloOS');
+      alert('Modelo de Ordem de Serviço salvo com sucesso!');
+      await carregarModelosOSSST();
+      atualizarSelectModelosOSColaborador('novo');
+      atualizarSelectModelosOSColaborador('edicao');
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao salvar modelo.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão: ' + err.message);
+  }
+}
+
+async function excluirModeloOS(id) {
+  if (!confirm('Deseja realmente inativar este modelo de Ordem de Serviço?')) return;
+  try {
+    const res = await fetch(`/api/sst/modelos-os/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      alert('Modelo inativado com sucesso!');
+      await carregarModelosOSSST();
+      atualizarSelectModelosOSColaborador('novo');
+      atualizarSelectModelosOSColaborador('edicao');
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao inativar modelo.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão: ' + err.message);
+  }
+}
+
+async function gerarNovoDocumentoSSTManual(colaboradorId) {
+  if (!colaboradorId) return;
+  try {
+    const res = await fetch('/api/sst/gerar-para-colaborador', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ colaborador_id: colaboradorId })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('Documentos de SST gerados com sucesso para este colaborador!');
+      await carregarPainelSST();
+    } else {
+      alert('Erro: ' + (json.message || 'Não foi possível gerar os documentos.'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =============================================================
+// CRONOGRAMA PADRÃO DE TREINAMENTO (SST / NR-01 & NR-06)
+// =============================================================
+
+async function carregarCronogramaPadraoSST() {
+  const container = document.getElementById('areaCronogramaPadraoSST');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/sst/cronograma-padrao');
+    const cronograma = await res.json();
+    state.sstCronogramaPadrao = cronograma;
+
+    const modulos = Array.isArray(cronograma.modulos) ? cronograma.modulos : [];
+    const instrutorNome = cronograma.instrutor_nome || 'Cleverson Almeida';
+    const instrutorRegistro = cronograma.instrutor_registro || 'TST, DRT 0073086 / MG';
+    const cargaTotal = cronograma.carga_horaria_total || '04 Horas';
+    const local = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
+
+    container.innerHTML = `
+      <!-- CABEÇALHO DO CRONOGRAMA PADRÃO -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-xl bg-white border border-slate-200 p-1.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+              <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border border-amber-200">
+                  Padrão Oficial de Admissão
+                </span>
+                <span class="text-xs text-slate-400 font-mono">NR-01 & NR-06</span>
+              </div>
+              <h2 class="text-base font-bold text-slate-900 mt-1">${escapeHtml(cronograma.titulo || 'Cronograma Padrão de Treinamento e Integração - NR-01 & NR-06')}</h2>
+              <p class="text-xs text-slate-500">Documento base emitido automaticamente para todos os novos colaboradores admitidos na Village.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="visualizarModeloCronogramaPadrao()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer">
+              <i class="fa-solid fa-file-lines text-amber-600"></i> Visualizar Modelo Oficial
+            </button>
+            <button onclick="abrirModalEditarCronogramaPadrao()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+              <i class="fa-solid fa-pen-to-square"></i> Editar Cronograma Padrão
+            </button>
+          </div>
+        </div>
+
+        <!-- CARDS DE INFORMAÇÕES CHAVE -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <span class="text-slate-500 text-[11px] block">Carga Horária Total</span>
+            <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5 mt-0.5">
+              <i class="fa-solid fa-clock text-amber-600"></i> ${escapeHtml(cargaTotal)}
+            </span>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <span class="text-slate-500 text-[11px] block">Instrutor / Resp. Técnico</span>
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5">
+              <i class="fa-solid fa-user-tie text-blue-600"></i> ${escapeHtml(instrutorNome)}
+            </span>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <span class="text-slate-500 text-[11px] block">Registro Profissional / DRT</span>
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5">
+              <i class="fa-solid fa-id-card text-emerald-600"></i> ${escapeHtml(instrutorRegistro)}
+            </span>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <span class="text-slate-500 text-[11px] block">Local Padrão</span>
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5 truncate" title="${escapeHtml(local)}">
+              <i class="fa-solid fa-location-dot text-rose-500"></i> ${escapeHtml(local)}
+            </span>
+          </div>
+        </div>
+
+        ${cronograma.observacoes ? `
+          <div class="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 text-xs text-amber-950">
+            <span class="font-bold block mb-1 text-[11px] uppercase tracking-wide flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-info text-amber-600"></i> Metodologia e Diretrizes Gerais:
+            </span>
+            <p class="leading-relaxed text-slate-700">${escapeHtml(cronograma.observacoes)}</p>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- MÓDULOS CADASTRADOS -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-amber-600"></i>
+            Estrutura dos Módulos (${modulos.length})
+          </h3>
+          <span class="text-xs text-slate-500">Transmitidos em treinamento presencial introdutório</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          ${modulos.map((m, idx) => `
+            <div class="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between hover:border-amber-300 transition">
+              <div>
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center">
+                      ${idx + 1}
+                    </span>
+                    <span class="font-bold text-xs text-slate-900">${escapeHtml(m.modulo || `Módulo ${idx + 1}`)}</span>
+                  </div>
+                  <span class="bg-blue-50 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-200">
+                    <i class="fa-solid fa-stopwatch mr-1"></i>${escapeHtml(m.carga_horaria || '1h')}
+                  </span>
+                </div>
+                <h4 class="font-bold text-xs text-slate-800 mb-1.5">${escapeHtml(m.tema || '')}</h4>
+                <p class="text-xs text-slate-600 leading-relaxed mb-3">
+                  ${escapeHtml(m.descricao || '')}
+                </p>
+              </div>
+              <div class="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span class="flex items-center gap-1 font-medium">
+                  <i class="fa-solid fa-chalkboard-user text-slate-400"></i>
+                  ${escapeHtml(m.modalidade || 'Presencial Teórico-Prático')}
+                </span>
+                <span class="text-slate-500 font-mono text-[10px]">
+                  ${escapeHtml(m.instrutor || instrutorNome)}
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    console.error('Erro ao carregar cronograma padrão de SST:', err);
+    container.innerHTML = `<div class="p-6 text-center text-rose-500">Falha ao carregar cronograma padrão: ${err.message}</div>`;
+  }
+}
+
+function abrirModalEditarCronogramaPadrao() {
+  const cronograma = state.sstCronogramaPadrao || {};
+  document.getElementById('padraoTitulo').value = cronograma.titulo || 'Cronograma Padrão de Treinamento e Integração - NR-01 & NR-06';
+  document.getElementById('padraoCargaHoraria').value = cronograma.carga_horaria_total || '04 Horas';
+  document.getElementById('padraoLocal').value = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
+  document.getElementById('padraoInstrutorNome').value = cronograma.instrutor_nome || 'Cleverson Almeida';
+  document.getElementById('padraoInstrutorRegistro').value = cronograma.instrutor_registro || 'TST, DRT 0073086 / MG';
+  document.getElementById('padraoObservacoes').value = cronograma.observacoes || '';
+
+  const container = document.getElementById('containerModulosCronogramaPadrao');
+  if (container) {
+    container.innerHTML = '';
+    const modulos = Array.isArray(cronograma.modulos) ? cronograma.modulos : [];
+    if (modulos.length > 0) {
+      modulos.forEach(m => adicionarLinhaModuloCronogramaPadrao(m));
+    } else {
+      adicionarLinhaModuloCronogramaPadrao({ modulo: 'Módulo 1', carga_horaria: '45 min', tema: 'Apresentação da Empresa e Política de Segurança', modalidade: 'Presencial Teórico', descricao: 'Apresentação da Village, direitos e deveres do trabalhador conforme Art. 158 da CLT.' });
+      adicionarLinhaModuloCronogramaPadrao({ modulo: 'Módulo 2', carga_horaria: '45 min', tema: 'NR-01 - Gerenciamento de Riscos Ocupacionais', modalidade: 'Presencial Teórico', descricao: 'Identificação de perigos e controle dos riscos ocupacionais mapeados no PGR.' });
+    }
+  }
+
+  abrirModal('modalEditarCronogramaPadrao');
+}
+
+function adicionarLinhaModuloCronogramaPadrao(m = null) {
+  const container = document.getElementById('containerModulosCronogramaPadrao');
+  if (!container) return;
+
+  const item = document.createElement('div');
+  item.className = 'item-modulo-cronograma bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2';
+
+  const modNome = m?.modulo || `Módulo ${container.children.length + 1}`;
+  const modCarga = m?.carga_horaria || '45 min';
+  const modTema = m?.tema || '';
+  const modModalidade = m?.modalidade || 'Presencial Teórico-Prático';
+  const modDesc = m?.descricao || '';
+  const modInstrutor = m?.instrutor || '';
+
+  item.innerHTML = `
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Identificação do Módulo</label>
+        <input type="text" class="modulo-nome w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modNome)}">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Carga Horária</label>
+        <input type="text" class="modulo-carga w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modCarga)}">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Modalidade</label>
+        <select class="modulo-modalidade w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none">
+          <option value="Presencial Teórico-Prático" ${modModalidade === 'Presencial Teórico-Prático' ? 'selected' : ''}>Presencial Teórico-Prático</option>
+          <option value="Presencial Teórico" ${modModalidade === 'Presencial Teórico' ? 'selected' : ''}>Presencial Teórico</option>
+          <option value="Prático / No Posto" ${modModalidade === 'Prático / No Posto' ? 'selected' : ''}>Prático / No Posto</option>
+          <option value="EAD / Híbrido" ${modModalidade === 'EAD / Híbrido' ? 'selected' : ''}>EAD / Híbrido</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Tema / Assunto Principal *</label>
+        <input type="text" class="modulo-tema w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modTema)}" placeholder="Ex: NR-06 - Equipamentos de Proteção Individual (EPI)">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Instrutor Específico (opcional)</label>
+        <input type="text" class="modulo-instrutor w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none" value="${escapeHtml(modInstrutor)}" placeholder="Deixar em branco para usar o instrutor padrão">
+      </div>
+    </div>
+    <div>
+      <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Conteúdo Abordado / Descrição</label>
+      <textarea rows="2" class="modulo-desc w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Descrição detalhada do conteúdo do módulo...">${escapeHtml(modDesc)}</textarea>
+    </div>
+    <div class="flex justify-end">
+      <button type="button" onclick="this.closest('.item-modulo-cronograma').remove()" class="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer">
+        <i class="fa-solid fa-trash-can"></i> Remover Módulo
+      </button>
+    </div>
+  `;
+
+  container.appendChild(item);
+}
+
+async function salvarCronogramaPadraoSST(e) {
+  e.preventDefault();
+
+  const titulo = document.getElementById('padraoTitulo').value.trim();
+  const cargaHoraria = document.getElementById('padraoCargaHoraria').value.trim();
+  const local = document.getElementById('padraoLocal').value.trim();
+  const instrutorNome = document.getElementById('padraoInstrutorNome').value.trim() || 'Cleverson Almeida';
+  const instrutorRegistro = document.getElementById('padraoInstrutorRegistro').value.trim() || 'TST, DRT 0073086 / MG';
+  const observacoes = document.getElementById('padraoObservacoes').value.trim();
+
+  const modulos = [];
+  const container = document.getElementById('containerModulosCronogramaPadrao');
+  if (container) {
+    container.querySelectorAll('.item-modulo-cronograma').forEach(item => {
+      const nome = item.querySelector('.modulo-nome')?.value.trim();
+      const carga = item.querySelector('.modulo-carga')?.value.trim();
+      const modalidade = item.querySelector('.modulo-modalidade')?.value;
+      const tema = item.querySelector('.modulo-tema')?.value.trim();
+      const instrutor = item.querySelector('.modulo-instrutor')?.value.trim();
+      const desc = item.querySelector('.modulo-desc')?.value.trim();
+
+      if (tema) {
+        modulos.push({
+          modulo: nome || 'Módulo',
+          carga_horaria: carga || '1h',
+          modalidade: modalidade || 'Presencial Teórico-Prático',
+          tema: tema,
+          instrutor: instrutor || instrutorNome,
+          descricao: desc || ''
+        });
+      }
+    });
+  }
+
+  try {
+    const res = await fetch('/api/sst/cronograma-padrao', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        titulo: titulo,
+        carga_horaria_total: cargaHoraria,
+        local_treinamento: local,
+        instrutor_nome: instrutorNome,
+        instrutor_registro: instrutorRegistro,
+        observacoes: observacoes,
+        modulos: modulos
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalEditarCronogramaPadrao');
+      alert('Cronograma padrão de treinamento atualizado com sucesso!');
+      await carregarCronogramaPadraoSST();
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao salvar cronograma.'));
+    }
+  } catch (err) {
+    alert('Erro de comunicação: ' + err.message);
+  }
+}
+
+function visualizarModeloCronogramaPadrao() {
+  const cronograma = state.sstCronogramaPadrao || {};
+  const modulos = Array.isArray(cronograma.modulos) ? cronograma.modulos : [];
+  const instrutorNome = cronograma.instrutor_nome || 'Cleverson Almeida';
+  const instrutorRegistro = cronograma.instrutor_registro || 'TST, DRT 0073086 / MG';
+  const cargaTotal = cronograma.carga_horaria_total || '04 Horas';
+  const local = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
+
+  const cronogramaLinhas = modulos.map(m => `• ${m.modulo || ''}: ${m.tema || ''} (${m.carga_horaria || ''} - ${m.instrutor || instrutorNome})\n  ${m.descricao || ''}`).join('\n\n');
+
+  const docSimulado = {
+    id: 0,
+    tipo_documento: 'LISTA_TREINAMENTO',
+    titulo: cronograma.titulo || 'LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST',
+    colaborador_nome: '[NOME DO COLABORADOR - ADMISSÃO]',
+    colaborador_cpf: '000.000.000-00',
+    cargo_nome: '[CARGO / FUNÇÃO]',
+    cliente_nome: 'VILLAGE ADMINISTRAÇÃO E SERVIÇOS',
+    nome_posto: 'Posto Operacional Designado',
+    data_geracao: new Date().toISOString(),
+    status_assinatura: 'Pendente',
+    conteudo: {
+      carga_horaria_total: cargaTotal,
+      instrutor_nome: instrutorNome,
+      instrutor_registro: instrutorRegistro,
+      local_treinamento: local,
+      cronograma: modulos,
+      conteudo_programatico: cronogramaLinhas
+    }
+  };
+
+  state.docSSTVisualizando = docSimulado;
+
+  const barraTit = document.getElementById('visualizarSSTTituloBarra');
+  const barraSub = document.getElementById('visualizarSSTSubtituloBarra');
+  if (barraTit) barraTit.textContent = 'Modelo Oficial: ' + docSimulado.titulo;
+  if (barraSub) barraSub.textContent = 'Demonstração de como o documento de treinamento será emitido para o colaborador';
+
+  const btnEditar = document.getElementById('btnEditarDocSSTModal');
+  if (btnEditar) btnEditar.onclick = () => {
+    fecharModal('modalVisualizarDocumentoSST');
+    abrirModalEditarCronogramaPadrao();
+  };
+
+  const btnArq = document.getElementById('btnArquivarDocSSTModal');
+  if (btnArq) btnArq.classList.add('hidden');
+
+  const area = document.getElementById('areaImpressaoSST');
+  if (area) {
+    area.innerHTML = `
+      <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+        <div class="border-b-2 border-slate-900 pb-4 mb-5 flex justify-between items-start">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+              <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
+            </div>
+            <div>
+              <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
+              <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
+            </div>
+          </div>
+          <div class="text-right text-[11px] font-mono text-slate-600">
+            <div><b>MODELO OFICIAL</b></div>
+            <div><b>SST / NR-01 & NR-06</b></div>
+            <div><b>STATUS:</b> <span class="text-amber-600 font-bold">PADRÃO ATIVO</span></div>
+          </div>
+        </div>
+
+        <div class="text-center my-4 pb-2 border-b border-slate-300">
+          <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
+            LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST
+          </h1>
+          <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
+        </div>
+
+        <div class="mb-4 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
+          <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-id-card"></i> 1. Dados Cadastrais do Colaborador (Exemplo Preenchido na Admissão)
+          </div>
+          <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
+            <div><span class="text-slate-500">Nome Completo:</span> <b class="text-slate-900">[NOME COMPLETO DO COLABORADOR]</b></div>
+            <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">000.000.000-00</b></div>
+            <div><span class="text-slate-500">Função / Cargo:</span> <b class="text-slate-900">[FUNÇÃO CONFORME ADMISSÃO]</b></div>
+            <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${new Date().toLocaleDateString('pt-BR')}</b></div>
+            <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS</b></div>
+            <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">[POSTO / EDIFÍCIO ALOCADO]</b></div>
+          </div>
+        </div>
+
+        <div class="mb-4 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
+          <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & Conteúdo Programático</span>
+            <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga Horária: ${escapeHtml(cargaTotal)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mb-2 text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
+            <div><b>Instrutor:</b> ${escapeHtml(instrutorNome)} (${escapeHtml(instrutorRegistro)})</div>
+            <div><b>Local:</b> ${escapeHtml(local)}</div>
+          </div>
+          <div class="text-xs text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
+${escapeHtml(cronogramaLinhas)}
+          </div>
+        </div>
+
+        <div class="mb-6 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
+          <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento Introdutório de Segurança e Saúde no Trabalho acima especificado, compreendendo os riscos inerentes à minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteção e procedimentos estabelecidos.</p>
+        </div>
+
+        <div class="mt-12 pt-6 grid grid-cols-2 gap-8 text-center text-xs">
+          <div>
+            <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 48px;">
+              <span class="text-slate-400 text-[10px]">Assinatura do Colaborador</span>
+            </div>
+            <div class="font-bold text-slate-900 uppercase">[ASSINATURA DO COLABORADOR]</div>
+            <div class="text-[11px] text-slate-500">Colaborador(a) / Assinatura do Treinando</div>
+          </div>
+
+          <div>
+            <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 48px;">
+              <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
+            </div>
+            <div class="font-bold text-slate-900 uppercase">${escapeHtml(instrutorNome)}</div>
+            <div class="text-[11px] text-slate-500">Responsável pela Aplicação do Treinamento</div>
+            <div class="text-[10px] text-slate-600 font-semibold">${escapeHtml(instrutorRegistro)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  abrirModal('modalVisualizarDocumentoSST');
+}
+
+// =============================================================
+// MÓDULO DO SETOR DE ARQUIVOS & PROTOCOLOS DE GUARDA FÍSICA
+// =============================================================
+
+async function carregarPainelArquivo() {
+  try {
+    const res = await fetch('/api/arquivo/documentos');
+    const data = await res.json();
+    state.arquivoDocumentos = Array.isArray(data.documentos) ? data.documentos : [];
+
+    const elTotal = document.getElementById('kpiArquivoTotalDocs');
+    const elAguard = document.getElementById('kpiArquivoAguardando');
+    const elArq = document.getElementById('kpiArquivoArquivados');
+
+    if (elTotal) elTotal.textContent = state.arquivoDocumentos.length;
+    if (elAguard) elAguard.textContent = data.total_pendentes || 0;
+    if (elArq) elArq.textContent = data.total_arquivados || 0;
+
+    filtrarTabelaArquivo();
+  } catch (err) {
+    console.error('Erro ao carregar documentos do setor de arquivo:', err);
+  }
+}
+
+function filtrarTabelaArquivo() {
+  const busca = (document.getElementById('filtroArquivoBusca')?.value || '').toLowerCase().trim();
+  const status = document.getElementById('filtroArquivoStatus')?.value || 'todos';
+  const tipo = document.getElementById('filtroArquivoTipo')?.value || 'todos';
+
+  let docs = state.arquivoDocumentos || [];
+
+  if (busca) {
+    docs = docs.filter(d => {
+      const colab = (d.colaborador_nome || '').toLowerCase();
+      const cpf = (d.colaborador_cpf || '').toLowerCase();
+      const desc = (d.descricao || '').toLowerCase();
+      const sol = (d.solicitante_nome || '').toLowerCase();
+      const cx = (d.caixa_arquivo || d.localizacao_caixa || '').toLowerCase();
+      return colab.includes(busca) || cpf.includes(busca) || desc.includes(busca) || sol.includes(busca) || cx.includes(busca);
+    });
+  }
+
+  if (status !== 'todos') {
+    docs = docs.filter(d => {
+      const st = (d.status || d.status_arquivamento || '').toLowerCase();
+      if (status.toLowerCase().includes('aguardando') || status.toLowerCase().includes('pendente')) {
+        return st === 'aguardando_arquivamento' || st === 'pendente' || st === 'solicitado';
+      }
+      return st === status.toLowerCase();
+    });
+  }
+
+  if (tipo !== 'todos') {
+    docs = docs.filter(d => (d.tipo_documento || '').toLowerCase() === tipo.toLowerCase());
+  }
+
+  renderizarTabelaArquivo(docs);
+}
+
+function renderizarTabelaArquivo(docs) {
+  const tbody = document.getElementById('tabelaArquivoBody');
+  if (!tbody) return;
+
+  if (!docs || docs.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-10 text-slate-400">
+          <i class="fa-solid fa-box-archive text-3xl mb-2 text-slate-300 block"></i>
+          Nenhum registro de arquivo físico encontrado para os filtros selecionados.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = docs.map(d => {
+    const st = (d.status || d.status_arquivamento || '').toLowerCase();
+    const isPendente = st === 'aguardando_arquivamento' || st === 'pendente' || st === 'solicitado';
+    const dataSol = d.data_solicitacao ? formatarData(d.data_solicitacao.slice(0, 10)) : '-';
+    const dataArq = d.data_arquivamento ? formatarData(d.data_arquivamento.slice(0, 10)) : '-';
+
+    return `
+      <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+        <td class="py-3 px-4">
+          <div class="font-mono font-bold text-xs text-slate-900">#ARQ-${d.id.toString().padStart(4, '0')}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Solicitado em ${dataSol}</div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-bold text-slate-800 text-xs">${d.colaborador_nome}</div>
+          <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+            <span class="font-mono bg-slate-100 px-1 rounded">${d.colaborador_cpf || 'Sem CPF'}</span>
+            <span>•</span>
+            <span>${d.cargo_nome || 'Operacional'}</span>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-0.5">${d.cliente_nome || 'Base'}</div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-semibold text-slate-800 text-xs">${d.descricao || d.tipo_documento}</div>
+          <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 uppercase mt-0.5">
+            ${d.tipo_documento}
+          </span>
+        </td>
+        <td class="py-3 px-4">
+          <div class="text-xs font-semibold text-slate-700">${d.solicitante_nome || 'Sistema RH'}</div>
+          <div class="text-[10px] text-slate-400">${d.solicitante_setor || 'Operações'}</div>
+        </td>
+        <td class="py-3 px-4">
+          ${isPendente ? `
+            <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
+              <i class="fa-solid fa-clock"></i> Aguardando Guarda Física
+            </span>
+          ` : `
+            <div class="space-y-0.5">
+              <div class="font-bold text-teal-900 text-xs flex items-center gap-1">
+                <i class="fa-solid fa-box text-teal-600"></i> ${d.caixa_arquivo || d.localizacao_caixa || 'Caixa'}
+              </div>
+              <div class="text-[10px] text-slate-500">
+                Pasta: <b class="text-slate-700">${d.pasta_arquivo || d.localizacao_pasta || '-'}</b> | Estante: <b class="text-slate-700">${d.estante_prateleira || d.localizacao_estante || '-'}</b>
+              </div>
+              <div class="text-[9px] text-teal-700 font-mono">Arquivado em ${dataArq} por ${d.arquivado_por_nome || 'Arquivo'}</div>
+            </div>
+          `}
+        </td>
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center justify-end gap-1.5 flex-wrap">
+            ${isPendente ? `
+              <button onclick="abrirModalConfirmarArquivamentoFisico(${d.id}, false)" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition">
+                <i class="fa-solid fa-box-open"></i> Protocolar Guarda
+              </button>
+            ` : `
+              <button onclick="abrirModalConfirmarArquivamentoFisico(${d.id}, true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded text-xs flex items-center gap-1 transition">
+                <i class="fa-solid fa-pencil"></i> Editar Local
+              </button>
+            `}
+            <button onclick="excluirProtocoloArquivo(${d.id})" class="text-slate-400 hover:text-rose-600 p-1 rounded transition" title="Remover protocolo">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function abrirModalSolicitarArquivamento(docSstId = null, colabId = null, tipoDoc = null, descricao = null) {
+  const form = document.getElementById('formSolicitarArquivamento');
+  if (form) form.reset();
+
+  const selColab = document.getElementById('arqColaboradorId');
+  if (selColab) {
+    selColab.innerHTML = '<option value="">-- Selecione o Colaborador Titular --</option>';
+    (state.colaboradores || []).forEach(c => {
+      selColab.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome} (CPF: ${c.cpf || 'Sem CPF'})</option>`;
+    });
+    if (colabId) selColab.value = colabId;
+  }
+
+  document.getElementById('arqDocSSTId').value = docSstId || '';
+  if (tipoDoc) document.getElementById('arqTipoDocumento').value = tipoDoc;
+  if (descricao) document.getElementById('arqDescricao').value = descricao;
+
+  abrirModal('modalSolicitarArquivamento');
+}
+
+function aoSelecionarColaboradorArquivo(colabId) {
+  const c = (state.colaboradores || []).find(x => x.id == colabId);
+  const campoDesc = document.getElementById('arqDescricao');
+  if (c && campoDesc && !campoDesc.value) {
+    campoDesc.value = `Documentação de admissão e SST do colaborador ${c.nome}`;
+  }
+}
+
+async function salvarSolicitacaoArquivamento(e) {
+  e.preventDefault();
+  const colabId = document.getElementById('arqColaboradorId').value;
+  if (!colabId) return alert('Selecione o colaborador titular.');
+
+  const payload = {
+    colaborador_id: parseInt(colabId, 10),
+    sst_documento_id: document.getElementById('arqDocSSTId').value ? parseInt(document.getElementById('arqDocSSTId').value, 10) : null,
+    tipo_documento: document.getElementById('arqTipoDocumento').value,
+    descricao: document.getElementById('arqDescricao').value.trim(),
+    observacoes: document.getElementById('arqObservacoes')?.value.trim() || '',
+    solicitante_id: state.usuarioLogado?.id,
+    solicitante_nome: state.usuarioLogado?.nome,
+    solicitante_setor: state.usuarioLogado?.setor
+  };
+
+  try {
+    const res = await fetch('/api/arquivo/solicitar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalSolicitarArquivamento');
+      alert('Solicitação de arquivamento enviada com sucesso!\n\nO Setor de Arquivo foi informado e uma notificação direcionada foi publicada no Mural de Avisos da empresa.');
+      if (state.abaAtiva === 'sst') await carregarPainelSST();
+      if (state.abaAtiva === 'arquivo') await carregarPainelArquivo();
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao solicitar arquivamento.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão: ' + err.message);
+  }
+}
+
+function abrirModalConfirmarArquivamentoFisico(id, editando = false) {
+  const doc = (state.arquivoDocumentos || []).find(d => d.id === id);
+  if (!doc) return alert('Registro não encontrado.');
+
+  document.getElementById('confArqRegistroId').value = doc.id;
+  document.getElementById('confArqNomeColaborador').textContent = `${doc.colaborador_nome} (CPF: ${doc.colaborador_cpf || '---'})`;
+  document.getElementById('confArqDescricaoDoc').textContent = doc.descricao || doc.tipo_documento;
+
+  const tit = document.getElementById('tituloModalConfirmarArq');
+  const sub = document.getElementById('subtituloModalConfirmarArq');
+  if (tit) tit.textContent = editando ? 'Editar Localização Física do Arquivo' : 'Protocolar Arquivamento Físico';
+  if (sub) sub.textContent = editando ? 'Atualize as informações de caixa, pasta ou estante' : 'Informe onde o documento original foi fisicamente guardado';
+
+  document.getElementById('confArqCaixa').value = doc.caixa_arquivo || doc.localizacao_caixa || '';
+  document.getElementById('confArqPasta').value = doc.pasta_arquivo || doc.localizacao_pasta || '';
+  document.getElementById('confArqEstante').value = doc.estante_prateleira || doc.localizacao_estante || '';
+  document.getElementById('confArqObservacoes').value = doc.observacoes || '';
+
+  abrirModal('modalConfirmarArquivamentoFisico');
+}
+
+async function salvarConfirmacaoArquivamentoFisico(e) {
+  e.preventDefault();
+  const id = document.getElementById('confArqRegistroId').value;
+  const caixa = document.getElementById('confArqCaixa').value.trim();
+  const pasta = document.getElementById('confArqPasta').value.trim();
+  const estante = document.getElementById('confArqEstante').value.trim();
+  const observacoes = document.getElementById('confArqObservacoes').value.trim();
+
+  if (!caixa) return alert('Por favor, informe a identificação da Caixa de Arquivo.');
+
+  const payload = {
+    caixa: caixa,
+    pasta: pasta,
+    estante: estante,
+    localizacao_caixa: caixa,
+    localizacao_pasta: pasta,
+    localizacao_estante: estante,
+    observacoes: observacoes,
+    usuario_id: state.usuarioLogado?.id,
+    usuario_nome: state.usuarioLogado?.nome,
+    arquivado_por_usuario_id: state.usuarioLogado?.id,
+    arquivado_por_nome: state.usuarioLogado?.nome
+  };
+
+  try {
+    const res = await fetch(`/api/arquivo/documentos/${id}/arquivar`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      fecharModal('modalConfirmarArquivamentoFisico');
+      alert('Documento arquivado fisicamente com sucesso no sistema!');
+      await carregarPainelArquivo();
+      if (state.abaAtiva === 'sst') await carregarPainelSST();
+    } else {
+      alert('Erro: ' + (json.message || 'Falha ao protocolar arquivamento.'));
+    }
+  } catch (err) {
+    alert('Erro de conexão: ' + err.message);
+  }
+}
+
+async function excluirProtocoloArquivo(id) {
+  if (!confirm('Deseja realmente excluir este protocolo de arquivo?')) return;
+  try {
+    const res = await fetch(`/api/arquivo/documentos/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      alert('Registro removido do setor de arquivos.');
+      await carregarPainelArquivo();
+      if (state.abaAtiva === 'sst') await carregarPainelSST();
+    } else {
+      alert('Erro: ' + (json.message || 'Não foi possível remover.'));
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+}
+
+function solicitarArquivamentoDireto(sstDocId) {
+  const doc = (state.sstDocumentos || []).find(d => d.id === sstDocId);
+  if (!doc) return;
+  abrirModalSolicitarArquivamento(doc.id, doc.colaborador_id, doc.tipo_documento, doc.titulo);
+}
+
+// =============================================================
+// BINDINGS GLOBAIS EXPLÍCITOS EM WINDOW (Evita ReferenceError)
+// =============================================================
+window.abrirModal = abrirModal;
+window.fecharModal = fecharModal;
+window.navegarPara = navegarPara;
+window.temPermissao = temPermissao;
+window.isUsuarioAdminMaster = isUsuarioAdminMaster;
+
+// Compras & Fornecedores & Cartela
+window.abrirModalNovoPredio = abrirModalNovoPredio;
+window.abrirModalNovoOrcamento = abrirModalNovoOrcamento;
+window.trocarSubAbaCompras = trocarSubAbaCompras;
+window.carregarFornecedoresECartela = carregarFornecedoresECartela;
+window.filtrarCartelaProdutos = filtrarCartelaProdutos;
+window.abrirModalNovoFornecedor = abrirModalNovoFornecedor;
+window.salvarNovoFornecedor = salvarNovoFornecedor;
+window.abrirModalEditarFornecedor = abrirModalEditarFornecedor;
+window.salvarEdicaoFornecedor = salvarEdicaoFornecedor;
+window.excluirFornecedor = excluirFornecedor;
+window.abrirModalNovoProdutoCartela = abrirModalNovoProdutoCartela;
+window.salvarNovoProdutoCartela = salvarNovoProdutoCartela;
+window.abrirModalEditarProdutoCartela = abrirModalEditarProdutoCartela;
+window.salvarEdicaoProdutoCartela = salvarEdicaoProdutoCartela;
+window.excluirProdutoCartela = excluirProdutoCartela;
+window.filtrarCartelaPorFornecedorCard = filtrarCartelaPorFornecedorCard;
+window.baixarModeloImportacaoProdutos = baixarModeloImportacaoProdutos;
+window.abrirModalImportarProdutosCartela = abrirModalImportarProdutosCartela;
+window.processarArquivoImportacaoProdutos = processarArquivoImportacaoProdutos;
+window.confirmarImportacaoProdutos = confirmarImportacaoProdutos;
+window.abrirModalCadastroLoteProdutos = abrirModalCadastroLoteProdutos;
+window.adicionarLinhaProdutoLote = adicionarLinhaProdutoLote;
+window.removerLinhaProdutoLote = removerLinhaProdutoLote;
+window.limparLinhasProdutoLote = limparLinhasProdutoLote;
+window.salvarProdutosLote = salvarProdutosLote;
+
+// SST (Segurança do Trabalho)
+window.carregarPainelSST = carregarPainelSST;
+window.trocarSubAbaSST = trocarSubAbaSST;
+window.filtrarDocumentosSST = filtrarDocumentosSST;
+window.visualizarDocumentoSST = visualizarDocumentoSST;
+window.fecharModalVisualizarSST = () => fecharModal('modalVisualizarDocumentoSST');
+window.imprimirDocumentoA4SST = imprimirDocumentoA4SST;
+window.editarDocumentoSSTAtual = editarDocumentoSSTAtual;
+window.solicitarArquivamentoDocAtual = solicitarArquivamentoDocAtual;
+window.abrirModalEditarDocumentoSST = abrirModalEditarDocumentoSST;
+window.salvarEdicaoDocumentoSST = salvarEdicaoDocumentoSST;
+window.abrirModalModeloOS = abrirModalModeloOS;
+window.salvarModeloOS = salvarModeloOS;
+window.adicionarLinhaRiscoModeloOS = adicionarLinhaRiscoModeloOS;
+window.adicionarLinhaEPIModeloOS = adicionarLinhaEPIModeloOS;
+window.carregarCronogramaPadraoSST = carregarCronogramaPadraoSST;
+window.abrirModalEditarCronogramaPadrao = abrirModalEditarCronogramaPadrao;
+window.adicionarLinhaModuloCronogramaPadrao = adicionarLinhaModuloCronogramaPadrao;
+window.salvarCronogramaPadraoSST = salvarCronogramaPadraoSST;
+window.visualizarModeloCronogramaPadrao = visualizarModeloCronogramaPadrao;
+
+// Setor de Arquivo
+window.carregarPainelArquivo = carregarPainelArquivo;
+window.filtrarTabelaArquivo = filtrarTabelaArquivo;
+window.abrirModalSolicitarArquivamento = abrirModalSolicitarArquivamento;
+window.aoSelecionarColaboradorArquivo = aoSelecionarColaboradorArquivo;
+window.salvarSolicitacaoArquivamento = salvarSolicitacaoArquivamento;
+window.abrirModalConfirmarArquivamentoFisico = abrirModalConfirmarArquivamentoFisico;
+window.salvarConfirmacaoArquivamentoFisico = salvarConfirmacaoArquivamentoFisico;
+window.excluirProtocoloArquivo = excluirProtocoloArquivo;
+window.solicitarArquivamentoDireto = solicitarArquivamentoDireto;
+window.exportarFaturamentoExcel = exportarFaturamentoExcel;
+window.exportarDiretoriaExcel = exportarDiretoriaExcel;
+
+window.toggleAllProdutos = function(el) {
+  const chks = document.querySelectorAll('.chk-produto-row');
+  chks.forEach(c => c.checked = el.checked);
+  window.atualizarBtnExcluirLote();
+};
+
+window.atualizarBtnExcluirLote = function() {
+  const btn = document.getElementById('btnExcluirProdutosLote');
+  if (!btn) return;
+  const checked = document.querySelectorAll('.chk-produto-row:checked');
+  if (checked.length > 0) {
+    btn.classList.remove('hidden');
+    btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Excluir (${checked.length})`;
+  } else {
+    btn.classList.add('hidden');
+  }
+};
+
+window.excluirProdutosSelecionados = async function() {
+  const checked = document.querySelectorAll('.chk-produto-row:checked');
+  if (checked.length === 0) return;
+  if (!confirm(`Tem certeza que deseja excluir ${checked.length} produto(s) da cartela?`)) return;
+  
+  let falhas = 0;
+  for (const c of checked) {
+    try {
+      const res = await fetch(`/api/produtos/${c.value}`, { method: 'DELETE' });
+      if (!res.ok) falhas++;
+    } catch(e) {
+      falhas++;
+    }
+  }
+  if (falhas > 0) alert(`Atenção: ${falhas} produto(s) não puderam ser excluídos.`);
+  else alert(`Produtos excluídos com sucesso!`);
+  
+  const chkAll = document.getElementById('chkAllProdutos');
+  if (chkAll) chkAll.checked = false;
+  window.atualizarBtnExcluirLote();
+  await carregarFornecedoresECartela();
+};
+
+window.toggleAllPredios = function(el) {
+  const chks = document.querySelectorAll('.chk-predio-row');
+  chks.forEach(c => c.checked = el.checked);
+  window.atualizarBtnExcluirPrediosLote();
+};
+
+window.atualizarBtnExcluirPrediosLote = function() {
+  const btn = document.getElementById('btnExcluirPrediosLote');
+  if (!btn) return;
+  const checked = document.querySelectorAll('.chk-predio-row:checked');
+  if (checked.length > 0) {
+    btn.classList.remove('hidden');
+    btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Excluir (${checked.length})`;
+  } else {
+    btn.classList.add('hidden');
+  }
+};
+
+window.excluirPrediosSelecionados = async function() {
+  const checked = document.querySelectorAll('.chk-predio-row:checked');
+  if (checked.length === 0) return;
+  if (!confirm(`Tem certeza que deseja excluir ${checked.length} prédio(s)? Isso removerá o acesso ao pedido desses locais.`)) return;
+  
+  let falhas = 0;
+  for (const c of checked) {
+    try {
+      const res = await fetch(`/api/unidades/${c.value}`, { method: 'DELETE' });
+      if (!res.ok) falhas++;
+    } catch(e) {
+      falhas++;
+    }
+  }
+  if (falhas > 0) alert(`Atenção: ${falhas} prédio(s) não puderam ser excluídos.`);
+  else alert(`Prédios excluídos com sucesso!`);
+  
+  const chkAll = document.getElementById('chkAllPredios');
+  if (chkAll) chkAll.checked = false;
+  window.atualizarBtnExcluirPrediosLote();
+  await carregarGestaoPredios();
+};
+
+function formatarDataHora(dt) {
+  if (!dt) return '-';
+  try {
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return dt;
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch(e) {
+    return dt;
+  }
+}
+
+// =========================================================================
+// GESTÃO DE AFASTAMENTOS DE COLABORADORES & POSTO AFASTADOS
+// =========================================================================
+
+window.abrirModalAfastarColaborador = function(id, nome, origem) {
+  const modal = document.getElementById('modalLancarAfastamento');
+  if (!modal) return;
+
+  document.getElementById('afastarColaboradorId').value = id;
+  document.getElementById('afastarColaboradorNome').textContent = nome || 'Colaborador';
+  document.getElementById('afastarColaboradorOrigem').textContent = origem || 'Sem posto fixo';
+  
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('afastarDataInicio').value = hoje;
+  document.getElementById('afastarDataPrevisao').value = '';
+  document.getElementById('afastarCid').value = '';
+  document.getElementById('afastarMotivo').value = 'INSS / Auxílio Doença';
+  const obs = document.getElementById('afastarObservacoes');
+  if (obs) obs.value = '';
+
+  modal.classList.remove('hidden');
+};
+
+window.salvarAfastamentoColaborador = async function(e) {
+  e.preventDefault();
+  const id = document.getElementById('afastarColaboradorId').value;
+  if (!id) return;
+
+  const data_inicio = document.getElementById('afastarDataInicio').value;
+  const data_previsao_retorno = document.getElementById('afastarDataPrevisao').value || null;
+  const motivo = document.getElementById('afastarMotivo').value;
+  const cid = document.getElementById('afastarCid').value || null;
+  const observacoes = document.getElementById('afastarObservacoes')?.value || null;
+
+  try {
+    const res = await fetch(`/api/colaboradores/${id}/afastar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data_inicio,
+        data_retorno_prevista: data_previsao_retorno,
+        data_previsao_retorno,
+        motivo,
+        cid,
+        observacoes
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao lançar afastamento');
+
+    alert(data.message || 'Afastamento lançado com sucesso! Colaborador transferido para o posto AFASTADOS.');
+    fecharModal('modalLancarAfastamento');
+
+    await carregarColaboradores();
+    await carregarDadosBase();
+    if (typeof carregarClientesComPostos === 'function') carregarClientesComPostos();
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.abrirModalRetornoAfastamento = async function(colaboradorId, nome) {
+  const modal = document.getElementById('modalRetornoAfastamento');
+  if (!modal) return;
+
+  document.getElementById('retornoColaboradorId').value = colaboradorId;
+  document.getElementById('retornoColaboradorNome').textContent = nome || 'Colaborador';
+  document.getElementById('retornoDataEfetiva').value = new Date().toISOString().split('T')[0];
+  document.getElementById('retornoObservacoes').value = '';
+
+  let afastamentoId = null;
+  let clienteOrigemId = null;
+
+  try {
+    const res = await fetch(`/api/afastamentos?colaborador_id=${colaboradorId}&status=Ativo`);
+    const lista = await res.json();
+    if (Array.isArray(lista) && lista.length > 0) {
+      const a = lista[0];
+      afastamentoId = a.id;
+      clienteOrigemId = a.cliente_origem_id || a.cliente_id;
+      document.getElementById('retornoHistoricoInfo').textContent = `Afastado desde: ${formatarData(a.data_inicio)} | Motivo: ${a.motivo || 'N/A'}${a.cid ? ' | CID: ' + a.cid : ''}`;
+    } else {
+      document.getElementById('retornoHistoricoInfo').textContent = 'Colaborador marcado como Afastado.';
+    }
+  } catch(e) {
+    console.warn('Erro ao buscar dados do afastamento:', e);
+  }
+
+  document.getElementById('retornoAfastamentoId').value = afastamentoId || '';
+
+  // Popular select de clientes de destino
+  const selCliente = document.getElementById('retornoClienteDestino');
+  if (selCliente) {
+    selCliente.innerHTML = '<option value="">-- Selecione o Cliente de Destino --</option>';
+    (state.clientes || []).forEach(cl => {
+      selCliente.innerHTML += `<option value="${cl.id}">${cl.nome_fantasia || cl.razao_social}</option>`;
+    });
+
+    if (clienteOrigemId) {
+      selCliente.value = clienteOrigemId;
+    } else {
+      const colab = (state.colaboradores || []).find(c => c.id == colaboradorId);
+      if (colab && colab.cliente_id) selCliente.value = colab.cliente_id;
+    }
+  }
+
+  window.atualizarPostosRetornoModal();
+  modal.classList.remove('hidden');
+};
+
+window.atualizarPostosRetornoModal = function() {
+  const clienteId = document.getElementById('retornoClienteDestino')?.value;
+  const selPosto = document.getElementById('retornoPostoDestino');
+  if (!selPosto) return;
+
+  selPosto.innerHTML = '<option value="">-- Selecione o Posto de Destino --</option>';
+  if (!clienteId) return;
+
+  const postos = (state.postos || []).filter(p => p.cliente_id == clienteId && !p.nome_posto.toUpperCase().includes('AFASTADO'));
+  if (postos.length === 0) {
+    selPosto.innerHTML += '<option value="" disabled>(Nenhum posto ativo disponível neste cliente)</option>';
+  } else {
+    postos.forEach(p => {
+      selPosto.innerHTML += `<option value="${p.id}">${p.nome_posto} (Limite: ${p.quantidade_vagas_limite || 1})</option>`;
+    });
+  }
+};
+
+window.salvarRetornoAfastamento = async function(e) {
+  e.preventDefault();
+  const afastamentoId = document.getElementById('retornoAfastamentoId').value;
+  const colaboradorId = document.getElementById('retornoColaboradorId').value;
+  const data_retorno_efetivo = document.getElementById('retornoDataEfetiva').value;
+  const cliente_destino_id = document.getElementById('retornoClienteDestino').value;
+  const posto_destino_id = document.getElementById('retornoPostoDestino').value;
+  const observacoes_retorno = document.getElementById('retornoObservacoes').value;
+
+  if (!data_retorno_efetivo) {
+    alert('Por favor, informe a data efetiva de retorno.');
+    return;
+  }
+  if (!cliente_destino_id || !posto_destino_id) {
+    alert('Por favor, selecione o cliente e o posto de trabalho de destino para alocar o colaborador.');
+    return;
+  }
+
+  try {
+    let url = '';
+    let body = {};
+    if (afastamentoId) {
+      url = `/api/afastamentos/${afastamentoId}/retornar`;
+      body = {
+        data_retorno_efetiva: data_retorno_efetivo,
+        data_retorno_efetivo,
+        novo_cliente_id: cliente_destino_id,
+        cliente_destino_id,
+        novo_posto_id: posto_destino_id,
+        posto_destino_id,
+        observacoes_retorno
+      };
+    } else {
+      // Se não tinha registro formal de afastamento, atualiza colaborador diretamente
+      url = `/api/colaboradores/${colaboradorId}`;
+      body = { cliente_id: cliente_destino_id, posto_trabalho_id: posto_destino_id, afastado: 0 };
+    }
+
+    const res = await fetch(url, {
+      method: afastamentoId ? 'POST' : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao registrar retorno do colaborador');
+
+    alert(data.message || 'Retorno concluído com sucesso! Colaborador realocado no posto de trabalho.');
+    fecharModal('modalRetornoAfastamento');
+
+    await carregarColaboradores();
+    await carregarDadosBase();
+    if (typeof carregarClientesComPostos === 'function') carregarClientesComPostos();
+
+    const modalControle = document.getElementById('modalControleAfastados');
+    if (modalControle && !modalControle.classList.contains('hidden')) {
+      carregarTabelaAfastadosModal();
+    }
+  } catch (err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.abrirModalControleAfastados = function() {
+  const modal = document.getElementById('modalControleAfastados');
+  if (modal) modal.classList.remove('hidden');
+  carregarTabelaAfastadosModal();
+};
+
+window.carregarTabelaAfastadosModal = async function() {
+  const tbody = document.getElementById('tabelaAfastadosModalBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando registros de afastamento...</td></tr>';
+
+  const status = document.getElementById('filtroAfastadosStatus')?.value || 'Ativo';
+  const busca = (document.getElementById('filtroAfastadosBusca')?.value || '').toLowerCase().trim();
+
+  try {
+    let url = '/api/afastamentos';
+    if (status !== 'todos') url += `?status=${status}`;
+
+    const res = await fetch(url);
+    let dados = await res.json();
+    if (!Array.isArray(dados)) dados = [];
+
+    if (busca) {
+      dados = dados.filter(d => {
+        const nome = (d.colaborador_nome || '').toLowerCase();
+        const cpf = (d.colaborador_cpf || '').toLowerCase();
+        const mot = (d.motivo || '').toLowerCase();
+        const cid = (d.cid || '').toLowerCase();
+        return nome.includes(busca) || cpf.includes(busca) || mot.includes(busca) || cid.includes(busca);
+      });
+    }
+
+    if (dados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Nenhum registro de afastamento encontrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    dados.forEach(d => {
+      const isAtivo = d.status_afastamento === 'Ativo' || d.status === 'Ativo';
+      const dataRetorno = d.data_retorno_efetivo || d.data_retorno_efetiva;
+      const dataPrev = d.data_previsao_retorno || d.data_retorno_prevista;
+      const situacaoBadge = isAtivo
+        ? '<span class="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-hospital-user mr-1"></i>Ativo</span>'
+        : `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]"><i class="fa-solid fa-check mr-1"></i>Retornou em ${formatarData(dataRetorno)}</span>`;
+
+      let btnRetornar = '';
+      if (isAtivo) {
+        btnRetornar = `
+          <button onclick="abrirModalRetornoAfastamento(${d.colaborador_id}, '${escapeJsString(d.colaborador_nome)}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded text-[11px] flex items-center gap-1 shadow-xs transition" title="Registrar Retorno e Realocar Posto">
+            <i class="fa-solid fa-person-walking-arrow-loop-left"></i> Retornar
+          </button>
+        `;
+      }
+
+      const clienteOrigem = d.cliente_origem_nome || d.cliente_nome || 'Reserva Técnica';
+      const postoOrigem = d.posto_origem_nome || 'Sem posto fixo';
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-2.5">
+            <div class="font-bold text-slate-900">${d.colaborador_nome || 'N/A'}</div>
+            <div class="text-[10px] text-slate-400 font-mono">${d.colaborador_cpf || 'Sem CPF'}</div>
+          </td>
+          <td class="p-2.5">
+            <div class="font-semibold text-slate-800">${clienteOrigem}</div>
+            <div class="text-[10px] text-slate-500">${postoOrigem}</div>
+          </td>
+          <td class="p-2.5 font-mono">${formatarData(d.data_inicio)}</td>
+          <td class="p-2.5 font-mono text-slate-600">${dataPrev ? formatarData(dataPrev) : '<span class="text-slate-400 italic">Indeterminada</span>'}</td>
+          <td class="p-2.5">
+            <div class="font-semibold text-slate-800">${d.motivo || 'N/A'}</div>
+            ${d.cid ? `<div class="text-[10px] text-purple-700 font-bold font-mono">CID: ${d.cid}</div>` : ''}
+          </td>
+          <td class="p-2.5 text-center">${situacaoBadge}</td>
+          <td class="p-2.5 text-right whitespace-nowrap">
+            <div class="flex items-center justify-end gap-1">
+              ${btnRetornar}
+              <button onclick="excluirAfastamento(${d.id})" class="text-slate-400 hover:text-red-600 p-1" title="Excluir Registro de Afastamento">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-red-500 font-semibold">Erro ao carregar dados: ${err.message}</td></tr>`;
+  }
+};
+
+window.excluirAfastamento = async function(id) {
+  if (!confirm('Deseja realmente excluir este registro de afastamento?')) return;
+  try {
+    const res = await fetch(`/api/afastamentos/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao excluir');
+    alert(data.message || 'Registro excluído!');
+    carregarTabelaAfastadosModal();
+    carregarColaboradores();
+  } catch(err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+
+// =========================================================================
+// GESTÃO DO CANAL DE DENÚNCIAS & COMPLIANCE (COORDENAÇÃO OPERACIONAL)
+// =========================================================================
+
+state.denuncias = [];
+state.denunciaAtual = null;
+
+window.carregarPainelDenuncias = async function() {
+  const tbody = document.getElementById('tabelaDenunciasBody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando manifestações registradas...</td></tr>';
+  }
+
+  const status = document.getElementById('filtroDenStatus')?.value || 'todos';
+  const gravidade = document.getElementById('filtroDenGravidade')?.value || '';
+
+  let url = '/api/denuncias';
+  const params = [];
+  if (status && status !== 'todos') params.push(`status=${encodeURIComponent(status)}`);
+  if (gravidade) params.push(`gravidade=${encodeURIComponent(gravidade)}`);
+  if (params.length > 0) url += `?${params.join('&')}`;
+
+  try {
+    const res = await fetch(url);
+    const dados = await res.json();
+    state.denuncias = Array.isArray(dados) ? dados : [];
+
+    // Atualizar KPIs
+    const total = state.denuncias.length;
+    const novas = state.denuncias.filter(d => d.status === 'Nova').length;
+    const emAveriguacao = state.denuncias.filter(d => d.status === 'Em Análise' || d.status === 'Em Averiguação').length;
+    const concluidas = state.denuncias.filter(d => (d.status || '').startsWith('Concluída') || d.status === 'Arquivada').length;
+
+    const elTotal = document.getElementById('kpiDenTotal');
+    const elNovas = document.getElementById('kpiDenNovas');
+    const elAveriguacao = document.getElementById('kpiDenAveriguacao');
+    const elConcluidas = document.getElementById('kpiDenConcluidas');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elNovas) elNovas.textContent = novas;
+    if (elAveriguacao) elAveriguacao.textContent = emAveriguacao;
+    if (elConcluidas) elConcluidas.textContent = concluidas;
+
+    filtrarDenunciasTabela();
+  } catch(err) {
+    console.error('Erro ao carregar denúncias:', err);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro ao carregar canal de denúncias: ${err.message}</td></tr>`;
+    }
+  }
+};
+
+window.filtrarDenunciasTabela = function() {
+  const tbody = document.getElementById('tabelaDenunciasBody');
+  if (!tbody) return;
+
+  const busca = (document.getElementById('filtroDenBusca')?.value || '').toLowerCase().trim();
+
+  let filtrados = state.denuncias || [];
+  if (busca) {
+    filtrados = filtrados.filter(d => {
+      const proto = (d.protocolo || '').toLowerCase();
+      const cat = (d.categoria || '').toLowerCase();
+      const den = (d.nome_denunciante || d.denunciante_nome || '').toLowerCase();
+      const loc = (d.unidade_ou_local || d.local_ocorrencia || '').toLowerCase();
+      const env = (d.pessoas_envolvidas || '').toLowerCase();
+      const desc = (d.descricao_detalhada || d.descricao_fatos || '').toLowerCase();
+      return proto.includes(busca) || cat.includes(busca) || den.includes(busca) || loc.includes(busca) || env.includes(busca) || desc.includes(busca);
+    });
+  }
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 font-medium">Nenhuma manifestação encontrada com os filtros selecionados.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = '';
+  filtrados.forEach(d => {
+    // Gravidade badge
+    let gravBadge = '';
+    const grav = d.gravidade || 'Média';
+    if (grav === 'Crítica') gravBadge = '<span class="bg-red-100 text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded text-[10px]">Crítica</span>';
+    else if (grav === 'Alta') gravBadge = '<span class="bg-orange-100 text-orange-800 border border-orange-300 font-bold px-2 py-0.5 rounded text-[10px]">Alta</span>';
+    else if (grav === 'Média') gravBadge = '<span class="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded text-[10px]">Média</span>';
+    else gravBadge = '<span class="bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded text-[10px]">Baixa</span>';
+
+    // Status badge
+    let statusBadge = '';
+    const st = d.status || 'Nova';
+    if (st === 'Nova') {
+      statusBadge = '<span class="bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full text-[10px] animate-pulse">Nova</span>';
+    } else if (st === 'Em Análise' || st === 'Em Averiguação') {
+      statusBadge = `<span class="bg-blue-100 text-blue-800 border border-blue-300 font-bold px-2 py-0.5 rounded text-[10px]">${st}</span>`;
+    } else if (st.startsWith('Concluída')) {
+      statusBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]">${st}</span>`;
+    } else {
+      statusBadge = `<span class="bg-slate-100 text-slate-600 border border-slate-300 font-bold px-2 py-0.5 rounded text-[10px]">${st}</span>`;
+    }
+
+    const isIdent = (d.tipo === 'Identificada' || d.tipo_denunciante === 'identificado' || d.nome_denunciante);
+    const denuncianteTexto = isIdent
+      ? `<div class="font-bold text-slate-900">${d.nome_denunciante || d.denunciante_nome || 'Identificado'}</div><div class="text-[10px] text-slate-500">${d.telefone_denunciante || d.email_denunciante || d.denunciante_contato || 'Sem contato'}</div>`
+      : '<div class="font-bold text-slate-600 italic"><i class="fa-solid fa-user-secret mr-1"></i>Anônimo</div>';
+
+    const dataReg = (d.created_at || d.data_criacao) ? formatarDataHora(d.created_at || d.data_criacao) : 'N/A';
+    const relato = d.descricao_detalhada || d.descricao_fatos || 'Sem descrição';
+    const local = d.unidade_ou_local || d.local_ocorrencia || 'Não informado';
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50/80 transition">
+        <td class="p-3">
+          <div class="font-mono font-black text-slate-900 text-xs text-teal-800">${d.protocolo}</div>
+          <div class="text-[10px] text-slate-400">${dataReg}</div>
+        </td>
+        <td class="p-3">${denuncianteTexto}</td>
+        <td class="p-3">
+          <span class="bg-slate-100 text-slate-800 font-bold text-[10px] px-2 py-0.5 rounded uppercase">${d.categoria || 'Geral'}</span>
+          <p class="text-[11px] text-slate-600 line-clamp-1 mt-1 max-w-xs" title="${escapeJsString(relato)}">
+            ${relato}
+          </p>
+        </td>
+        <td class="p-3">
+          <div class="font-medium text-slate-800 text-[11px]">${local}</div>
+          ${d.pessoas_envolvidas ? `<div class="text-[10px] text-slate-500 line-clamp-1">Envolvidos: ${d.pessoas_envolvidas}</div>` : ''}
+        </td>
+        <td class="p-3 text-center">${gravBadge}</td>
+        <td class="p-3 text-center">${statusBadge}</td>
+        <td class="p-3 text-right whitespace-nowrap">
+          <div class="flex items-center justify-end gap-1.5">
+            <button onclick="abrirModalTratativasDenuncia(${d.id})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-xs transition" title="Abrir Análise e Registrar Tratativas Operacionais">
+              <i class="fa-solid fa-clipboard-check"></i> Tratar
+            </button>
+            <button onclick="abrirDossieImpressao(${d.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 border border-slate-300 transition" title="Gerar Dossiê Oficial para Diretoria e Arquivo">
+              <i class="fa-solid fa-print"></i> Dossiê
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+};
+
+window.abrirModalTratativasDenuncia = async function(id) {
+  try {
+    const res = await fetch(`/api/denuncias/${id}`);
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Erro ao carregar detalhes da denúncia');
+
+    state.denunciaAtual = d;
+
+    const isIdent = (d.tipo === 'Identificada' || d.tipo_denunciante === 'identificado' || d.nome_denunciante);
+    const contato = d.telefone_denunciante || d.email_denunciante || d.denunciante_contato || '';
+
+    document.getElementById('tratativaModalProtocolo').textContent = d.protocolo;
+    document.getElementById('detDenTipoDenunciante').textContent = isIdent ? `${d.nome_denunciante || d.denunciante_nome || 'Identificado'} ${contato ? '(' + contato + ')' : ''}` : 'Anônimo (Sigilo Protegido)';
+    document.getElementById('detDenCategoria').textContent = d.categoria || 'Geral';
+    document.getElementById('detDenDataOcorrencia').textContent = d.data_ocorrencia ? formatarData(d.data_ocorrencia) : 'Não informada';
+    document.getElementById('detDenLocal').textContent = d.unidade_ou_local || d.local_ocorrencia || 'Não informado';
+    document.getElementById('detDenEnvolvidos').textContent = d.pessoas_envolvidas || 'Nenhum citado';
+    document.getElementById('detDenTestemunhas').textContent = d.testemunhas || 'Nenhuma citada';
+    document.getElementById('detDenDescricao').textContent = d.descricao_detalhada || d.descricao_fatos || 'Sem descrição informada.';
+
+    const evBox = document.getElementById('detDenEvidenciasBox');
+    const evText = document.getElementById('detDenEvidencias');
+    const linksEv = d.evidencias_anexos || d.evidencias_links || '';
+    if (linksEv && linksEv.trim()) {
+      evBox.classList.remove('hidden');
+      evText.innerHTML = linksEv.split('\n').map(link => {
+        const l = link.trim();
+        if (l.startsWith('http://') || l.startsWith('https://')) {
+          return `<div><a href="${l}" target="_blank" class="text-teal-600 underline font-semibold"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>${l}</a></div>`;
+        }
+        return `<div>${l}</div>`;
+      }).join('');
+    } else {
+      evBox.classList.add('hidden');
+    }
+
+    const histBox = document.getElementById('detDenHistoricoTratativas');
+    const histTratativas = d.tratativas || d.tratativas_historico || '';
+    if (histBox) {
+      histBox.textContent = histTratativas && histTratativas.trim() ? histTratativas : 'Nenhuma averiguação ou tratativa registrada até o momento.';
+    }
+
+    // Preencher formulário
+    document.getElementById('tratativaDenId').value = d.id;
+    document.getElementById('tratativaStatus').value = d.status || 'Nova';
+    document.getElementById('tratativaGravidade').value = d.gravidade || 'Média';
+    document.getElementById('tratativaSetor').value = d.responsavel_setor || d.setor_responsavel || 'Coordenação Operacional';
+    document.getElementById('tratativaTexto').value = '';
+    document.getElementById('tratativaParecer').value = d.parecer_final || d.parecer_conclusivo || '';
+    document.getElementById('tratativaEncerrar').checked = (d.status || '').startsWith('Concluída') || d.status === 'Arquivada';
+
+    document.getElementById('modalTratativasDenuncia')?.classList.remove('hidden');
+  } catch(err) {
+    alert('Erro ao abrir denúncia: ' + err.message);
+  }
+};
+
+window.salvarTratativaDenuncia = async function(e) {
+  e.preventDefault();
+  const id = document.getElementById('tratativaDenId').value;
+  if (!id) return;
+
+  const status = document.getElementById('tratativaStatus').value;
+  const gravidade = document.getElementById('tratativaGravidade').value;
+  const setor_responsavel = document.getElementById('tratativaSetor').value;
+  const nova_tratativa = document.getElementById('tratativaTexto').value.trim();
+  const parecer_conclusivo = document.getElementById('tratativaParecer').value.trim();
+  const encerrar = document.getElementById('tratativaEncerrar').checked;
+
+  try {
+    const res = await fetch(`/api/denuncias/${id}/tratativa`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        gravidade,
+        responsavel_setor: setor_responsavel,
+        setor_responsavel,
+        nova_tratativa,
+        parecer_final: parecer_conclusivo,
+        parecer_conclusivo,
+        encerrar
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erro ao salvar tratativa');
+
+    alert(data.message || 'Tratativa e parecer atualizados com sucesso!');
+    await carregarPainelDenuncias();
+
+    if (encerrar) {
+      fecharModal('modalTratativasDenuncia');
+    } else {
+      abrirModalTratativasDenuncia(id);
+    }
+  } catch(err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.abrirDossieImpressao = async function(id) {
+  try {
+    const res = await fetch(`/api/denuncias/${id}`);
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Erro ao carregar denúncia');
+    state.denunciaAtual = d;
+    imprimirDossieDenuncia();
+  } catch(err) {
+    alert('Erro: ' + err.message);
+  }
+};
+
+window.imprimirDossieDenuncia = function() {
+  const d = state.denunciaAtual;
+  if (!d) {
+    alert('Nenhuma denúncia selecionada.');
+    return;
+  }
+
+  const modal = document.getElementById('modalImpressaoDossieDenuncia');
+  if (!modal) return;
+
+  const isIdent = (d.tipo === 'Identificada' || d.tipo_denunciante === 'identificado' || d.nome_denunciante);
+  const dataCriacao = d.created_at || d.data_criacao;
+  const relato = d.descricao_detalhada || d.descricao_fatos || 'Sem relato original.';
+  const tratativas = d.tratativas || d.tratativas_historico || '';
+  const parecer = d.parecer_final || d.parecer_conclusivo || '';
+
+  document.getElementById('printDossieProtocolo').textContent = d.protocolo;
+  document.getElementById('printDossieNumProto').textContent = d.protocolo;
+  document.getElementById('printDossieDataReg').textContent = dataCriacao ? formatarDataHora(dataCriacao) : 'N/A';
+  document.getElementById('printDossieTipo').textContent = isIdent ? `Identificado (${d.nome_denunciante || d.denunciante_nome || ''})` : 'Anônimo (Sigilo Protegido Lei 14.457/22)';
+  document.getElementById('printDossieGravidade').textContent = `${d.gravidade || 'Média'} (Status: ${d.status})`;
+  document.getElementById('printDossieCategoria').textContent = d.categoria || 'Geral';
+  document.getElementById('printDossieLocal').textContent = d.unidade_ou_local || d.local_ocorrencia || 'Não informado';
+  document.getElementById('printDossieEnvolvidos').textContent = d.pessoas_envolvidas || 'Não informado';
+  document.getElementById('printDossieTestemunhas').textContent = d.testemunhas || 'Nenhuma testemunha informada';
+
+  document.getElementById('printDossieRelato').textContent = relato;
+  document.getElementById('printDossieTratativas').textContent = tratativas && tratativas.trim() ? tratativas : 'Nenhuma tratativa intermediária registrada.';
+  document.getElementById('printDossieParecer').textContent = parecer && parecer.trim() ? parecer : 'Parecer conclusivo pendente de homologação pela Coordenação Operacional.';
+
+  modal.classList.remove('hidden');
+};
+
+window.imprimirDossieDenunciaAtual = function() {
+  document.body.classList.add('imprimindo-dossie-denuncia');
+  const cleanup = () => {
+    document.body.classList.remove('imprimindo-dossie-denuncia');
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(cleanup, 3500);
+  window.print();
+};
+
+// =========================================================================
+// MÓDULO: ESCALAS, TURNOS & GERENCIAMENTO DE CARGA HORÁRIA
+// =========================================================================
+
+async function carregarEscalas() {
+  try {
+    const res = await fetch('/api/escalas');
+    if (!res.ok) throw new Error('Falha ao obter escalas');
+    const data = await res.json();
+    state.escalas = Array.isArray(data) ? data : [];
+    
+    popularSelectsEscalas();
+    renderizarGridEscalasCadastradas();
+  } catch (err) {
+    console.error('Erro ao carregar escalas:', err);
+  }
+}
+
+function popularSelectsEscalas() {
+  const escalas = state.escalas || [];
+  
+  // Select do modal Multi-Cliente
+  const selMultiEscala = document.getElementById('multiEscalaGeralSelect');
+  if (selMultiEscala) {
+    selMultiEscala.innerHTML = `
+      <option value="Multi-Cliente">Multi-Cliente (Atendimento Compartilhado)</option>
+      ${escalas.map(e => `<option value="${escapeJsString(e.nome)}">${escapeHtml(e.nome)} (${e.carga_horaria_semanal || 44}h/sem - ${e.tipo})</option>`).join('')}
+    `;
+  }
+
+  // Atualizar outros selects de escala caso existam
+  const selectsParaAtualizar = ['cadColabEscala', 'editColabEscala', 'inlinePostoEscala', 'inlinePostoEscalaEdicao', 'editarPostoEscala', 'postoPreviaEscala'];
+  selectsParaAtualizar.forEach(selId => {
+    const el = document.getElementById(selId);
+    if (!el) return;
+    const currentVal = el.value;
+    
+    const nomesExistentes = new Set(Array.from(el.options).map(o => o.value));
+    escalas.forEach(e => {
+      if (!nomesExistentes.has(e.nome)) {
+        const opt = document.createElement('option');
+        opt.value = e.nome;
+        opt.textContent = `${e.nome} (${e.carga_horaria_semanal}h)`;
+        el.appendChild(opt);
+      }
+    });
+    if (currentVal) el.value = currentVal;
+  });
+}
+
+function abrirModalGerenciarEscalas() {
+  abrirModal('modalGerenciarEscalas');
+  carregarEscalas();
+  limparFormularioEscala();
+}
+
+function alternarDiaEscala(dia) {
+  if (!state.escalaDiasAtivos) {
+    state.escalaDiasAtivos = new Set(['seg', 'ter', 'qua', 'qui', 'sex']);
+  }
+  if (state.escalaDiasAtivos.has(dia)) {
+    state.escalaDiasAtivos.delete(dia);
+  } else {
+    state.escalaDiasAtivos.add(dia);
+  }
+  atualizarEstiloBotoesDiasEscala();
+  recalcularCargaHorariaEscalaForm();
+}
+
+function atualizarEstiloBotoesDiasEscala() {
+  const dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+  dias.forEach(d => {
+    const btn = document.getElementById(`btnDiaEscala-${d}`);
+    if (!btn) return;
+    if (state.escalaDiasAtivos.has(d)) {
+      btn.className = 'p-2.5 rounded-lg border font-bold text-xs transition bg-indigo-600 text-white border-indigo-700 shadow-2xs cursor-pointer';
+    } else {
+      btn.className = 'p-2.5 rounded-lg border font-bold text-xs transition bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 cursor-pointer';
+    }
+  });
+}
+
+function aoTrocarTipoEscala(tipo) {
+  if (tipo === 'Part-time') {
+    state.escalaDiasAtivos = new Set(['seg', 'qua']);
+    const ent = document.getElementById('escalaEntradaInput');
+    const sai = document.getElementById('escalaSaidaInput');
+    const inter = document.getElementById('escalaIntervaloInput');
+    if (ent) ent.value = '08:00';
+    if (sai) sai.value = '13:00';
+    if (inter) inter.value = '0';
+  } else if (tipo === 'Plantao') {
+    state.escalaDiasAtivos = new Set(['seg', 'qua', 'sex', 'dom']);
+    const ent = document.getElementById('escalaEntradaInput');
+    const sai = document.getElementById('escalaSaidaInput');
+    const inter = document.getElementById('escalaIntervaloInput');
+    if (ent) ent.value = '07:00';
+    if (sai) sai.value = '19:00';
+    if (inter) inter.value = '60';
+  } else if (tipo === 'Semanal') {
+    state.escalaDiasAtivos = new Set(['seg', 'ter', 'qua', 'qui', 'sex']);
+    const ent = document.getElementById('escalaEntradaInput');
+    const sai = document.getElementById('escalaSaidaInput');
+    const inter = document.getElementById('escalaIntervaloInput');
+    if (ent) ent.value = '08:00';
+    if (sai) sai.value = '17:48';
+    if (inter) inter.value = '60';
+  }
+  atualizarEstiloBotoesDiasEscala();
+  recalcularCargaHorariaEscalaForm();
+}
+
+function recalcularCargaHorariaEscalaForm() {
+  const ent = document.getElementById('escalaEntradaInput')?.value || '08:00';
+  const sai = document.getElementById('escalaSaidaInput')?.value || '17:48';
+  const interMin = parseInt(document.getElementById('escalaIntervaloInput')?.value || '60', 10);
+
+  const [hEnt, mEnt] = ent.split(':').map(Number);
+  const [hSai, mSai] = sai.split(':').map(Number);
+
+  let minsEnt = (hEnt * 60) + (mEnt || 0);
+  let minsSai = (hSai * 60) + (mSai || 0);
+  if (minsSai <= minsEnt) minsSai += (24 * 60);
+
+  let minsTrabalhadosDia = (minsSai - minsEnt) - interMin;
+  if (minsTrabalhadosDia < 0) minsTrabalhadosDia = 0;
+
+  const horasDiarias = minsTrabalhadosDia / 60;
+  const qtdDias = state.escalaDiasAtivos ? state.escalaDiasAtivos.size : 5;
+  const horasSemanais = horasDiarias * qtdDias;
+
+  const badge = document.getElementById('escalaCargaCalculadaBadge');
+  if (badge) {
+    badge.textContent = `${horasSemanais.toFixed(1)}h / semana (${horasDiarias.toFixed(2)}h/dia)`;
+  }
+
+  return { horasDiarias, horasSemanais };
+}
+
+function limparFormularioEscala() {
+  const form = document.getElementById('formCriarEscala');
+  if (form) form.reset();
+  const idEl = document.getElementById('escalaEdicaoId');
+  if (idEl) idEl.value = '';
+  state.escalaDiasAtivos = new Set(['seg', 'ter', 'qua', 'qui', 'sex']);
+  atualizarEstiloBotoesDiasEscala();
+  
+  const tit = document.getElementById('tituloFormEscala');
+  if (tit) tit.textContent = 'Cadastrar Nova Escala Personalizada';
+  const txtBtn = document.getElementById('txtBtnSalvarEscala');
+  if (txtBtn) txtBtn.textContent = 'Salvar Escala';
+
+  recalcularCargaHorariaEscalaForm();
+}
+
+async function salvarNovaEscalaTrabalho(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  
+  const id = document.getElementById('escalaEdicaoId')?.value;
+  const nome = document.getElementById('escalaNomeInput')?.value?.trim();
+  const tipo = document.getElementById('escalaTipoSelect')?.value || 'Semanal';
+  const cor = document.getElementById('escalaCorSelect')?.value || 'blue';
+  const horarioEntrada = document.getElementById('escalaEntradaInput')?.value || '08:00';
+  const horarioSaida = document.getElementById('escalaSaidaInput')?.value || '17:48';
+  const intervaloMinutos = parseInt(document.getElementById('escalaIntervaloInput')?.value || '60', 10);
+  const descricao = document.getElementById('escalaDescricaoInput')?.value?.trim() || '';
+
+  if (!nome) {
+    alert('Por favor, informe o nome da escala.');
+    return;
+  }
+
+  const { horasDiarias, horasSemanais } = recalcularCargaHorariaEscalaForm();
+  const diasArray = state.escalaDiasAtivos ? Array.from(state.escalaDiasAtivos) : ['seg', 'ter', 'qua', 'qui', 'sex'];
+
+  const payload = {
+    nome,
+    tipo,
+    cor,
+    dias_semana: diasArray,
+    horario_entrada: horarioEntrada,
+    horario_saida: horarioSaida,
+    intervalo_minutos: intervaloMinutos,
+    carga_horaria_diaria: horasDiarias,
+    carga_horaria_semanal: horasSemanais,
+    descricao
+  };
+
+  const btnSalvar = document.getElementById('btnSalvarEscalaForm');
+  if (btnSalvar) btnSalvar.disabled = true;
+
+  try {
+    const url = id ? `/api/escalas/${id}` : '/api/escalas';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Erro ao salvar escala');
+
+    alert(`🎉 Escala "${nome}" salva com sucesso!`);
+    limparFormularioEscala();
+    await carregarEscalas();
+  } catch (err) {
+    console.error('Erro ao salvar escala:', err);
+    alert('Erro ao salvar escala: ' + err.message);
+  } finally {
+    if (btnSalvar) btnSalvar.disabled = false;
+  }
+}
+
+function renderizarGridEscalasCadastradas() {
+  const container = document.getElementById('gridEscalasCadastradas');
+  const badgeTotal = document.getElementById('badgeTotalEscalasCadastradas');
+  if (!container) return;
+
+  const escalas = state.escalas || [];
+  if (badgeTotal) badgeTotal.textContent = `${escalas.length} escala(s)`;
+
+  if (escalas.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+        <i class="fa-solid fa-calendar-xmark text-slate-300 text-3xl mb-2 block"></i>
+        Nenhuma escala cadastrada ainda.
+      </div>
+    `;
+    return;
+  }
+
+  const mapaCores = {
+    blue: 'border-blue-200 bg-blue-50/40 text-blue-900',
+    emerald: 'border-emerald-200 bg-emerald-50/40 text-emerald-900',
+    amber: 'border-amber-200 bg-amber-50/40 text-amber-900',
+    orange: 'border-orange-200 bg-orange-50/40 text-orange-900',
+    indigo: 'border-indigo-200 bg-indigo-50/40 text-indigo-900',
+    purple: 'border-purple-200 bg-purple-50/40 text-purple-900',
+    rose: 'border-rose-200 bg-rose-50/40 text-rose-900',
+    teal: 'border-teal-200 bg-teal-50/40 text-teal-900'
+  };
+
+  const mapaBadgeCor = {
+    blue: 'bg-blue-600',
+    emerald: 'bg-emerald-600',
+    amber: 'bg-amber-600',
+    orange: 'bg-orange-600',
+    indigo: 'bg-indigo-600',
+    purple: 'bg-purple-600',
+    rose: 'bg-rose-600',
+    teal: 'bg-teal-600'
+  };
+
+  const diasSemanaOrdem = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+  const diasLabel = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+
+  container.innerHTML = escalas.map(esc => {
+    const corTema = mapaCores[esc.cor] || mapaCores.blue;
+    const badgeCor = mapaBadgeCor[esc.cor] || mapaBadgeCor.blue;
+    
+    let diasAtivosSet = new Set();
+    try {
+      const parsed = typeof esc.dias_semana === 'string' ? JSON.parse(esc.dias_semana) : esc.dias_semana;
+      if (Array.isArray(parsed)) {
+        parsed.forEach(d => diasAtivosSet.add(d.toLowerCase().trim()));
+      }
+    } catch(e) {
+      if (typeof esc.dias_semana === 'string') {
+        esc.dias_semana.split(',').forEach(d => diasAtivosSet.add(d.toLowerCase().trim()));
+      }
+    }
+
+    const pillsDiasHtml = diasSemanaOrdem.map(d => {
+      const ativo = diasAtivosSet.has(d);
+      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${ativo ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}">${diasLabel[d]}</span>`;
+    }).join(' ');
+
+    return `
+      <div class="bg-white rounded-xl border ${corTema} p-3.5 shadow-2xs flex flex-col justify-between space-y-3 transition hover:shadow-sm">
+        <div>
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="inline-block w-2.5 h-2.5 rounded-full ${badgeCor} mr-1"></span>
+              <h5 class="font-black text-slate-900 text-xs inline">${escapeHtml(esc.nome)}</h5>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
+              ${esc.tipo}
+            </span>
+          </div>
+
+          <div class="mt-2 flex items-center justify-between text-[11px] text-slate-600 border-b border-slate-100 pb-2">
+            <span><i class="fa-solid fa-clock text-slate-400 mr-1"></i><b>${esc.carga_horaria_semanal || 44}h</b> semanais</span>
+            <span class="text-slate-500 font-mono text-[10px]">${esc.horario_entrada || '08:00'} - ${esc.horario_saida || '17:48'}</span>
+          </div>
+
+          <div class="mt-2.5 flex items-center gap-1 flex-wrap">
+            ${pillsDiasHtml}
+          </div>
+
+          ${esc.descricao ? `<p class="mt-2 text-[10px] text-slate-500 italic bg-slate-50 p-1.5 rounded">${escapeHtml(esc.descricao)}</p>` : ''}
+        </div>
+
+        <div class="flex items-center justify-end gap-1 pt-2 border-t border-slate-100">
+          <button onclick="editarEscala(${esc.id})" class="text-amber-600 hover:text-amber-800 p-1 rounded hover:bg-amber-50 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer">
+            <i class="fa-solid fa-pen"></i> Editar
+          </button>
+          <button onclick="excluirEscala(${esc.id}, '${escapeJsString(esc.nome)}')" class="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer">
+            <i class="fa-solid fa-trash-can"></i> Excluir
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function editarEscala(id) {
+  const esc = (state.escalas || []).find(e => e.id === id);
+  if (!esc) return;
+
+  const idEl = document.getElementById('escalaEdicaoId');
+  const nomeEl = document.getElementById('escalaNomeInput');
+  const tipoEl = document.getElementById('escalaTipoSelect');
+  const corEl = document.getElementById('escalaCorSelect');
+  const entEl = document.getElementById('escalaEntradaInput');
+  const saiEl = document.getElementById('escalaSaidaInput');
+  const interEl = document.getElementById('escalaIntervaloInput');
+  const descEl = document.getElementById('escalaDescricaoInput');
+
+  if (idEl) idEl.value = esc.id;
+  if (nomeEl) nomeEl.value = esc.nome;
+  if (tipoEl) tipoEl.value = esc.tipo || 'Semanal';
+  if (corEl) corEl.value = esc.cor || 'blue';
+  if (entEl) entEl.value = esc.horario_entrada || '08:00';
+  if (saiEl) saiEl.value = esc.horario_saida || '17:48';
+  if (interEl) interEl.value = esc.intervalo_minutos !== undefined ? esc.intervalo_minutos : 60;
+  if (descEl) descEl.value = esc.descricao || '';
+
+  let dias = [];
+  try {
+    dias = typeof esc.dias_semana === 'string' ? JSON.parse(esc.dias_semana) : esc.dias_semana;
+  } catch(e) {
+    if (typeof esc.dias_semana === 'string') dias = esc.dias_semana.split(',');
+  }
+  if (!Array.isArray(dias)) dias = ['seg', 'ter', 'qua', 'qui', 'sex'];
+
+  state.escalaDiasAtivos = new Set(dias.map(d => d.toLowerCase().trim()));
+  atualizarEstiloBotoesDiasEscala();
+  recalcularCargaHorariaEscalaForm();
+
+  const tit = document.getElementById('tituloFormEscala');
+  if (tit) tit.textContent = `Editar Escala: ${esc.nome}`;
+  const txtBtn = document.getElementById('txtBtnSalvarEscala');
+  if (txtBtn) txtBtn.textContent = 'Atualizar Escala';
+
+  document.getElementById('formCriarEscala')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function excluirEscala(id, nome) {
+  if (!confirm(`Deseja realmente inativar a escala "${nome || 'selecionada'}"?`)) return;
+
+  try {
+    const res = await fetch(`/api/escalas/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Erro ao excluir escala');
+
+    alert(`Escala "${nome}" excluída com sucesso!`);
+    await carregarEscalas();
+  } catch (err) {
+    console.error('Erro ao excluir escala:', err);
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =========================================================================
+// MÓDULO: AGRUPAMENTO MULTI-CLIENTE (ATÉ 5 CLIENTES)
+// =========================================================================
+
+function abrirModalMultiCliente(preSelectedClienteId = null) {
+  abrirModal('modalMultiCliente');
+
+  // Popular Select de Colaboradores
+  const selColab = document.getElementById('multiColaboradorSelect');
+  if (selColab) {
+    const ativos = (state.colaboradores || []).filter(c => c.ativo === 1);
+    selColab.innerHTML = `
+      <option value="">Selecione o colaborador...</option>
+      ${ativos.map(c => {
+        const postoInfo = c.nome_posto ? ` [Posto: ${c.nome_posto} - ${c.nome_fantasia || c.nome_razao_social || 'Cliente'}]` : ' [Reserva Técnica - Disponível]';
+        const multiInfo = c.is_multi_cliente ? ' (Já em Multi-Cliente)' : '';
+        return `<option value="${c.id}">${escapeHtml(c.nome)} - ${escapeHtml(c.nome_cargo || 'Geral')}${postoInfo}${multiInfo}</option>`;
+      }).join('')}
+    `;
+  }
+
+  // Popular Select de Clientes para Adicionar
+  const selCli = document.getElementById('multiAdicionarClienteSelect');
+  if (selCli) {
+    const clientes = state.clientesComPostos || state.clientes || [];
+    selCli.innerHTML = `
+      <option value="">Selecione um cliente para adicionar ao agrupamento...</option>
+      ${clientes.map(c => `<option value="${c.id}">#${c.id} - ${escapeHtml(c.nome_fantasia || c.nome_razao_social)}</option>`).join('')}
+    `;
+  }
+
+  // Popular Select de Escala Geral
+  popularSelectsEscalas();
+
+  // Limpar lista temporária
+  state.multiClienteClientes = [];
+
+  // Se veio cliente pré-selecionado, adiciona
+  if (preSelectedClienteId) {
+    const c = (state.clientesComPostos || state.clientes || []).find(item => item.id == preSelectedClienteId);
+    if (c) {
+      state.multiClienteClientes.push({
+        cliente_id: c.id,
+        nome: c.nome_fantasia || c.nome_razao_social,
+        posto_id: c.postos && c.postos[0] ? c.postos[0].id : null,
+        postos: c.postos || [],
+        dias: ['seg', 'qua'],
+        carga_horaria: 10,
+        horario_entrada: '08:00',
+        horario_saida: '13:00'
+      });
+    }
+  }
+
+  renderizarClientesAgrupadosMulti();
+  recalcularTotalHorasMultiCliente();
+  carregarRoteirosMultiCliente();
+}
+
+function abrirModalMultiClienteComSelecionados() {
+  if (!state.clientesSelecionados || state.clientesSelecionados.size === 0) {
+    alert('Nenhum cliente selecionado!\nMarque as caixas de seleção dos clientes (até 5) que deseja juntar para o colaborador atender.');
+    return;
+  }
+
+  const ids = Array.from(state.clientesSelecionados);
+  if (ids.length > 5) {
+    alert('Atenção: Você selecionou mais de 5 clientes. Serão agrupados os primeiros 5 clientes selecionados.');
+  }
+
+  const selecionados = ids.slice(0, 5);
+  abrirModalMultiCliente();
+
+  // Preencher com os selecionados
+  state.multiClienteClientes = [];
+  selecionados.forEach(id => {
+    const c = (state.clientesComPostos || state.clientes || []).find(item => item.id == id);
+    if (c) {
+      state.multiClienteClientes.push({
+        cliente_id: c.id,
+        nome: c.nome_fantasia || c.nome_razao_social,
+        posto_id: c.postos && c.postos[0] ? c.postos[0].id : null,
+        postos: c.postos || [],
+        dias: state.multiClienteClientes.length % 2 === 0 ? ['seg', 'qua'] : ['ter', 'qui'],
+        carga_horaria: 10,
+        horario_entrada: '08:00',
+        horario_saida: '13:00'
+      });
+    }
+  });
+
+  renderizarClientesAgrupadosMulti();
+  recalcularTotalHorasMultiCliente();
+}
+
+function aoSelecionarColaboradorMultiCliente(colaboradorId) {
+  const box = document.getElementById('infoColaboradorMultiBox');
+  if (!box) return;
+
+  if (!colaboradorId) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+
+  const col = (state.colaboradores || []).find(c => c.id == colaboradorId);
+  if (!col) return;
+
+  box.classList.remove('hidden');
+  const statusAloc = col.nome_posto 
+    ? `<span class="text-amber-700 font-semibold"><i class="fa-solid fa-building-user mr-1"></i>Atualmente alocado em: ${escapeHtml(col.nome_posto)} (${escapeHtml(col.nome_fantasia || col.nome_razao_social || 'Cliente')})</span>` 
+    : `<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Disponível na Reserva Técnica</span>`;
+
+  box.innerHTML = `
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <b>${escapeHtml(col.nome)}</b> | Função: <span class="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded text-indigo-900 font-bold">${escapeHtml(col.nome_cargo || 'Geral')}</span>
+      </div>
+      <div>
+        ${statusAloc}
+      </div>
+    </div>
+  `;
+
+  const inputNomeRoteiro = document.getElementById('multiNomeRoteiroInput');
+  if (inputNomeRoteiro && !inputNomeRoteiro.value) {
+    inputNomeRoteiro.value = `Roteiro Multi-Cliente - ${col.nome.split(' ')[0]}`;
+  }
+}
+
+function adicionarClienteAoAgrupamentoMulti() {
+  const sel = document.getElementById('multiAdicionarClienteSelect');
+  if (!sel || !sel.value) {
+    alert('Por favor, selecione um cliente na lista para adicionar ao agrupamento.');
+    return;
+  }
+
+  const clienteId = parseInt(sel.value, 10);
+
+  if (state.multiClienteClientes.length >= 5) {
+    alert('Limite atingido! Você pode agrupar no máximo 5 clientes para 1 colaborador.');
+    return;
+  }
+
+  if (state.multiClienteClientes.some(item => item.cliente_id === clienteId)) {
+    alert('Este cliente já está incluído no agrupamento atual.');
+    return;
+  }
+
+  const c = (state.clientesComPostos || state.clientes || []).find(item => item.id === clienteId);
+  if (!c) {
+    alert('Cliente não encontrado.');
+    return;
+  }
+
+  state.multiClienteClientes.push({
+    cliente_id: c.id,
+    nome: c.nome_fantasia || c.nome_razao_social,
+    posto_id: c.postos && c.postos[0] ? c.postos[0].id : null,
+    postos: c.postos || [],
+    dias: state.multiClienteClientes.length % 2 === 0 ? ['seg', 'qua'] : ['ter', 'qui'],
+    carga_horaria: 10,
+    horario_entrada: '08:00',
+    horario_saida: '13:00'
+  });
+
+  sel.value = '';
+  renderizarClientesAgrupadosMulti();
+  recalcularTotalHorasMultiCliente();
+}
+
+function removerClienteAgrupamentoMulti(idx) {
+  state.multiClienteClientes.splice(idx, 1);
+  renderizarClientesAgrupadosMulti();
+  recalcularTotalHorasMultiCliente();
+}
+
+function renderizarClientesAgrupadosMulti() {
+  const container = document.getElementById('containerClientesAgrupadosMulti');
+  const contador = document.getElementById('badgeContadorClientesMulti');
+  if (!container) return;
+
+  const total = state.multiClienteClientes.length;
+  if (contador) {
+    contador.textContent = `${total} de 5 selecionados`;
+    contador.className = `text-xs font-black px-2.5 py-1 rounded-full border ${total > 0 ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : 'bg-slate-100 text-slate-700 border-slate-300'}`;
+  }
+
+  if (total === 0) {
+    container.innerHTML = `
+      <div class="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+        <i class="fa-solid fa-people-arrows text-slate-300 text-3xl mb-1.5 block"></i>
+        Nenhum cliente adicionado ao agrupamento ainda.
+        <div class="text-[11px] text-slate-500 mt-1">Selecione um cliente acima ou marque as caixas de seleção na tabela e clique em <b>"Juntar até 5 Clientes"</b>.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const diasSemana = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+  const diasLabel = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+
+  container.innerHTML = state.multiClienteClientes.map((item, idx) => {
+    const postosDisponiveis = item.postos || [];
+    
+    let optionsPosto = '';
+    if (postosDisponiveis.length > 0) {
+      optionsPosto = postosDisponiveis.map(p => `
+        <option value="${p.id}" ${item.posto_id == p.id ? 'selected' : ''}>${escapeHtml(p.nome_posto)} (${p.nome_cargo || 'Geral'})</option>
+      `).join('');
+    } else {
+      optionsPosto = `<option value="">Posto Geral / Automático (Será criado com vaga 1/1)</option>`;
+    }
+
+    const pillsDias = diasSemana.map(d => {
+      const ativo = item.dias && item.dias.includes(d);
+      return `
+        <button type="button" onclick="alternarDiaClienteMulti(${idx}, '${d}')" class="px-2 py-1 rounded text-[11px] font-bold transition cursor-pointer ${ativo ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
+          ${diasLabel[d]}
+        </button>
+      `;
+    }).join(' ');
+
+    return `
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="bg-indigo-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full font-mono">
+              Cliente ${idx + 1}
+            </span>
+            <h5 class="font-bold text-slate-900 text-xs">${escapeHtml(item.nome)}</h5>
+            <span class="text-slate-400 font-mono text-[10px]">#${item.cliente_id}</span>
+          </div>
+          <button type="button" onclick="removerClienteAgrupamentoMulti(${idx})" class="text-slate-400 hover:text-red-600 p-1 text-xs transition cursor-pointer" title="Remover cliente deste agrupamento">
+            <i class="fa-solid fa-trash-can mr-1"></i> Remover
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+          <div class="sm:col-span-4">
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Posto de Trabalho Vinculado</label>
+            <select onchange="aoSelecionarPostoClienteMulti(${idx}, this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none">
+              ${optionsPosto}
+            </select>
+          </div>
+
+          <div class="sm:col-span-5">
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Dias de Atendimento na Semana (Clique para ativar)</label>
+            <div class="flex items-center gap-1 flex-wrap">
+              ${pillsDias}
+            </div>
+          </div>
+
+          <div class="sm:col-span-3">
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Carga Horária Semanal</label>
+            <div class="flex items-center gap-1.5">
+              <input type="number" min="1" max="44" step="0.5" value="${item.carga_horaria || 10}" onchange="aoAlterarCargaHorariaClienteMulti(${idx}, this.value)" class="w-20 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-indigo-700 text-center focus:outline-none">
+              <span class="text-xs font-semibold text-slate-600">horas/sem</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function alternarDiaClienteMulti(clientIndex, dia) {
+  const item = state.multiClienteClientes[clientIndex];
+  if (!item) return;
+
+  if (!Array.isArray(item.dias)) item.dias = [];
+  const pos = item.dias.indexOf(dia);
+  if (pos >= 0) {
+    item.dias.splice(pos, 1);
+  } else {
+    item.dias.push(dia);
+  }
+
+  renderizarClientesAgrupadosMulti();
+  recalcularTotalHorasMultiCliente();
+}
+
+function aoSelecionarPostoClienteMulti(clientIndex, postoId) {
+  const item = state.multiClienteClientes[clientIndex];
+  if (item) {
+    item.posto_id = postoId ? parseInt(postoId, 10) : null;
+  }
+}
+
+function aoAlterarCargaHorariaClienteMulti(clientIndex, valor) {
+  const item = state.multiClienteClientes[clientIndex];
+  if (item) {
+    item.carga_horaria = parseFloat(valor) || 0;
+  }
+  recalcularTotalHorasMultiCliente();
+}
+
+function recalcularTotalHorasMultiCliente() {
+  const alvoSelect = document.getElementById('multiCargaTotalAlvo');
+  const alvoValor = alvoSelect ? parseInt(alvoSelect.value, 10) || 44 : 44;
+
+  const totalDistribuido = (state.multiClienteClientes || []).reduce((acc, c) => acc + (parseFloat(c.carga_horaria) || 0), 0);
+  const qtdClientes = (state.multiClienteClientes || []).length;
+
+  const elQtd = document.getElementById('multiResumoQtdClientes');
+  const elDist = document.getElementById('multiResumoCargaDistribuida');
+  const elSaldo = document.getElementById('multiResumoSaldoHoras');
+  const elBadgeStatus = document.getElementById('badgeStatusJornadaMulti');
+
+  if (elQtd) elQtd.textContent = qtdClientes;
+  if (elDist) elDist.textContent = `${totalDistribuido.toFixed(1)}h`;
+
+  const saldo = alvoValor - totalDistribuido;
+
+  if (elSaldo) {
+    if (Math.abs(saldo) < 0.1) {
+      elSaldo.textContent = `0.0h (100% Completa)`;
+      elSaldo.className = 'text-xl font-black text-emerald-600 mt-0.5';
+    } else if (saldo > 0) {
+      elSaldo.textContent = `${saldo.toFixed(1)}h livres`;
+      elSaldo.className = 'text-xl font-black text-indigo-600 mt-0.5';
+    } else {
+      elSaldo.textContent = `+${Math.abs(saldo).toFixed(1)}h excedente`;
+      elSaldo.className = 'text-xl font-black text-rose-600 mt-0.5';
+    }
+  }
+
+  if (elBadgeStatus) {
+    if (Math.abs(saldo) < 0.1) {
+      elBadgeStatus.textContent = 'Carga Total Equilibrada';
+      elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+    } else if (saldo > 0) {
+      elBadgeStatus.textContent = `Faltam ${saldo.toFixed(1)}h para atingir ${alvoValor}h`;
+      elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+    } else {
+      elBadgeStatus.textContent = `Atenção: Excede limite semanal em ${Math.abs(saldo).toFixed(1)}h`;
+      elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 animate-pulse';
+    }
+  }
+}
+
+async function salvarAgrupamentoMultiCliente() {
+  const colabId = document.getElementById('multiColaboradorSelect')?.value;
+  if (!colabId) {
+    alert('Por favor, selecione o colaborador que atenderá os clientes agrupados.');
+    return;
+  }
+
+  if (!state.multiClienteClientes || state.multiClienteClientes.length < 2) {
+    alert('Para criar um agrupamento Multi-Cliente, adicione no mínimo 2 clientes (até o limite de 5 clientes).');
+    return;
+  }
+
+  const clientesSemDias = state.multiClienteClientes.filter(c => !c.dias || c.dias.length === 0);
+  if (clientesSemDias.length > 0) {
+    alert(`Por favor, ative ao menos um dia da semana para o cliente "${clientesSemDias[0].nome}".`);
+    return;
+  }
+
+  const colab = (state.colaboradores || []).find(c => c.id == colabId);
+  const colabNome = colab ? colab.nome : 'Colaborador';
+
+  const nomeRoteiro = document.getElementById('multiNomeRoteiroInput')?.value?.trim() || `Roteiro Multi-Cliente - ${colabNome}`;
+  const escalaNome = document.getElementById('multiEscalaGeralSelect')?.value || 'Multi-Cliente';
+  const totalHoras = (state.multiClienteClientes || []).reduce((acc, c) => acc + (parseFloat(c.carga_horaria) || 0), 0);
+
+  const payload = {
+    nome_roteiro: nomeRoteiro,
+    colaborador_id: parseInt(colabId, 10),
+    escala_nome: escalaNome,
+    carga_total_semanal: totalHoras,
+    observacoes: `Atendimento compartilhado em ${state.multiClienteClientes.length} clientes. Lotação 1 pessoa em cada posto.`,
+    clientes: state.multiClienteClientes.map(c => ({
+      cliente_id: c.cliente_id,
+      posto_trabalho_id: c.posto_id || null,
+      dias_semana: Array.isArray(c.dias) ? c.dias.join(', ') : (c.dias || 'seg, qua'),
+      carga_horaria_semanal: parseFloat(c.carga_horaria) || 10,
+      horario_entrada: c.horario_entrada || '08:00',
+      horario_saida: c.horario_saida || '13:00'
+    }))
+  };
+
+  const btnSalvar = document.getElementById('btnSalvarMultiCliente');
+  if (btnSalvar) btnSalvar.disabled = true;
+
+  try {
+    const res = await fetch('/api/multi-cliente/roteiros', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Erro ao salvar agrupamento');
+
+    alert(`🎉 Sucesso!\n\nAgrupamento Multi-Cliente criado com sucesso para ${colabNome}!\n\nO colaborador cobrirá os ${state.multiClienteClientes.length} clientes selecionados. Os postos correspondentes foram preenchidos (Lotação Máxima 1/1), eliminando falsos alertas de vagas em aberto.`);
+
+    fecharModal('modalMultiCliente');
+    await carregarDadosBase();
+    await carregarClientesComPostos();
+    if (state.abaAtiva === 'colaboradores') carregarColaboradores();
+  } catch (err) {
+    console.error('Erro ao salvar roteiro multi-cliente:', err);
+    alert('Erro ao salvar agrupamento Multi-Cliente: ' + err.message);
+  } finally {
+    if (btnSalvar) btnSalvar.disabled = false;
+  }
+}
+
+async function carregarRoteirosMultiCliente() {
+  const container = document.getElementById('listaRoteirosCadastradosMulti');
+  const badgeTotal = document.getElementById('badgeTotalRoteirosMulti');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/multi-cliente/roteiros');
+    if (!res.ok) throw new Error('Falha ao obter roteiros');
+    const roteiros = await res.json();
+    state.roteirosMultiCliente = Array.isArray(roteiros) ? roteiros : [];
+
+    if (badgeTotal) badgeTotal.textContent = `${state.roteirosMultiCliente.length} roteiro(s)`;
+
+    if (state.roteirosMultiCliente.length === 0) {
+      container.innerHTML = `
+        <div class="p-3 text-center text-slate-400 bg-white rounded-lg border border-slate-200 text-xs">
+          Nenhum roteiro Multi-Cliente ativo cadastrado no momento.
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = state.roteirosMultiCliente.map(rot => {
+      const clientesComp = rot.clientes_compartilhados || [];
+      const tagsClientes = clientesComp.map(cc => `
+        <span class="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 text-indigo-950 px-2 py-0.5 rounded text-[10px] font-semibold">
+          <i class="fa-solid fa-building text-indigo-500"></i>
+          ${escapeHtml(cc.nome_fantasia || cc.nome_razao_social || 'Cliente')} (${cc.dias_semana || 'dias'} - ${cc.carga_horaria_semanal}h)
+        </span>
+      `).join(' ');
+
+      return `
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="bg-purple-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full uppercase">Roteiro #${rot.id}</span>
+              <h5 class="font-bold text-slate-900 text-xs">${escapeHtml(rot.nome_roteiro)}</h5>
+            </div>
+            <div class="text-[11px] text-slate-600 mt-1">
+              Colaborador: <b class="text-indigo-900">${escapeHtml(rot.colaborador_nome || 'N/A')}</b> | Carga Semanal: <b>${rot.carga_total_semanal || 0}h</b>
+            </div>
+            <div class="mt-1.5 flex flex-wrap gap-1">
+              ${tagsClientes}
+            </div>
+          </div>
+          <button onclick="desvincularRoteiroMulti(${rot.id}, '${escapeJsString(rot.colaborador_nome)}')" class="shrink-0 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 font-bold px-3 py-1 rounded-lg text-xs transition cursor-pointer flex items-center gap-1" title="Desfazer este agrupamento e liberar os postos">
+            <i class="fa-solid fa-unlink"></i> Desvincular Roteiro
+          </button>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Erro ao carregar roteiros multi-cliente:', err);
+  }
+}
+
+async function desvincularRoteiroMulti(roteiroId, colabNome) {
+  if (!confirm(`Deseja realmente desvincular o Roteiro Multi-Cliente #${roteiroId} de ${colabNome || 'colaborador'}?\nOs postos vinculados voltarão ao quadro padrão.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/multi-cliente/roteiros/${roteiroId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Erro ao desvincular roteiro');
+
+    alert('Roteiro Multi-Cliente desvinculado com sucesso!');
+    await carregarDadosBase();
+    await carregarClientesComPostos();
+    carregarRoteirosMultiCliente();
+  } catch (err) {
+    console.error('Erro ao desvincular roteiro:', err);
+    alert('Erro: ' + err.message);
+  }
+}
+
+// =========================================================================
+// MÓDULO: CALENDÁRIO SEMANAL DE COBERTURA DOS POSTOS & MULTI-CLIENTES
+// =========================================================================
+
+function alternarVisaoCalendarioPostos() {
+  state.visaoCalendarioAtiva = !state.visaoCalendarioAtiva;
+
+  const containerLista = document.getElementById('containerClientesPostos');
+  const containerCalendario = document.getElementById('visaoCalendarioClientesPostos');
+  const btn = document.getElementById('btnAlternarVisaoPostos');
+  const txt = document.getElementById('txtBtnVisaoPostos');
+
+  if (state.visaoCalendarioAtiva) {
+    if (containerLista) containerLista.classList.add('hidden');
+    if (containerCalendario) containerCalendario.classList.remove('hidden');
+    if (txt) txt.textContent = 'Ver Lista de Clientes & Postos';
+    if (btn) {
+      btn.innerHTML = `<i class="fa-solid fa-list mr-1"></i> <span id="txtBtnVisaoPostos">Ver Lista de Clientes</span>`;
+    }
+    carregarCalendarioSemanalPostos();
+  } else {
+    if (containerLista) containerLista.classList.remove('hidden');
+    if (containerCalendario) containerCalendario.classList.add('hidden');
+    if (txt) txt.textContent = 'Ver Calendário Semanal';
+    if (btn) {
+      btn.innerHTML = `<i class="fa-solid fa-calendar-week mr-1"></i> <span id="txtBtnVisaoPostos">Ver Calendário Semanal</span>`;
+    }
+    renderizarCardsClientesPostos();
+  }
+}
+
+async function carregarCalendarioSemanalPostos() {
+  const container = document.getElementById('visaoCalendarioClientesPostos');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="bg-white p-8 text-center rounded-2xl border border-slate-200 text-slate-400 font-medium">
+      <i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando escala semanal consolidada...
+    </div>
+  `;
+
+  try {
+    const res = await fetch('/api/multi-cliente/calendario');
+    if (!res.ok) throw new Error('Falha ao carregar dados do calendário');
+    const data = await res.json();
+    const dias = data.dias || { seg: [], ter: [], qua: [], qui: [], sex: [], sab: [], dom: [] };
+
+    renderizarCalendarioSemanalPostos(dias);
+  } catch (err) {
+    console.error('Erro ao carregar calendário semanal:', err);
+    container.innerHTML = `
+      <div class="bg-red-50 text-red-700 p-6 rounded-2xl border border-red-200 text-center font-semibold">
+        Erro ao carregar calendário semanal: ${err.message}
+      </div>
+    `;
+  }
+}
+
+function renderizarCalendarioSemanalPostos(dias) {
+  const container = document.getElementById('visaoCalendarioClientesPostos');
+  if (!container) return;
+
+  const colunas = [
+    { key: 'seg', label: 'Segunda-Feira', badge: 'bg-indigo-600' },
+    { key: 'ter', label: 'Terça-Feira', badge: 'bg-indigo-600' },
+    { key: 'qua', label: 'Quarta-Feira', badge: 'bg-indigo-600' },
+    { key: 'qui', label: 'Quinta-Feira', badge: 'bg-indigo-600' },
+    { key: 'sex', label: 'Sexta-Feira', badge: 'bg-indigo-600' },
+    { key: 'sab', label: 'Sábado', badge: 'bg-slate-700' },
+    { key: 'dom', label: 'Domingo', badge: 'bg-slate-700' }
+  ];
+
+  let totalAtendimentosSemana = 0;
+  Object.values(dias).forEach(arr => {
+    if (Array.isArray(arr)) totalAtendimentosSemana += arr.length;
+  });
+
+  const colunasHtml = colunas.map(col => {
+    const postosDia = dias[col.key] || [];
+
+    const cardsDiaHtml = postosDia.length === 0 
+      ? `<div class="p-4 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">Sem escala neste dia</div>`
+      : postosDia.map(item => {
+          const isMulti = item.tipo_alocacao === 'Multi-Cliente';
+          return `
+            <div class="bg-white rounded-xl border ${isMulti ? 'border-purple-300 ring-1 ring-purple-100' : 'border-slate-200'} p-3 shadow-2xs space-y-2 hover:shadow-sm transition">
+              <div class="flex items-start justify-between gap-1">
+                <span class="font-bold text-slate-900 text-xs line-clamp-1" title="${escapeHtml(item.cliente_nome)}">
+                  ${escapeHtml(item.cliente_nome)}
+                </span>
+                <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isMulti ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700'}">
+                  ${isMulti ? 'Multi' : 'Efetivo'}
+                </span>
+              </div>
+
+              <div class="text-[11px] text-slate-600">
+                <i class="fa-solid fa-map-pin text-slate-400 mr-1"></i>${escapeHtml(item.posto_nome)}
+                <div class="text-[10px] text-slate-400">${escapeHtml(item.cargo_nome || 'Geral')}</div>
+              </div>
+
+              <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-center justify-between text-[11px]">
+                <span class="font-bold text-slate-800 flex items-center gap-1">
+                  <i class="fa-solid fa-user-check ${isMulti ? 'text-purple-600' : 'text-emerald-600'}"></i>
+                  ${escapeHtml(item.colaborador_nome)}
+                </span>
+                <span class="text-slate-500 font-mono text-[10px] font-bold">
+                  ${item.horario_entrada || '08:00'} - ${item.horario_saida || '17:00'}
+                </span>
+              </div>
+
+              ${item.carga_horaria_semanal ? `
+                <div class="text-[10px] text-slate-400 flex items-center justify-between">
+                  <span>Carga Contratual:</span>
+                  <span class="font-bold text-indigo-700">${item.carga_horaria_semanal}h / sem</span>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+
+    return `
+      <div class="flex flex-col bg-slate-100/70 border border-slate-200 rounded-2xl p-3 min-w-[220px] flex-1 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full ${col.badge}"></span>
+            <h4 class="font-bold text-xs text-slate-900">${col.label}</h4>
+          </div>
+          <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-white text-slate-700 shadow-2xs border border-slate-200">
+            ${postosDia.length}
+          </span>
+        </div>
+
+        <div class="space-y-2 flex-1 overflow-y-auto max-h-[70vh]">
+          ${cardsDiaHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <span class="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-calendar-week"></i> Programação Semanal Operacional
+          </span>
+          <h3 class="font-black text-slate-900 text-base">
+            Calendário de Cobertura de Postos & Multi-Clientes
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Total de <b>${totalAtendimentosSemana} escalas/atendimentos programados</b> distribuídos ao longo da semana de Segunda a Domingo.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="abrirModalMultiCliente()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+            <i class="fa-solid fa-people-arrows"></i> Agrupar Multi-Cliente (Até 5)
+          </button>
+          <button onclick="abrirModalGerenciarEscalas()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+            <i class="fa-solid fa-plus-circle text-amber-400"></i> Nova Escala
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid Horizontal de 7 Dias -->
+      <div class="flex gap-3 overflow-x-auto pb-3">
+        ${colunasHtml}
+      </div>
+    </div>
+  `;
+}
+
+// Exportações Globais para o Escopo da Janela
+window.carregarEscalas = carregarEscalas;
+window.popularSelectsEscalas = popularSelectsEscalas;
+window.abrirModalGerenciarEscalas = abrirModalGerenciarEscalas;
+window.alternarDiaEscala = alternarDiaEscala;
+window.aoTrocarTipoEscala = aoTrocarTipoEscala;
+window.recalcularCargaHorariaEscalaForm = recalcularCargaHorariaEscalaForm;
+window.salvarNovaEscalaTrabalho = salvarNovaEscalaTrabalho;
+window.limparFormularioEscala = limparFormularioEscala;
+window.editarEscala = editarEscala;
+window.excluirEscala = excluirEscala;
+
+window.abrirModalMultiCliente = abrirModalMultiCliente;
+window.abrirModalMultiClienteComSelecionados = abrirModalMultiClienteComSelecionados;
+window.aoSelecionarColaboradorMultiCliente = aoSelecionarColaboradorMultiCliente;
+window.adicionarClienteAoAgrupamentoMulti = adicionarClienteAoAgrupamentoMulti;
+window.removerClienteAgrupamentoMulti = removerClienteAgrupamentoMulti;
+window.renderizarClientesAgrupadosMulti = renderizarClientesAgrupadosMulti;
+window.alternarDiaClienteMulti = alternarDiaClienteMulti;
+window.aoSelecionarPostoClienteMulti = aoSelecionarPostoClienteMulti;
+window.aoAlterarCargaHorariaClienteMulti = aoAlterarCargaHorariaClienteMulti;
+window.recalcularTotalHorasMultiCliente = recalcularTotalHorasMultiCliente;
+window.salvarAgrupamentoMultiCliente = salvarAgrupamentoMultiCliente;
+window.carregarRoteirosMultiCliente = carregarRoteirosMultiCliente;
+window.desvincularRoteiroMulti = desvincularRoteiroMulti;
+
+window.alternarVisaoCalendarioPostos = alternarVisaoCalendarioPostos;
+window.carregarCalendarioSemanalPostos = carregarCalendarioSemanalPostos;
+window.renderizarCalendarioSemanalPostos = renderizarCalendarioSemanalPostos;
+
+
+// =============================================================
+// MÃ“DULO: ALERTA SONORO & POLLING DE COMUNICADOS
+// =============================================================
+
+var _pollingComunicadosInterval = null;
+var _ultimoNaoLidosCount = undefined;
+var _toastTimeoutId = null;
+
+function tocarAlertaNovoComunicado(titulo) {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523.25, 659.25, 783.99].forEach(function(freq, i) {
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      var t0 = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.35, t0 + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.28);
+      osc.start(t0);
+      osc.stop(t0 + 0.3);
+    });
+  } catch (e) {
+    console.warn('[Som] Web Audio API indisponÃ­vel:', e.message);
+  }
+  mostrarToastNovoComunicado(titulo);
+}
+
+function mostrarToastNovoComunicado(titulo) {
+  var toast = document.getElementById('toastNovoComunicado');
+  var tituloEl = document.getElementById('toastNovoComunicadoTitulo');
+  if (!toast) return;
+  if (tituloEl && titulo) tituloEl.textContent = titulo;
+  toast.classList.remove('hidden');
+  if (_toastTimeoutId) clearTimeout(_toastTimeoutId);
+  _toastTimeoutId = setTimeout(function() { fecharToastComunicado(); }, 8000);
+}
+
+function fecharToastComunicado() {
+  var t = document.getElementById('toastNovoComunicado');
+  if (t) t.classList.add('hidden');
+  if (_toastTimeoutId) { clearTimeout(_toastTimeoutId); _toastTimeoutId = null; }
+}
+
+function iniciarPollingComunicados() {
+  if (_pollingComunicadosInterval) return;
+  _pollingComunicadosInterval = setInterval(async function() {
+    if (!state.usuarioLogado) return;
+    try {
+      var r = await fetch('/api/comunicados?usuario_id=' + state.usuarioLogado.id);
+      if (!r.ok) return;
+      var data = await r.json();
+      var contagem = (data.nao_lidos_count !== undefined) ? data.nao_lidos_count : 0;
+      var lista = data.comunicados || (Array.isArray(data) ? data : []);
+      var primeiroTitulo = lista.length > 0 ? (lista[0].titulo || '') : '';
+      if (_ultimoNaoLidosCount !== undefined && contagem > _ultimoNaoLidosCount) {
+        tocarAlertaNovoComunicado(primeiroTitulo || 'Novo comunicado no mural!');
+      }
+      _ultimoNaoLidosCount = contagem;
+      if (typeof atualizarBadgesComunicados === 'function') atualizarBadgesComunicados(contagem);
+    } catch (e) { /* silencioso */ }
+  }, 30000);
+}
+
+window.fecharToastComunicado = fecharToastComunicado;
+window.tocarAlertaNovoComunicado = tocarAlertaNovoComunicado;
+window.iniciarPollingComunicados = iniciarPollingComunicados;
+
+
+// =============================================================
+// MÃ“DULO: EDITAR COMUNICADO (ADMIN MASTER)
+// =============================================================
+
+function abrirModalEditarComunicado(id, titulo, mensagem, categoria, prioridade) {
+  document.getElementById('editComunicadoId').value = id;
+  document.getElementById('editComunicadoTitulo').value = titulo || '';
+  document.getElementById('editComunicadoMensagem').value = mensagem || '';
+  var selCat = document.getElementById('editComunicadoCategoria');
+  if (selCat) {
+    var opt = Array.from(selCat.options).find(function(o) { return o.value === categoria; });
+    selCat.value = opt ? opt.value : 'geral';
+  }
+  var selPri = document.getElementById('editComunicadoPrioridade');
+  if (selPri) selPri.value = prioridade || 'normal';
+  document.getElementById('modalEditarComunicado').classList.remove('hidden');
+}
+
+async function salvarEdicaoComunicado() {
+  var id = document.getElementById('editComunicadoId').value;
+  var titulo = document.getElementById('editComunicadoTitulo').value.trim();
+  var mensagem = document.getElementById('editComunicadoMensagem').value.trim();
+  var categoria = (document.getElementById('editComunicadoCategoria') || {}).value || 'geral';
+  var prioridade = (document.getElementById('editComunicadoPrioridade') || {}).value || 'normal';
+  if (!titulo || !mensagem) { alert('Preencha tÃ­tulo e mensagem.'); return; }
+  try {
+    var r = await fetch('/api/comunicados/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo: titulo, mensagem: mensagem, categoria: categoria, prioridade: prioridade })
+    });
+    var data = await r.json();
+    if (data.success) {
+      fecharModal('modalEditarComunicado');
+      if (typeof carregarComunicados === 'function') await carregarComunicados();
+      mostrarNotificacaoSucesso('Comunicado editado com sucesso! âœ…');
+    } else { alert(data.message || 'Erro ao editar comunicado.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
+}
+
+window.abrirModalEditarComunicado = abrirModalEditarComunicado;
+window.salvarEdicaoComunicado = salvarEdicaoComunicado;
+
+
+// =============================================================
+// MÃ“DULO: FLUXO DE IMPLANTAÃ‡ÃƒO (VISÃVEL A TODOS OS USUÃRIOS)
+// =============================================================
+
+async function carregarFluxoImplantacao() {
+  var container = document.getElementById('containerFluxoImplantacao');
+  if (!container) return;
+  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-400"></i>Carregando ordens de implantaÃ§Ã£o...</div>';
+  try {
+    var r = await fetch('/api/comercial/implantacoes');
+    if (!r.ok) throw new Error('Servidor retornou erro ' + r.status);
+    var data = await r.json();
+    var ordens = data.ordens || data || [];
+    renderizarFluxoImplantacao(Array.isArray(ordens) ? ordens : []);
+  } catch (e) {
+    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3 block"></i><p class="font-bold">Erro ao carregar implantaÃ§Ãµes</p><p class="text-xs mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
+  }
+}
+
+function renderizarFluxoImplantacao(ordens) {
+  var container = document.getElementById('containerFluxoImplantacao');
+  var ehAdmin = isUsuarioAdminMaster();
+  var setorUsuario = ((state.usuarioLogado && state.usuarioLogado.setor) ? state.usuarioLogado.setor : '').toLowerCase();
+  var setorLabels = { rh: 'RH / Recrutamento', beneficios: 'BenefÃ­cios (VT/VA)', compras: 'Compras / Uniformes', operacional: 'Operacional', faturamento: 'Faturamento', diretoria: 'Diretoria', comercial: 'Comercial', outros: 'Outros' };
+
+  if (!ordens || ordens.length === 0) {
+    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-3 block text-orange-300"></i><p class="font-bold text-slate-600 text-base">Nenhuma implantaÃ§Ã£o ativa no momento</p><p class="text-xs mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantaÃ§Ã£o aparecerÃ¡ aqui automaticamente.</p></div>';
+    ['kpiImplantacoesAtivas','kpiTarefasPendentes','kpiTarefasConcluidas','kpiImplantacoesCompletas'].forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.textContent = '0';
+    });
+    return;
+  }
+
+  var totalAtivas = 0, totalPendentes = 0, totalConcluidas = 0, totalCompletas = 0;
+  ordens.forEach(function(o) {
+    var tarefas = o.tarefas || [];
+    var conc = tarefas.filter(function(t) { return t.status === 'ConcluÃ­da'; }).length;
+    totalConcluidas += conc;
+    totalPendentes += tarefas.length - conc;
+    if (tarefas.length > 0 && conc === tarefas.length) totalCompletas++;
+    else totalAtivas++;
+  });
+  var kpis = { kpiImplantacoesAtivas: totalAtivas, kpiTarefasPendentes: totalPendentes, kpiTarefasConcluidas: totalConcluidas, kpiImplantacoesCompletas: totalCompletas };
+  Object.keys(kpis).forEach(function(id) { var el = document.getElementById(id); if (el) el.textContent = kpis[id]; });
+
+  var html = ordens.map(function(ordem) {
+    var tarefas = ordem.tarefas || [];
+    var total = tarefas.length;
+    var concluidas = tarefas.filter(function(t) { return t.status === 'ConcluÃ­da'; }).length;
+    var pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+    var completa = total > 0 && concluidas === total;
+    var corPct = pct < 30 ? 'bg-red-500' : pct < 70 ? 'bg-amber-500' : pct < 100 ? 'bg-blue-500' : 'bg-emerald-500';
+
+    var tarefasHtml = tarefas.map(function(t) {
+      var podeMudarStatus = ehAdmin || setorUsuario.indexOf((t.setor_responsavel || '').toLowerCase().substring(0,4)) !== -1;
+      var sc = t.status === 'ConcluÃ­da' ? 'bg-emerald-100 text-emerald-800' : t.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+      var prazoFmt = t.prazo_limite ? new Date(t.prazo_limite + 'T00:00:00').toLocaleDateString('pt-BR') : 'â€”';
+      var tarefaEscapada = JSON.stringify(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      return '<div class="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0 group">'
+        + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'ConcluÃ­da' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
+        + '<div class="flex-1 min-w-0">'
+          + '<div class="flex items-start justify-between gap-2 flex-wrap">'
+            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'ConcluÃ­da' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€”') + '</span>'
+            + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ' + sc + ' shrink-0">' + t.status + '</span>'
+          + '</div>'
+          + (t.descricao ? '<p class="text-[11px] text-slate-500 mt-0.5">' + t.descricao + '</p>' : '')
+          + '<div class="flex items-center gap-3 mt-1 flex-wrap">'
+            + '<span class="text-[10px] text-slate-500"><i class="fa-solid fa-building text-slate-400 mr-1"></i>' + (setorLabels[t.setor_responsavel] || t.setor_responsavel || 'â€”') + '</span>'
+            + (t.responsavel_nome ? '<span class="text-[10px] text-slate-600 font-semibold"><i class="fa-solid fa-user text-slate-400 mr-1"></i>' + t.responsavel_nome + '</span>' : '')
+            + (t.prazo_limite ? '<span class="text-[10px] text-slate-500"><i class="fa-regular fa-calendar text-slate-400 mr-1"></i>' + prazoFmt + '</span>' : '')
+          + '</div>'
+          + (t.observacoes_conclusao ? '<p class="text-[10px] text-emerald-700 bg-emerald-50 rounded px-2 py-1 mt-1.5 italic">âœ… ' + t.observacoes_conclusao + '</p>' : '')
+        + '</div>'
+        + '<div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">'
+          + (podeMudarStatus && t.status !== 'ConcluÃ­da' ? '<button onclick="marcarTarefaImplantacaoConcluida(' + t.id + ',' + ordem.id + ')" title="Marcar concluÃ­da" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-check"></i></button>' : '')
+          + (ehAdmin ? '<button onclick="abrirEditarTarefaImplantacao(' + t.id + ',' + ordem.id + ',\'' + tarefaEscapada + '\')" title="Editar" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-pen-to-square"></i></button>'
+            + '<button onclick="excluirTarefaImplantacao(' + t.id + ',' + ordem.id + ')" title="Excluir" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-trash"></i></button>' : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    var dataInicioFmt = ordem.data_inicio_previsto ? new Date(ordem.data_inicio_previsto + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+
+    return '<div class="bg-white rounded-2xl shadow-sm border ' + (completa ? 'border-emerald-300' : 'border-slate-200') + ' overflow-hidden mb-4">'
+      + '<div class="flex items-center justify-between px-5 py-4 ' + (completa ? 'bg-emerald-50' : 'bg-slate-50') + ' border-b border-slate-200">'
+        + '<div class="flex items-center gap-3">'
+          + '<div class="w-10 h-10 rounded-xl ' + (completa ? 'bg-emerald-500' : 'bg-orange-500') + ' flex items-center justify-center text-white font-black text-sm shrink-0">'
+            + (completa ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-rocket"></i>')
+          + '</div>'
+          + '<div>'
+            + '<h3 class="font-black text-sm text-slate-900">' + (ordem.nome_cliente || ordem.cliente_nome || 'ImplantaÃ§Ã£o #' + ordem.id) + '</h3>'
+            + '<div class="flex items-center gap-2 mt-0.5 flex-wrap">'
+              + (ordem.contrato_numero ? '<span class="text-[10px] text-slate-500">Contrato: <b>' + ordem.contrato_numero + '</b></span>' : '')
+              + (dataInicioFmt ? '<span class="text-[10px] text-slate-500">InÃ­cio: <b>' + dataInicioFmt + '</b></span>' : '')
+              + (completa ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">âœ… CONCLUÃDA</span>' : '')
+            + '</div>'
+          + '</div>'
+        + '</div>'
+        + (ehAdmin ? '<button onclick="abrirAdicionarTarefaImplantacao(' + ordem.id + ')" class="bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition shrink-0"><i class="fa-solid fa-plus"></i> Nova Tarefa</button>' : '')
+      + '</div>'
+      + '<div class="px-5 py-3 border-b border-slate-100">'
+        + '<div class="flex items-center justify-between mb-1.5">'
+          + '<span class="text-[11px] font-bold text-slate-600">Progresso da ImplantaÃ§Ã£o</span>'
+          + '<span class="text-[11px] font-black ' + (pct === 100 ? 'text-emerald-600' : 'text-slate-700') + '">' + concluidas + '/' + total + ' tarefas â€” ' + pct + '%</span>'
+        + '</div>'
+        + '<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="' + corPct + ' h-full rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div>'
+      + '</div>'
+      + '<div class="px-5 py-1">'
+        + (total === 0 ? '<div class="py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-list-check text-2xl mb-2 block text-slate-300"></i>Nenhuma tarefa cadastrada.' + (ehAdmin ? ' Clique em <b>Nova Tarefa</b> para adicionar.' : '') + '</div>' : tarefasHtml)
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+async function marcarTarefaImplantacaoConcluida(tarefaId, ordemId) {
+  if (!confirm('Marcar esta tarefa como ConcluÃ­da?')) return;
+  try {
+    var r = await fetch('/api/comercial/implantacoes/tarefas/' + tarefaId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'ConcluÃ­da', concluido_por: (state.usuarioLogado && state.usuarioLogado.nome) ? state.usuarioLogado.nome : 'UsuÃ¡rio' })
+    });
+    var data = await r.json();
+    if (data.success) {
+      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ ImplantaÃ§Ã£o 100% concluÃ­da! Comunicado enviado ao mural!' : 'Tarefa concluÃ­da! âœ…');
+      await carregarFluxoImplantacao();
+    } else { alert(data.message || 'Erro ao atualizar.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
+}
+
+function abrirEditarTarefaImplantacao(tarefaId, ordemId, tarefaJson) {
+  var t = tarefaJson;
+  if (typeof t === 'string') {
+    try { t = JSON.parse(t.replace(/&quot;/g, '"').replace(/&amp;/g, '&')); } catch(e) { t = {}; }
+  }
+  document.getElementById('editTarefaId').value = tarefaId;
+  document.getElementById('editTarefaOrdemId').value = ordemId;
+  document.getElementById('editTarefaTitulo').value = t.titulo || '';
+  document.getElementById('editTarefaDescricao').value = t.descricao || '';
+  document.getElementById('editTarefaResponsavel').value = t.responsavel_nome || '';
+  document.getElementById('editTarefaPrazo').value = t.prazo_limite || '';
+  document.getElementById('editTarefaStatus').value = t.status || 'Pendente';
+  document.getElementById('editTarefaObsConclusao').value = t.observacoes_conclusao || '';
+  var s = document.getElementById('editTarefaSetor');
+  if (s) s.value = t.setor_responsavel || 'outros';
+  document.getElementById('modalEditarTarefaImplantacao').classList.remove('hidden');
+}
+
+async function salvarEdicaoTarefaImplantacao() {
+  var id = document.getElementById('editTarefaId').value;
+  var titulo = document.getElementById('editTarefaTitulo').value.trim();
+  var setor = (document.getElementById('editTarefaSetor') || {}).value || 'outros';
+  var responsavel = document.getElementById('editTarefaResponsavel').value.trim();
+  var prazo = document.getElementById('editTarefaPrazo').value;
+  var status = document.getElementById('editTarefaStatus').value;
+  var descricao = document.getElementById('editTarefaDescricao').value.trim();
+  var obs = document.getElementById('editTarefaObsConclusao').value.trim();
+  if (!titulo) { alert('Informe o tÃ­tulo da tarefa.'); return; }
+  try {
+    var r = await fetch('/api/comercial/implantacoes/tarefas/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo: titulo, setor_responsavel: setor, responsavel_nome: responsavel, prazo_limite: prazo || null, status: status, descricao: descricao, observacoes_conclusao: obs, concluido_por: status === 'ConcluÃ­da' ? ((state.usuarioLogado && state.usuarioLogado.nome) || 'Admin') : null })
+    });
+    var data = await r.json();
+    if (data.success) {
+      fecharModal('modalEditarTarefaImplantacao');
+      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ ImplantaÃ§Ã£o 100% concluÃ­da! Comunicado gerado!' : 'Tarefa salva! âœ…');
+      await carregarFluxoImplantacao();
+    } else { alert(data.message || 'Erro ao salvar.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
+}
+
+async function excluirTarefaImplantacao(tarefaId, ordemId) {
+  if (!confirm('Excluir esta tarefa permanentemente?')) return;
+  try {
+    var r = await fetch('/api/comercial/implantacoes/tarefas/' + tarefaId, { method: 'DELETE' });
+    var data = await r.json();
+    if (data.success) { mostrarNotificacaoSucesso('Tarefa excluÃ­da.'); await carregarFluxoImplantacao(); }
+    else { alert(data.message || 'Erro ao excluir.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
+}
+
+function abrirAdicionarTarefaImplantacao(ordemId) {
+  document.getElementById('novaTarefaOrdemId').value = ordemId;
+  ['novaTarefaTitulo','novaTarefaDescricao','novaTarefaResponsavel','novaTarefaPrazo'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var s = document.getElementById('novaTarefaSetor'); if (s) s.value = 'rh';
+  document.getElementById('modalNovaTarefaImplantacao').classList.remove('hidden');
+}
+
+async function salvarNovaTarefaImplantacao() {
+  var ordemId = document.getElementById('novaTarefaOrdemId').value;
+  var titulo = document.getElementById('novaTarefaTitulo').value.trim();
+  var setor = (document.getElementById('novaTarefaSetor') || {}).value || 'outros';
+  var responsavel = document.getElementById('novaTarefaResponsavel').value.trim();
+  var prazo = document.getElementById('novaTarefaPrazo').value;
+  var descricao = document.getElementById('novaTarefaDescricao').value.trim();
+  if (!titulo) { alert('Informe o tÃ­tulo da tarefa.'); return; }
+  try {
+    var r = await fetch('/api/comercial/implantacoes/' + ordemId + '/tarefas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo: titulo, setor_responsavel: setor, responsavel_nome: responsavel, prazo_limite: prazo || null, descricao: descricao })
+    });
+    var data = await r.json();
+    if (data.success) {
+      fecharModal('modalNovaTarefaImplantacao');
+      mostrarNotificacaoSucesso('Tarefa adicionada com sucesso! âœ…');
+      await carregarFluxoImplantacao();
+    } else { alert(data.message || 'Erro ao adicionar tarefa.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
+}
+
+function mostrarNotificacaoSucesso(msg) {
+  var el = document.createElement('div');
+  el.className = 'fixed bottom-6 right-6 bg-emerald-600 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-2xl z-[9999] flex items-center gap-2';
+  el.innerHTML = '<i class="fa-solid fa-check-circle"></i> ' + msg;
+  document.body.appendChild(el);
+  setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 4000);
+}
+
+window.carregarFluxoImplantacao = carregarFluxoImplantacao;
+window.marcarTarefaImplantacaoConcluida = marcarTarefaImplantacaoConcluida;
+window.abrirEditarTarefaImplantacao = abrirEditarTarefaImplantacao;
+window.salvarEdicaoTarefaImplantacao = salvarEdicaoTarefaImplantacao;
+window.excluirTarefaImplantacao = excluirTarefaImplantacao;
+window.abrirAdicionarTarefaImplantacao = abrirAdicionarTarefaImplantacao;
+window.salvarNovaTarefaImplantacao = salvarNovaTarefaImplantacao;
+window.mostrarNotificacaoSucesso = mostrarNotificacaoSucesso;

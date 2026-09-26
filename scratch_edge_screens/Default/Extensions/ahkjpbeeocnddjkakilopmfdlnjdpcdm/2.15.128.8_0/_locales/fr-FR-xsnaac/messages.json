@@ -1,0 +1,14 @@
+{
+    "ExtensionName": {
+        "message": "Kaspersky Protection",
+        "description": ""
+    },
+    "ExtensionDescription": {
+        "message": "Votre protection sur Internet avec l'extension de Kaspersky",
+        "description": ""
+    },
+    "ToolbarButtonText": {
+        "message": "Kaspersky Protection",
+        "description": ""
+    }
+}

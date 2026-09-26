@@ -1,0 +1,15 @@
+.wait-block, 
+.failed-connect-block, 
+.success-block, 
+.ready-block,
+.finish-block, 
+.failed-result, 
+.success-result {display:none;}
+
+.wait .wait-block,
+.failed-connect .failed-connect-block,
+.ready .ready-block,
+.success .finish-block, 
+.success .success-result,
+.failed .finish-block, 
+.failed .failed-result {display:block;}

@@ -1,0 +1,14 @@
+{
+    "ExtensionName": {
+        "message": "Kaspersky Protection",
+        "description": ""
+    },
+    "ExtensionDescription": {
+        "message": "Upravljajte zaštitom direktno iz prozora pregledača",
+        "description": ""
+    },
+    "ToolbarButtonText": {
+        "message": "Kaspersky Protection",
+        "description": ""
+    }
+}

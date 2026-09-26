@@ -1,0 +1,67 @@
+﻿<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <script src="../common/browsers_api.js"></script>
+        <script src="../common/popup_window_helpers.js"></script>
+        <script src="user_feedback_window.js"></script>
+    </head>
+    <body>
+        <div class="area-body">
+            <div class="logo-main"></div>
+            <div id="BeforeReportContent">
+                <div class="area-dialog area-dialog-before-report area-bodyDialog-background_custom">
+                    <div class="area-dialogContent">
+                        <div class="area-notification-logo logo-notification"></div>
+                        <div class="area-title-ufb">
+                            <span class="title-ufb" id="WindowBwfbTitleText">Сообщить о проблеме с сайтом</span>
+                        </div>
+                        <div class="area-info-msg-ufb ufb-block">
+                            <span class="info-msg-ufb" id="WindowBwfbInfoText">Сообщая о проблемах, вы помогаете нам становиться лучше.</span>
+                        </div>
+                        <div class="area-web-page-url-not-expanded" id="WindowBwfbWebsiteSection">
+                            <span class="web-page-url-text web-page-url-text-title" id="WindowBwfbWebsiteTitleText">Сайт:</span>
+                            <span class="web-page-url-text web-page-url-text-body" id="WindowBwfbWebsiteUrlText"></span>
+                        </div>
+                        <div class="area-expand-button-ufb ufb-block" id="areaBwfbExpandButton">
+                            <button class="expand-button-ufb" id="bwfbExpandButton">
+                                <span id="WindowBwfbExpandButtonText">Показать больше</span>
+                                <div class="expand-button-ufb-image-not-expanded"></div>
+                            </button>
+                        </div>
+                        <div class="area-textarea-ufb">
+                            <textarea id="bwfbTextArea"></textarea>
+                        </div>
+                        <div class="area-agreement-text-ufb">
+                            <span class="agreement-text-ufb" id="WindowBwfbAgreementText">Нажимая кнопку "Сообщить", вместе с сообщением о проблеме я предоставляю следующую информацию для информирования о проблеме с сайтом: URL текущего сайта, название и версию браузера, название и версию программы, уникальный идентификатор установки программы и уникальный идентификатор устройства, на котором установлена программа.</span>
+                        </div>
+                        <div class="area-report-button">
+                            <button class="report-button area-enableButton-background_custom area-enableButton-foreground_custom area-enableButton-border_custom" id="bwfbReportButton">
+                                <span id="WindowBwfbReportButtonText">Сообщить</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="optional-block" id="AfterReportContent">
+                <div class="area-dialog area-dialog-after-report area-bodyDialog-background_custom">
+                    <div class="area-dialogContent">
+                        <div class="area-notification-logo logo-success-notification"></div>
+                        <div class="area-title-ufb">
+                            <span class="title-ufb" id="WindowBwfbThanksText">Спасибо, что сообщили нам о проблеме с сайтом!</span>
+                        </div>
+                        <div class="area-info-msg-ufb">
+                            <span class="info-msg-ufb" id="WindowBwfbAnalysisText">Мы уже работаем над тем, чтобы отображать сайт корректно.</span>
+                        </div>
+                        <div class="area-close-button">
+                            <button class="report-button area-enableButton-background_custom area-enableButton-foreground_custom area-enableButton-border_custom" id="bwfbCloseButton">
+                                <span id="WindowBwfbCloseButtonText">Закрыть</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

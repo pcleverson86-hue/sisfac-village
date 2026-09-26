@@ -1,0 +1,14 @@
+{
+    "ExtensionName": {
+        "message": "Kaspersky Protection",
+        "description": ""
+    },
+    "ExtensionDescription": {
+        "message": "Administre la protección directamente en la ventana del navegador",
+        "description": ""
+    },
+    "ToolbarButtonText": {
+        "message": "Kaspersky Protection",
+        "description": ""
+    }
+}

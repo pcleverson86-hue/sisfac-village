@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Portal do Supervisor - Apontamento de Faltas & Coberturas | SISFAC 2.0</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Otimizações touch mobile */
+    body {
+      -webkit-tap-highlight-color: transparent;
+    }
+    input, select, textarea, button {
+      font-size: 16px !important; /* Previne zoom indesejado no iOS */
+    }
+    .touch-target {
+      min-height: 48px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-24">
+
+  <!-- Cabeçalho Mobile Fixo -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50 border-b border-slate-800">
+    <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-black text-lg shadow-sm">
+          <i class="fa-solid fa-clipboard-user"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-extrabold text-sm tracking-wide text-white">SISFAC 2.0</span>
+            <span class="bg-blue-500/20 text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-400/30 uppercase tracking-wider">Mobile</span>
+          </div>
+          <p id="headerSubtitulo" class="text-xs text-slate-400 truncate max-w-[200px]">Operação & Supervisão</p>
+        </div>
+      </div>
+      <div id="headerUserActions" class="flex items-center gap-2">
+        <button onclick="alternarSupervisor()" id="btnTrocarSupervisor" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrow-right-from-bracket text-slate-400"></i>
+          <span>Trocar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container Principal Centralizado -->
+  <main class="max-w-lg mx-auto px-3.5 py-4 space-y-4">
+
+    <!-- Loading State -->
+    <div id="loadingBox" class="bg-white rounded-2xl p-8 text-center shadow-sm border border-slate-200 space-y-3 my-4">
+      <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-600"></i>
+      <p class="text-sm font-medium text-slate-600">Carregando dados operacionais do supervisor...</p>
+    </div>
+
+    <!-- TELA 1: Login do Supervisor (Usuário e Senha) -->
+    <div id="telaLoginSupervisor" class="hidden space-y-4">
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/90 text-center space-y-3">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto text-2xl shadow-lg shadow-blue-500/25">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-black text-slate-900 tracking-tight">Portal do Supervisor</h2>
+          <p class="text-xs text-slate-500 mt-1">Informe seu login e senha fornecidos pelo administrador para lançar faltas e coberturas.</p>
+        </div>
+      </div>
+
+      <!-- Formulário de Login com Usuário e Senha -->
+      <form id="formLoginSupervisor" onsubmit="realizarLoginUsuarioSenha(event)" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/90 space-y-4">
+        
+        <!-- Mensagem de Erro de Login -->
+        <div id="loginErroBox" class="hidden bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3.5 rounded-2xl flex items-center gap-2.5 animate-in fade-in">
+          <i class="fa-solid fa-circle-exclamation text-rose-500 text-base flex-shrink-0"></i>
+          <span id="loginErroTexto">Usuário ou senha incorretos.</span>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="inputUsuarioLogin" class="block text-xs font-bold text-slate-700">
+            <i class="fa-solid fa-user text-slate-400 mr-1.5"></i> Usuário / Login:
+          </label>
+          <div class="relative">
+            <input type="text" id="inputUsuarioLogin" required placeholder="Ex: carlos, marcos..." autocomplete="username" autocapitalize="none"
+              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3.5 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition">
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label for="inputSenhaLogin" class="block text-xs font-bold text-slate-700">
+              <i class="fa-solid fa-lock text-slate-400 mr-1.5"></i> Senha de Acesso:
+            </label>
+          </div>
+          <div class="relative">
+            <input type="password" id="inputSenhaLogin" required placeholder="Digite sua senha" autocomplete="current-password"
+              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3.5 pr-11 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition">
+            <button type="button" onclick="alternarVerSenha()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none" title="Mostrar/ocultar senha">
+              <i id="iconeVerSenha" class="fa-solid fa-eye text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600 font-medium">
+            <input type="checkbox" id="chkLembrarLogin" checked class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+            <span>Manter conectado neste celular</span>
+          </label>
+        </div>
+
+        <button type="submit" id="btnEntrarLogin" class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 flex items-center justify-center gap-2 text-base touch-target">
+          <span>Entrar no Sistema</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <button type="button" onclick="alternarAcessoPinOuLista()" class="text-blue-600 font-bold hover:underline flex items-center gap-1">
+            <i class="fa-solid fa-key"></i>
+            <span id="txtAlternarPin">Ou entrar com PIN / Seleção</span>
+          </button>
+          <span class="text-slate-400 text-[11px]">SISFAC Mobile</span>
+        </div>
+      </form>
+
+      <!-- Painel Opcional de Seleção Rápida por PIN -->
+      <div id="painelSelecaoSupervisorPin" class="hidden space-y-3">
+        <div class="text-center pt-2">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ou selecione seu nome abaixo para entrar com PIN:</p>
+        </div>
+        <div class="space-y-2" id="listaCardsSupervisores">
+          <!-- Renderizado dinamicamente via JS -->
+        </div>
+      </div>
+
+      <!-- Modal de PIN do Supervisor -->
+      <div id="modalPinSupervisor" class="hidden fixed inset-0 bg-slate-900/70 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+        <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div class="text-center space-y-1">
+            <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mx-auto text-xl font-bold mb-2">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 id="pinModalNomeSup" class="font-bold text-slate-900 text-base">Supervisor</h3>
+            <p class="text-xs text-slate-500">Digite seu PIN de 4 dígitos para acessar:</p>
+          </div>
+
+          <div class="space-y-3">
+            <input type="password" id="inputPinAcesso" maxlength="6" inputmode="numeric" placeholder="PIN de 4 dígitos" class="w-full text-center tracking-widest text-2xl font-black py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            
+            <p id="pinModalErro" class="hidden text-xs text-rose-600 font-semibold text-center"></p>
+
+            <button onclick="confirmarPinSupervisor()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+              <span>Acessar Portal</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+
+            <button onclick="fecharModalPin()" class="w-full text-xs font-bold text-slate-500 py-2">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TELA 2: Painel de Apontamento de Falta & Cobertura -->
+    <div id="telaPrincipalSupervisor" class="hidden space-y-4">
+
+      <!-- Card do Supervisor Ativo -->
+      <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 font-bold text-lg">
+            <i class="fa-solid fa-user-check"></i>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-blue-300 uppercase tracking-wider block">Supervisor Logado</span>
+            <h2 id="supNomeLogado" class="font-bold text-sm sm:text-base text-white leading-tight"></h2>
+          </div>
+        </div>
+        <span class="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Online
+        </span>
+      </div>
+
+      <!-- Alerta Toast de Sucesso -->
+      <div id="alertaSucessoEnvio" class="hidden bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-4 shadow-md space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div class="flex items-center gap-2 text-emerald-800 font-black text-sm">
+          <i class="fa-solid fa-circle-check text-lg text-emerald-600"></i>
+          <span>Ocorrência Registrada com Sucesso!</span>
+        </div>
+        <p id="alertaSucessoMsg" class="text-xs text-emerald-700 pl-6 leading-relaxed">A falta foi gravada e já está visível para o RH e Faturamento.</p>
+      </div>
+
+      <!-- Formulário de Apontamento -->
+      <form id="formLancamentoFalta" onsubmit="salvarOcorrenciaSupervisor(event)" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 space-y-4">
+        
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500 text-base"></i>
+            <h3 class="font-black text-slate-900 text-sm sm:text-base">Novo Apontamento de Falta</h3>
+          </div>
+          <span class="text-[11px] text-slate-400 font-medium">* Obrigatórios</span>
+        </div>
+
+        <!-- 1. Data da Ocorrência -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 flex items-center justify-between">
+            <span><i class="fa-solid fa-calendar-day text-slate-400 mr-1"></i> Data da Falta: *</span>
+            <span class="space-x-1">
+              <button type="button" onclick="setarDataFalta('hoje')" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-200">Hoje</button>
+              <button type="button" onclick="setarDataFalta('ontem')" class="text-[11px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded border border-slate-200">Ontem</button>
+            </span>
+          </label>
+          <input type="date" id="campoDataFalta" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-3 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none">
+        </div>
+
+        <!-- 2. Cliente / Contrato com Busca Rápida -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700 flex items-center justify-between">
+            <span><i class="fa-solid fa-building text-slate-400 mr-1"></i> Cliente / Contrato: *</span>
+            <span id="labelTotalClientes" class="text-[11px] text-slate-400 font-normal"></span>
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </div>
+            <input type="text" id="inputBuscaCliente" oninput="aoDigitarBuscaCliente()" placeholder="Filtrar cliente por nome..."
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-8 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition">
+            <button type="button" id="btnLimparBuscaCliente" onclick="limparBuscaCliente()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+          <select id="campoClienteId" required onchange="aoMudarCliente()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-3 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            <option value="">Selecione o Cliente...</option>
+          </select>
+        </div>
+
+        <!-- 3. Posto de Trabalho / Unidade -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700">
+            <i class="fa-solid fa-map-pin text-slate-400 mr-1"></i> Posto de Trabalho / Prédio: *
+          </label>
+          <select id="campoUnidadeId" required onchange="aoMudarUnidade()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-3 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            <option value="">Selecione o cliente primeiro...</option>
+          </select>
+        </div>
+
+        <!-- 4. Colaborador Ausente com Barra de Pesquisa -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="block text-xs font-bold text-slate-700">
+              <i class="fa-solid fa-user-xmark text-rose-500 mr-1"></i> Colaborador que Faltou: *
+            </label>
+            <span id="labelTotalColabs" class="text-[11px] text-slate-400 font-normal"></span>
+          </div>
+
+          <!-- Barra de Pesquisa em Destaque para Celular -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-blue-600">
+              <i class="fa-solid fa-magnifying-glass text-sm"></i>
+            </div>
+            <input type="text" id="inputBuscaColaborador" oninput="aoDigitarBuscaColaborador()" placeholder="🔍 Digite para pesquisar o colaborador por nome..." autocomplete="off"
+              class="w-full bg-blue-50/70 border-2 border-blue-300 rounded-xl pl-9 pr-9 py-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition shadow-sm">
+            <button type="button" id="btnLimparBuscaColab" onclick="limparBuscaColaborador()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+              <i class="fa-solid fa-circle-xmark text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Caixa Flutuante de Sugestões de Busca Rápida -->
+          <div id="boxSugestoesColaborador" class="hidden max-h-56 overflow-y-auto bg-white border-2 border-blue-400 rounded-2xl shadow-xl divide-y divide-slate-100 z-30 transition-all">
+            <!-- Sugestões geradas via JS -->
+          </div>
+
+          <!-- Crachá de Confirmação do Colaborador Selecionado -->
+          <div id="badgeColabSelecionado" class="hidden bg-emerald-50 border border-emerald-300 rounded-xl px-3 py-2 text-xs text-emerald-900 font-bold flex items-center justify-between">
+            <div class="flex items-center gap-1.5 truncate">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i>
+              <span id="txtBadgeColabSelecionado"></span>
+            </div>
+            <button type="button" onclick="limparBuscaColaborador()" class="text-emerald-700 hover:text-emerald-900 text-xs ml-2 underline shrink-0">Trocar</button>
+          </div>
+
+          <!-- Select Nativo do Colaborador -->
+          <select id="campoColaboradorId" required onchange="aoSelecionarColaboradorSelect()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-3 text-sm font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none">
+            <option value="">Selecione a unidade primeiro ou pesquise acima...</option>
+          </select>
+        </div>
+
+        <!-- 5. Turno da Escala (Congelado) e Motivo da Falta (Grid 2 colunas) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-700 flex items-center justify-between">
+              <span><i class="fa-solid fa-clock text-slate-400 mr-1"></i> Turno / Escala:</span>
+              <span class="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                <i class="fa-solid fa-lock text-[9px] text-slate-500"></i> Congelado
+              </span>
+            </label>
+            <div class="relative">
+              <input type="text" id="campoTurno" readonly value="Aguardando seleção do colaborador..."
+                class="w-full bg-slate-100 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none cursor-not-allowed select-none">
+            </div>
+            <p class="text-[10px] text-slate-400 leading-tight">Cadastrado no sistema. Alterável somente via SISFAC.</p>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-slate-700">
+              <i class="fa-solid fa-circle-question text-slate-400 mr-1"></i> Motivo da Ausência: *
+            </label>
+            
+            <!-- Botões Rápidos em 1 Toque -->
+            <div class="flex flex-wrap gap-1 mb-1">
+              <button type="button" onclick="selecionarMotivoRapido('Falta Injustificada')" id="btnMotivoFalta" class="motivo-pill text-[11px] font-bold px-2 py-1 rounded-lg border bg-rose-50 border-rose-300 text-rose-800 transition">
+                ❌ Falta
+              </button>
+              <button type="button" onclick="selecionarMotivoRapido('Atestado Médico / Licença')" id="btnMotivoAtestado" class="motivo-pill text-[11px] font-bold px-2 py-1 rounded-lg border bg-blue-50 border-blue-200 text-blue-800 transition">
+                🩺 Atestado
+              </button>
+              <button type="button" onclick="selecionarMotivoRapido('Falta Justificada (Problema Familiar / Pessoal)')" id="btnMotivoJustificada" class="motivo-pill text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-100 border-slate-200 text-slate-700 transition">
+                ⚠️ Justificada
+              </button>
+              <button type="button" onclick="selecionarMotivoRapido('Atraso Excessivo / Não Comparecimento')" id="btnMotivoAtraso" class="motivo-pill text-[11px] font-bold px-2 py-1 rounded-lg border bg-slate-100 border-slate-200 text-slate-700 transition">
+                ⏱️ Atraso
+              </button>
+            </div>
+
+            <select id="campoMotivoFalta" onchange="aoMudarMotivoFalta()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none">
+              <!-- Preenchido via JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Bloco Opcional de Atestado Médico -->
+        <div id="blocoAtestado" class="hidden bg-blue-50/80 border-2 border-blue-300 rounded-2xl p-3.5 space-y-3 shadow-sm animate-in fade-in duration-200">
+          <div class="flex items-center justify-between text-xs font-bold text-blue-900 border-b border-blue-200/80 pb-1.5">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-file-medical text-blue-600 text-sm"></i>
+              <span>Dados do Atestado Médico</span>
+            </span>
+            <span class="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-bold">Abate Benefícios</span>
+          </div>
+
+          <!-- Atalhos Rápidos de Dias -->
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Duração do Afastamento:</label>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="definirDiasAtestado(1)" class="btn-dias-atestado text-[11px] font-bold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-blue-800 hover:bg-blue-100 transition shadow-xs">1 Dia</button>
+              <button type="button" onclick="definirDiasAtestado(2)" class="btn-dias-atestado text-[11px] font-bold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-blue-800 hover:bg-blue-100 transition shadow-xs">2 Dias</button>
+              <button type="button" onclick="definirDiasAtestado(3)" class="btn-dias-atestado text-[11px] font-bold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-blue-800 hover:bg-blue-100 transition shadow-xs">3 Dias</button>
+              <button type="button" onclick="definirDiasAtestado(5)" class="btn-dias-atestado text-[11px] font-bold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-blue-800 hover:bg-blue-100 transition shadow-xs">5 Dias</button>
+              <button type="button" onclick="definirDiasAtestado(7)" class="btn-dias-atestado text-[11px] font-bold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-blue-800 hover:bg-blue-100 transition shadow-xs">7 Dias</button>
+              <button type="button" onclick="definirDiasAtestado(15)" class="btn-dias-atestado text-[11px] font-bold px-2.5 py-1 bg-white border border-blue-300 rounded-lg text-blue-800 hover:bg-blue-100 transition shadow-xs">15 Dias</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Total de Dias:</label>
+              <input type="number" id="campoDiasAfastamento" min="1" max="60" value="1" class="w-full bg-white border border-blue-300 rounded-xl p-2 text-sm font-black text-center text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">CID Médico (Opcional):</label>
+              <input type="text" id="campoCidAtestado" placeholder="Ex: J06, M54" class="w-full bg-white border border-blue-300 rounded-xl p-2 text-sm uppercase font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- 6. CONTROLE DE COBERTURA: DESTAQUE PRINCIPAL -->
+        <!-- ============================================================= -->
+        <div class="pt-2 border-t border-slate-200 space-y-3">
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-800">
+            Houve Cobertura do Posto? *
+          </label>
+
+          <!-- Toggle de Alta Visibilidade para Celular -->
+          <div class="grid grid-cols-2 gap-2.5">
+            <!-- Botão SIM -->
+            <label id="btnToggleCobSim" class="cursor-pointer border-2 border-emerald-500 bg-emerald-50 rounded-2xl p-3.5 flex flex-col items-center text-center transition select-none shadow-sm">
+              <input type="radio" name="optHouveCob" value="1" checked onchange="alternarVisaoCobertura()" class="sr-only">
+              <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-base mb-1.5 shadow-sm">
+                <i class="fa-solid fa-check"></i>
+              </div>
+              <span class="text-xs font-black text-emerald-900 uppercase tracking-tight">SIM, HOUVE COBERTURA</span>
+              <span class="text-[10px] text-emerald-700 mt-0.5">Posto atendido</span>
+            </label>
+
+            <!-- Botão NÃO -->
+            <label id="btnToggleCobNao" class="cursor-pointer border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl p-3.5 flex flex-col items-center text-center transition select-none">
+              <input type="radio" name="optHouveCob" value="0" onchange="alternarVisaoCobertura()" class="sr-only">
+              <div class="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-base mb-1.5">
+                <i class="fa-solid fa-xmark"></i>
+              </div>
+              <span class="text-xs font-black text-slate-700 uppercase tracking-tight">NÃO, POSTO DESCOBERTO</span>
+              <span class="text-[10px] text-slate-500 mt-0.5">Gerar glosa</span>
+            </label>
+          </div>
+
+          <!-- PAINEL QUANDO HOUVE COBERTURA (SIM) -->
+          <div id="painelHouveCobertura" class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center gap-1.5 text-xs font-black text-emerald-900">
+              <i class="fa-solid fa-user-shield text-emerald-600"></i>
+              <span>Detalhes da Cobertura Realizada</span>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-slate-700">Tipo de Cobertura:</label>
+              <select id="campoTipoCobertura" onchange="aoMudarTipoCobertura()" class="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none">
+                <option value="efetivo">Colaborador Efetivo (Reserva Técnica / Dobra / Outro)</option>
+                <option value="freelancer">Diarista / Freelancer Externo</option>
+              </select>
+            </div>
+
+            <!-- Seletor de Colaborador Efetivo Substituto com Barra de Pesquisa -->
+            <div id="boxCobEfetivo" class="space-y-1.5">
+              <label class="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                <span>Quem cobriu o posto? *</span>
+                <button type="button" onclick="alternarDigitarNomeManual()" class="text-[11px] text-blue-600 font-bold hover:underline">
+                  <span id="txtBtnDigitarNome">+ Digitar outro nome</span>
+                </button>
+              </label>
+
+              <!-- Barra de Pesquisa de Substituto -->
+              <div id="divBuscaCobertor" class="space-y-1.5">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-emerald-600">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                  </div>
+                  <input type="text" id="inputBuscaCobertor" oninput="aoDigitarBuscaCobertor()" placeholder="🔍 Digite para pesquisar substituto..." autocomplete="off"
+                    class="w-full bg-emerald-50/50 border border-emerald-300 rounded-xl pl-8 pr-8 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
+                  <button type="button" id="btnLimparBuscaCob" onclick="limparBuscaCobertor()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-circle-xmark text-xs"></i>
+                  </button>
+                </div>
+
+                <!-- Sugestões de Substituto Flutuante -->
+                <div id="boxSugestoesCobertor" class="hidden max-h-48 overflow-y-auto bg-white border border-emerald-400 rounded-2xl shadow-xl divide-y divide-slate-100 z-30">
+                  <!-- Gerado dinamicamente via JS -->
+                </div>
+              </div>
+              
+              <div id="divSelectCobertor">
+                <select id="campoCobertorColabId" onchange="aoSelecionarCobertorSelect()" class="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none">
+                  <option value="">Selecione o Colaborador que cobriu ou pesquise acima...</option>
+                </select>
+              </div>
+
+              <div id="divInputManualCobertor" class="hidden">
+                <input type="text" id="campoCobertorNomeManual" placeholder="Digite o nome completo do substituto..." class="w-full bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none">
+              </div>
+            </div>
+
+            <!-- Seletor de Freelancer / Diarista -->
+            <div id="boxCobFreelancer" class="hidden space-y-2.5 pt-2 border-t border-emerald-100">
+              <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Selecione o Freelancer:</label>
+                <div class="relative mb-1">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                  </div>
+                  <input type="text" id="inputBuscaFreelancer" oninput="aoDigitarBuscaFreelancer()" placeholder="Filtrar diarista por nome..."
+                    class="w-full bg-white border border-emerald-200 rounded-xl pl-8 pr-8 py-1.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none">
+                  <button type="button" id="btnLimparBuscaFree" onclick="limparBuscaFreelancer()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                  </button>
+                </div>
+                <select id="campoFreelancerId" onchange="aoMudarFreelancer()" class="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none">
+                  <option value="">Selecione o diarista...</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="block text-xs font-bold text-slate-700">Valor da Diária Combinada (R$):</label>
+                <input type="number" step="0.01" id="campoValorFreelance" value="140.00" class="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2 text-sm font-bold text-slate-900">
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL QUANDO NÃO HOUVE COBERTURA (NÃO) -->
+          <div id="painelNaoHouveCobertura" class="hidden bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 space-y-3 animate-in fade-in duration-200">
+            <div class="flex items-start gap-2.5">
+              <i class="fa-solid fa-triangle-exclamation text-rose-600 text-lg mt-0.5"></i>
+              <div>
+                <h4 class="font-black text-rose-900 text-xs sm:text-sm">Atenção: Posto de Trabalho Descoberto</h4>
+                <p class="text-[11px] text-rose-700 mt-0.5 leading-relaxed">
+                  O posto permaneceu sem atendimento neste plantão. O sistema registrará a ocorrência para controle de glosas no faturamento do cliente.
+                </p>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 pt-1">
+              <label class="block text-xs font-bold text-rose-950">
+                Motivo da Não Cobertura: *
+              </label>
+
+              <!-- Atalhos Rápidos de Não Cobertura -->
+              <div class="flex flex-wrap gap-1 mb-1">
+                <button type="button" onclick="selecionarMotivoNaoCobRapido('Reserva Técnica 100% alocada em outros postos')" class="text-[10px] font-bold px-2 py-1 bg-white border border-rose-300 rounded-lg text-rose-800 hover:bg-rose-100 transition shadow-xs">Reserva Esgotada</button>
+                <button type="button" onclick="selecionarMotivoNaoCobRapido('Aviso de falta recebido em cima da hora (sem tempo hábil)')" class="text-[10px] font-bold px-2 py-1 bg-white border border-rose-300 rounded-lg text-rose-800 hover:bg-rose-100 transition shadow-xs">Aviso em Cima da Hora</button>
+                <button type="button" onclick="selecionarMotivoNaoCobRapido('Cliente dispensou cobertura neste plantão')" class="text-[10px] font-bold px-2 py-1 bg-white border border-rose-300 rounded-lg text-rose-800 hover:bg-rose-100 transition shadow-xs">Cliente Dispensou</button>
+                <button type="button" onclick="selecionarMotivoNaoCobRapido('Nenhum colaborador disponível para dobra')" class="text-[10px] font-bold px-2 py-1 bg-white border border-rose-300 rounded-lg text-rose-800 hover:bg-rose-100 transition shadow-xs">Sem Dobra</button>
+              </div>
+
+              <select id="campoMotivoNaoCobertura" class="w-full bg-white border border-rose-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none">
+                <!-- Preenchido via JS -->
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 7. Observações Operacionais -->
+        <div class="space-y-1.5 pt-1">
+          <label class="block text-xs font-bold text-slate-700">
+            <i class="fa-solid fa-comment-dots text-slate-400 mr-1"></i> Observações Operacionais:
+          </label>
+          <textarea id="campoObservacoes" rows="2" placeholder="Ex: Colaborador avisou às 06:30; dobra autorizada pelo supervisor..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none"></textarea>
+        </div>
+
+        <!-- Botão de Ação / Envio -->
+        <div class="pt-2">
+          <button type="submit" id="btnSalvarOcorrencia" class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 flex items-center justify-center gap-2.5 text-base touch-target">
+            <i class="fa-solid fa-paper-plane text-lg"></i>
+            <span>Registrar Ocorrência no Sistema</span>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- HISTÓRICO: MINHAS OCORRÊNCIAS LANÇADAS RECENTEMENTE -->
+      <section class="space-y-2.5 pt-2">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="font-black text-slate-800 text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
+            <span>Minhas Ocorrências Recentes</span>
+          </h3>
+          <button onclick="carregarMinhasFaltas()" class="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1">
+            <i class="fa-solid fa-rotate text-[10px]"></i> Atualizar
+          </button>
+        </div>
+
+        <div id="listaMinhasOcorrencias" class="space-y-2">
+          <!-- Renderizado via JS -->
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Barra Fixa Inferior Mobile -->
+  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 z-40">
+    <div class="max-w-lg mx-auto px-4 flex items-center justify-between text-xs text-slate-500">
+      <span class="flex items-center gap-1 font-semibold text-slate-700">
+        <i class="fa-solid fa-shield-halved text-blue-600"></i> SISFAC Operação
+      </span>
+      <span id="navStatusSinc" class="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Sincronizado
+      </span>
+    </div>
+  </nav>
+
+  <!-- Script Lógico do Portal do Supervisor -->
+  <script>
+    // Estado Global da Aplicação Mobile
+    const state = {
+      supervisor: null,
+      supervisores: [],
+      clientes: [],
+      unidades: [],
+      colaboradores: [],
+      freelancers: [],
+      supervisorSelecionadoPin: null,
+      digitandoManual: false
+    };
+
+    // Inicialização ao carregar o DOM
+    document.addEventListener('DOMContentLoaded', () => {
+      setarDataFalta('hoje');
+      inicializarPortal();
+    });
+
+    function setarDataFalta(tipo) {
+      const input = document.getElementById('campoDataFalta');
+      const d = new Date();
+      if (tipo === 'ontem') d.setDate(d.getDate() - 1);
+      input.value = d.toISOString().slice(0, 10);
+    }
+
+    async function inicializarPortal() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenUrl = urlParams.get('token');
+      const idUrl = urlParams.get('id');
+      const tokenSalvo = localStorage.getItem('sisfac_supervisor_token');
+
+      const tokenBusca = tokenUrl || tokenSalvo || '';
+      let url = `/api/supervisor/dados-iniciais`;
+      if (tokenBusca) url += `?token=${encodeURIComponent(tokenBusca)}`;
+      else if (idUrl) url += `?supervisor_id=${encodeURIComponent(idUrl)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        state.supervisores = data.supervisores || [];
+        state.clientes = data.clientes || [];
+        state.unidades = data.unidades || [];
+        state.colaboradores = data.colaboradores || [];
+        state.freelancers = data.freelancers || [];
+
+        // Preencher selects estáticos
+        popularSelectTurnos(data.turnos_padrao || []);
+        popularSelectMotivos(data.motivos_padrao || []);
+        popularSelectMotivosNaoCobertura(data.motivos_nao_cobertura_padrao || []);
+        popularSelectClientes();
+        popularSelectCobertores();
+        popularSelectFreelancers();
+
+        document.getElementById('loadingBox').classList.add('hidden');
+
+        if (data.supervisor && data.supervisor.id) {
+          // Supervisor reconhecido com sucesso
+          definirSupervisorAtivo(data.supervisor);
+        } else {
+          // Exibir tela de login por usuário e senha
+          exibirTelaLoginSupervisor();
+        }
+      } catch (err) {
+        console.error('Erro ao inicializar:', err);
+        document.getElementById('loadingBox').innerHTML = `
+          <div class="text-rose-600 space-y-2">
+            <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+            <p class="font-bold text-sm">Erro ao conectar ao servidor</p>
+            <p class="text-xs text-slate-500">${err.message}</p>
+            <button onclick="location.reload()" class="mt-2 bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar Novamente</button>
+          </div>
+        `;
+      }
+    }
+
+    // Exibir Tela de Login com Usuário e Senha
+    function exibirTelaLoginSupervisor() {
+      document.getElementById('telaPrincipalSupervisor').classList.add('hidden');
+      document.getElementById('btnTrocarSupervisor').classList.add('hidden');
+      const telaLogin = document.getElementById('telaLoginSupervisor');
+      telaLogin.classList.remove('hidden');
+
+      // Preencher usuário lembrado se existir
+      const ultimoUser = localStorage.getItem('sisfac_supervisor_ultimo_login') || '';
+      const inputUser = document.getElementById('inputUsuarioLogin');
+      if (inputUser && ultimoUser) {
+        inputUser.value = ultimoUser;
+      }
+
+      renderizarListaCardsSupervisores();
+    }
+
+    function alternarVerSenha() {
+      const inp = document.getElementById('inputSenhaLogin');
+      const icone = document.getElementById('iconeVerSenha');
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        icone.className = 'fa-solid fa-eye-slash text-sm text-blue-600';
+      } else {
+        inp.type = 'password';
+        icone.className = 'fa-solid fa-eye text-sm text-slate-400';
+      }
+    }
+
+    function alternarAcessoPinOuLista() {
+      const painel = document.getElementById('painelSelecaoSupervisorPin');
+      const txt = document.getElementById('txtAlternarPin');
+      if (painel.classList.contains('hidden')) {
+        painel.classList.remove('hidden');
+        txt.textContent = 'Ocultar opções de PIN';
+      } else {
+        painel.classList.add('hidden');
+        txt.textContent = 'Ou entrar com PIN / Seleção';
+      }
+    }
+
+    // Executar Login por Usuário e Senha
+    async function realizarLoginUsuarioSenha(e) {
+      e.preventDefault();
+      const login = (document.getElementById('inputUsuarioLogin').value || '').trim();
+      const senha = (document.getElementById('inputSenhaLogin').value || '').trim();
+      const erroBox = document.getElementById('loginErroBox');
+      const erroTxt = document.getElementById('loginErroTexto');
+      const btn = document.getElementById('btnEntrarLogin');
+
+      erroBox.classList.add('hidden');
+
+      if (!login || !senha) {
+        erroTxt.textContent = 'Por favor, preencha o usuário e a senha.';
+        erroBox.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i><span>Entrando...</span>`;
+
+      try {
+        const res = await fetch('/api/supervisor/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login, senha })
+        });
+        const data = await res.json();
+
+        if (data.success && data.supervisor) {
+          const lembrar = document.getElementById('chkLembrarLogin')?.checked;
+          if (lembrar) {
+            localStorage.setItem('sisfac_supervisor_ultimo_login', login);
+            if (data.supervisor.token_acesso) {
+              localStorage.setItem('sisfac_supervisor_token', data.supervisor.token_acesso);
+            }
+          }
+          definirSupervisorAtivo(data.supervisor);
+        } else {
+          erroTxt.textContent = data.error || 'Usuário ou senha inválidos. Verifique com a administração.';
+          erroBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        erroTxt.textContent = 'Falha de conexão com o servidor: ' + err.message;
+        erroBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Entrar no Sistema</span><i class="fa-solid fa-arrow-right"></i>`;
+      }
+    }
+
+    // Renderização dos cards dos supervisores para acesso via PIN
+    function renderizarListaCardsSupervisores() {
+      const container = document.getElementById('listaCardsSupervisores');
+      if (!container) return;
+      container.innerHTML = '';
+
+      state.supervisores.forEach(s => {
+        container.innerHTML += `
+          <div onclick="abrirModalPin(${s.id})" class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200/90 flex items-center justify-between active:bg-blue-50 transition cursor-pointer touch-target">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+                ${s.nome.charAt(0)}
+              </div>
+              <div>
+                <h4 class="font-bold text-sm text-slate-900 leading-tight">${s.nome}</h4>
+                <p class="text-xs text-slate-500">Usuário: <span class="font-semibold text-slate-700">${s.login || 'supervisor'}</span></p>
+              </div>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function abrirModalPin(id) {
+      const sup = state.supervisores.find(s => s.id === id);
+      if (!sup) return;
+      state.supervisorSelecionadoPin = sup;
+      document.getElementById('pinModalNomeSup').textContent = sup.nome;
+      document.getElementById('inputPinAcesso').value = '';
+      document.getElementById('pinModalErro').classList.add('hidden');
+      document.getElementById('modalPinSupervisor').classList.remove('hidden');
+      setTimeout(() => document.getElementById('inputPinAcesso').focus(), 150);
+    }
+
+    function fecharModalPin() {
+      document.getElementById('modalPinSupervisor').classList.add('hidden');
+      state.supervisorSelecionadoPin = null;
+    }
+
+    async function confirmarPinSupervisor() {
+      const sup = state.supervisorSelecionadoPin;
+      const pin = document.getElementById('inputPinAcesso').value.trim();
+      const erroP = document.getElementById('pinModalErro');
+
+      if (!pin) {
+        erroP.textContent = 'Informe o PIN de acesso.';
+        erroP.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/supervisor/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supervisor_id: sup.id, pin })
+        });
+        const data = await res.json();
+        if (data.success && data.supervisor) {
+          fecharModalPin();
+          definirSupervisorAtivo(data.supervisor);
+        } else {
+          erroP.textContent = data.error || 'PIN incorreto. Tente novamente.';
+          erroP.classList.remove('hidden');
+        }
+      } catch (err) {
+        erroP.textContent = 'Erro ao validar: ' + err.message;
+        erroP.classList.remove('hidden');
+      }
+    }
+
+    function definirSupervisorAtivo(sup) {
+      state.supervisor = sup;
+      if (sup.token_acesso) {
+        localStorage.setItem('sisfac_supervisor_token', sup.token_acesso);
+      }
+      document.getElementById('telaLoginSupervisor').classList.add('hidden');
+      document.getElementById('telaPrincipalSupervisor').classList.remove('hidden');
+      document.getElementById('btnTrocarSupervisor').classList.remove('hidden');
+      document.getElementById('supNomeLogado').textContent = sup.nome;
+      document.getElementById('headerSubtitulo').textContent = sup.nome;
+
+      carregarMinhasFaltas();
+    }
+
+    function alternarSupervisor() {
+      if (confirm('Deseja sair e alternar para outro supervisor?')) {
+        localStorage.removeItem('sisfac_supervisor_token');
+        state.supervisor = null;
+        exibirTelaLoginSupervisor();
+      }
+    }
+
+    // Preenchimento de Selects
+    // Preenchimento de Selects
+    function popularSelectTurnos(turnos) {
+      const inp = document.getElementById('campoTurno');
+      if (inp && (!inp.value || inp.value === '')) {
+        inp.value = 'Aguardando seleção do colaborador...';
+      }
+    }
+
+    function popularSelectMotivos(motivos) {
+      const sel = document.getElementById('campoMotivoFalta');
+      sel.innerHTML = motivos.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+
+    function popularSelectMotivosNaoCobertura(motivos) {
+      const sel = document.getElementById('campoMotivoNaoCobertura');
+      sel.innerHTML = motivos.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+
+    function selecionarMotivoRapido(motivo) {
+      const sel = document.getElementById('campoMotivoFalta');
+      if (sel) {
+        const opt = Array.from(sel.options).find(o => o.value === motivo || o.value.includes(motivo.slice(0, 7)));
+        if (opt) {
+          sel.value = opt.value;
+        } else {
+          sel.value = motivo;
+        }
+      }
+      atualizarEstiloPillsMotivo(motivo);
+      aoMudarMotivoFalta();
+    }
+
+    function atualizarEstiloPillsMotivo(motivoAtivo) {
+      document.querySelectorAll('.motivo-pill').forEach(btn => {
+        btn.classList.remove('ring-2', 'ring-blue-600', 'ring-rose-500', 'ring-amber-500', 'ring-purple-500', 'shadow-md', 'font-black');
+      });
+      if (motivoAtivo.includes('Falta Injustificada') || motivoAtivo === 'Falta') {
+        const b = document.getElementById('btnMotivoFalta');
+        if (b) b.classList.add('ring-2', 'ring-rose-500', 'shadow-md', 'font-black');
+      } else if (motivoAtivo.includes('Atestado')) {
+        const b = document.getElementById('btnMotivoAtestado');
+        if (b) b.classList.add('ring-2', 'ring-blue-600', 'shadow-md', 'font-black');
+      } else if (motivoAtivo.includes('Justificada')) {
+        const b = document.getElementById('btnMotivoJustificada');
+        if (b) b.classList.add('ring-2', 'ring-amber-500', 'shadow-md', 'font-black');
+      } else if (motivoAtivo.includes('Atraso')) {
+        const b = document.getElementById('btnMotivoAtraso');
+        if (b) b.classList.add('ring-2', 'ring-purple-500', 'shadow-md', 'font-black');
+      }
+    }
+
+    function definirDiasAtestado(dias) {
+      const campo = document.getElementById('campoDiasAfastamento');
+      if (campo) campo.value = dias;
+      document.querySelectorAll('.btn-dias-atestado').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-700');
+        btn.classList.add('bg-white', 'text-blue-800', 'border-blue-300');
+      });
+      if (window.event && window.event.target && window.event.target.classList) {
+        window.event.target.classList.remove('bg-white', 'text-blue-800');
+        window.event.target.classList.add('bg-blue-600', 'text-white', 'border-blue-700');
+      }
+    }
+
+    function selecionarMotivoNaoCobRapido(motivo) {
+      const sel = document.getElementById('campoMotivoNaoCobertura');
+      if (sel) {
+        const opt = Array.from(sel.options).find(o => o.value === motivo || o.value.includes(motivo.slice(0, 10)));
+        if (opt) {
+          sel.value = opt.value;
+        } else {
+          sel.value = motivo;
+        }
+      }
+    }
+
+    // =============================================================
+    // FUNÇÕES DE BUSCA E FILTRAGEM INTELIGENTE DE COLABORADORES
+    // =============================================================
+    function normalizarTexto(txt) {
+      return (txt || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    // 1. Busca do Colaborador que Faltou (ESTRITAMENTE LOTADOS NO CLIENTE SELECIONADO)
+    function aoDigitarBuscaColaborador() {
+      const input = document.getElementById('inputBuscaColaborador');
+      const btnLimpar = document.getElementById('btnLimparBuscaColab');
+      const boxSugestoes = document.getElementById('boxSugestoesColaborador');
+      const badge = document.getElementById('badgeColabSelecionado');
+      const termo = normalizarTexto(input.value);
+
+      const clienteIdAtual = parseInt(document.getElementById('campoClienteId').value, 10);
+
+      // Trava de segurança: exigir cliente selecionado
+      if (!clienteIdAtual) {
+        btnLimpar.classList.add('hidden');
+        badge.classList.add('hidden');
+        boxSugestoes.innerHTML = `
+          <div class="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base"></i>
+            <div>
+              <span class="font-black block">Selecione o Cliente / Contrato primeiro!</span>
+              <span class="text-[11px] text-amber-700">Escolha o cliente acima para carregar apenas os colaboradores lotados nele.</span>
+            </div>
+          </div>
+        `;
+        boxSugestoes.classList.remove('hidden');
+        document.getElementById('campoClienteId').focus();
+        return;
+      }
+
+      if (termo.length > 0) {
+        btnLimpar.classList.remove('hidden');
+      } else {
+        btnLimpar.classList.add('hidden');
+        boxSugestoes.classList.add('hidden');
+        badge.classList.add('hidden');
+        aoMudarUnidade();
+        return;
+      }
+
+      const unidadeIdAtual = parseInt(document.getElementById('campoUnidadeId').value, 10);
+
+      // Filtrar ESTRITAMENTE colaboradores que estão lotados NESTE cliente
+      const colabsDoCliente = state.colaboradores.filter(c => c.cliente_id === clienteIdAtual);
+
+      const matches = colabsDoCliente.filter(c => {
+        const nomeNorm = normalizarTexto(c.nome);
+        const cargoNorm = normalizarTexto(c.nome_cargo);
+        return nomeNorm.includes(termo) || cargoNorm.includes(termo);
+      });
+
+      // Ordenar: primeiro os da unidade atual (se selecionada), depois os outros do mesmo cliente
+      matches.sort((a, b) => {
+        const aMesmoPosto = (unidadeIdAtual && a.unidade_id === unidadeIdAtual) ? 1 : 0;
+        const bMesmoPosto = (unidadeIdAtual && b.unidade_id === unidadeIdAtual) ? 1 : 0;
+        if (bMesmoPosto !== aMesmoPosto) return bMesmoPosto - aMesmoPosto;
+        return a.nome.localeCompare(b.nome);
+      });
+
+      if (matches.length === 0) {
+        const cliAtual = state.clientes.find(x => x.id === clienteIdAtual);
+        const cliNome = cliAtual ? (cliAtual.nome_fantasia || cliAtual.nome_razao_social) : 'Cliente selecionado';
+        boxSugestoes.innerHTML = `
+          <div class="p-3 text-xs text-slate-500 text-center font-medium bg-slate-50">
+            Nenhum colaborador lotado em <b>${cliNome}</b> encontrado com "<b>${input.value}</b>".
+          </div>
+        `;
+      } else {
+        boxSugestoes.innerHTML = matches.slice(0, 10).map(c => {
+          const uni = state.unidades.find(x => x.id === c.unidade_id);
+          const uniNome = uni ? uni.nome_unidade : (c.nome_posto || 'Posto Geral');
+          const escalaInfo = c.escala || '12x36';
+
+          return `
+            <div onclick="selecionarColaboradorPorSugestao(${c.id})" class="p-3 hover:bg-blue-50 active:bg-blue-100 cursor-pointer transition flex items-center justify-between gap-2 border-b border-slate-100 last:border-b-0">
+              <div class="truncate">
+                <div class="font-black text-sm text-slate-900 truncate">${c.nome}</div>
+                <div class="text-[11px] text-slate-500 truncate flex items-center gap-1.5 mt-0.5">
+                  <span class="font-semibold text-slate-700">${c.nome_cargo || 'Efetivo'}</span> • 
+                  <span class="text-blue-700 font-medium">${uniNome}</span> • 
+                  <span class="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.2 rounded text-[10px]">${escalaInfo}</span>
+                </div>
+              </div>
+              <button type="button" class="shrink-0 text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm">
+                Selecionar
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      boxSugestoes.classList.remove('hidden');
+
+      // Atualizar também as opções do select nativo apenas com colaboradores deste cliente
+      const selColab = document.getElementById('campoColaboradorId');
+      selColab.innerHTML = '<option value="">Selecione ou clique na sugestão acima...</option>';
+      matches.forEach(c => {
+        selColab.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo || 'Efetivo'}) - Escala: ${c.escala || '12x36'}</option>`;
+      });
+      if (matches.length === 1) {
+        selColab.value = matches[0].id;
+        aoSelecionarColaboradorSelect();
+      }
+    }
+
+    function selecionarColaboradorPorSugestao(id) {
+      const colab = state.colaboradores.find(c => c.id === id);
+      if (!colab) return;
+
+      // Sincronizar Unidade se colaborador tiver unidade definida
+      const selUnidade = document.getElementById('campoUnidadeId');
+      if (colab.unidade_id && selUnidade) {
+        selUnidade.value = colab.unidade_id;
+      }
+
+      // Definir colaborador no select nativo
+      const selColab = document.getElementById('campoColaboradorId');
+      if (!Array.from(selColab.options).some(o => o.value == colab.id)) {
+        selColab.innerHTML += `<option value="${colab.id}">${colab.nome} (${colab.nome_cargo || 'Efetivo'}) - Escala: ${colab.escala || '12x36'}</option>`;
+      }
+      selColab.value = colab.id;
+
+      // Puxar e Congelar TURNO / ESCALA cadastrado para o colaborador
+      const escala = colab.escala || '12x36';
+      const turnoDetalhe = colab.turno_posto ? ` (${colab.turno_posto})` : '';
+      const turnoTexto = `${escala}${turnoDetalhe}`;
+      const campoTurno = document.getElementById('campoTurno');
+      if (campoTurno) {
+        campoTurno.value = turnoTexto;
+      }
+
+      // Atualizar input de busca e fechar caixa
+      document.getElementById('inputBuscaColaborador').value = colab.nome;
+      document.getElementById('btnLimparBuscaColab').classList.remove('hidden');
+      document.getElementById('boxSugestoesColaborador').classList.add('hidden');
+
+      const uni = state.unidades.find(x => x.id === colab.unidade_id);
+      const uniNome = uni ? uni.nome_unidade : (colab.nome_posto || 'Posto Geral');
+
+      document.getElementById('txtBadgeColabSelecionado').innerHTML = `Colaborador: <span class="font-black text-emerald-950">${colab.nome}</span> • <span class="font-semibold text-emerald-800">${colab.nome_cargo || 'Efetivo'}</span> • <span class="bg-emerald-200/70 text-emerald-900 px-1.5 py-0.5 rounded text-[10px]">Escala: ${escala}</span>`;
+      document.getElementById('badgeColabSelecionado').classList.remove('hidden');
+    }
+
+    function aoSelecionarColaboradorSelect() {
+      const id = parseInt(document.getElementById('campoColaboradorId').value, 10);
+      const colab = state.colaboradores.find(c => c.id === id);
+      if (colab) {
+        document.getElementById('inputBuscaColaborador').value = colab.nome;
+        document.getElementById('btnLimparBuscaColab').classList.remove('hidden');
+        document.getElementById('boxSugestoesColaborador').classList.add('hidden');
+
+        // Sincronizar Unidade se tiver
+        if (colab.unidade_id) {
+          const selUni = document.getElementById('campoUnidadeId');
+          if (selUni) selUni.value = colab.unidade_id;
+        }
+
+        // Puxar e Congelar TURNO / ESCALA cadastrado
+        const escala = colab.escala || '12x36';
+        const turnoDetalhe = colab.turno_posto ? ` (${colab.turno_posto})` : '';
+        const turnoTexto = `${escala}${turnoDetalhe}`;
+        const campoTurno = document.getElementById('campoTurno');
+        if (campoTurno) {
+          campoTurno.value = turnoTexto;
+        }
+
+        document.getElementById('txtBadgeColabSelecionado').innerHTML = `Colaborador: <span class="font-black text-emerald-950">${colab.nome}</span> • <span class="font-semibold text-emerald-800">${colab.nome_cargo || 'Efetivo'}</span> • <span class="bg-emerald-200/70 text-emerald-900 px-1.5 py-0.5 rounded text-[10px]">Escala: ${escala}</span>`;
+        document.getElementById('badgeColabSelecionado').classList.remove('hidden');
+      } else {
+        document.getElementById('badgeColabSelecionado').classList.add('hidden');
+        const campoTurno = document.getElementById('campoTurno');
+        if (campoTurno) campoTurno.value = 'Aguardando seleção do colaborador...';
+      }
+    }
+
+    function limparBuscaColaborador() {
+      document.getElementById('inputBuscaColaborador').value = '';
+      document.getElementById('btnLimparBuscaColab').classList.add('hidden');
+      document.getElementById('boxSugestoesColaborador').classList.add('hidden');
+      document.getElementById('badgeColabSelecionado').classList.add('hidden');
+      document.getElementById('campoColaboradorId').value = '';
+      const campoTurno = document.getElementById('campoTurno');
+      if (campoTurno) campoTurno.value = 'Aguardando seleção do colaborador...';
+      aoMudarUnidade();
+    }
+
+    // 2. Busca do Substituto (Quem cobriu o posto)
+    function aoDigitarBuscaCobertor() {
+      const input = document.getElementById('inputBuscaCobertor');
+      const btnLimpar = document.getElementById('btnLimparBuscaCob');
+      const boxSugestoes = document.getElementById('boxSugestoesCobertor');
+      const termo = normalizarTexto(input.value);
+
+      if (termo.length > 0) {
+        btnLimpar.classList.remove('hidden');
+      } else {
+        btnLimpar.classList.add('hidden');
+        boxSugestoes.classList.add('hidden');
+        popularSelectCobertores();
+        return;
+      }
+
+      const matches = state.colaboradores.filter(c => {
+        return normalizarTexto(c.nome).includes(termo) || normalizarTexto(c.nome_cargo).includes(termo);
+      });
+
+      if (matches.length === 0) {
+        boxSugestoes.innerHTML = `
+          <div class="p-3 text-xs text-slate-500 text-center font-medium bg-slate-50">
+            Nenhum colaborador encontrado com "<b>${input.value}</b>".
+          </div>
+        `;
+      } else {
+        boxSugestoes.innerHTML = matches.slice(0, 10).map(c => {
+          const cli = state.clientes.find(x => x.id === c.cliente_id);
+          const uni = state.unidades.find(x => x.id === c.unidade_id);
+          const cliNome = cli ? (cli.nome_fantasia || cli.nome_razao_social) : 'Reserva Técnica';
+          const uniNome = uni ? uni.nome_unidade : 'Geral';
+
+          return `
+            <div onclick="selecionarCobertorPorSugestao(${c.id})" class="p-2.5 hover:bg-emerald-50 active:bg-emerald-100 cursor-pointer transition flex items-center justify-between gap-2">
+              <div class="truncate">
+                <div class="font-bold text-xs text-slate-900 truncate">${c.nome}</div>
+                <div class="text-[10px] text-slate-500 truncate">${c.nome_cargo || 'Efetivo'} • <span class="text-emerald-700 font-semibold">${cliNome} (${uniNome})</span></div>
+              </div>
+              <button type="button" class="shrink-0 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-0.5 rounded-lg shadow-sm">
+                Escolher
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      boxSugestoes.classList.remove('hidden');
+
+      // Atualizar o select nativo do cobertor
+      const selCob = document.getElementById('campoCobertorColabId');
+      selCob.innerHTML = '<option value="">Selecione ou clique na sugestão acima...</option>';
+      matches.forEach(c => {
+        selCob.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo || 'Efetivo'})</option>`;
+      });
+      if (matches.length === 1) {
+        selCob.value = matches[0].id;
+      }
+    }
+
+    function selecionarCobertorPorSugestao(id) {
+      const colab = state.colaboradores.find(c => c.id === id);
+      if (!colab) return;
+      const selCob = document.getElementById('campoCobertorColabId');
+      if (!Array.from(selCob.options).some(o => o.value == colab.id)) {
+        selCob.innerHTML += `<option value="${colab.id}">${colab.nome} (${colab.nome_cargo || 'Efetivo'})</option>`;
+      }
+      selCob.value = colab.id;
+      document.getElementById('inputBuscaCobertor').value = colab.nome;
+      document.getElementById('btnLimparBuscaCob').classList.remove('hidden');
+      document.getElementById('boxSugestoesCobertor').classList.add('hidden');
+    }
+
+    function aoSelecionarCobertorSelect() {
+      const id = parseInt(document.getElementById('campoCobertorColabId').value, 10);
+      const colab = state.colaboradores.find(c => c.id === id);
+      if (colab) {
+        document.getElementById('inputBuscaCobertor').value = colab.nome;
+        document.getElementById('btnLimparBuscaCob').classList.remove('hidden');
+        document.getElementById('boxSugestoesCobertor').classList.add('hidden');
+      }
+    }
+
+    function limparBuscaCobertor() {
+      document.getElementById('inputBuscaCobertor').value = '';
+      document.getElementById('btnLimparBuscaCob').classList.add('hidden');
+      document.getElementById('boxSugestoesCobertor').classList.add('hidden');
+      document.getElementById('campoCobertorColabId').value = '';
+      popularSelectCobertores();
+    }
+
+    // 3. Busca de Cliente / Contrato
+    function aoDigitarBuscaCliente() {
+      const input = document.getElementById('inputBuscaCliente');
+      const btnLimpar = document.getElementById('btnLimparBuscaCliente');
+      const termo = normalizarTexto(input.value);
+
+      if (termo.length > 0) {
+        btnLimpar.classList.remove('hidden');
+      } else {
+        btnLimpar.classList.add('hidden');
+        popularSelectClientes();
+        return;
+      }
+
+      const matches = state.clientes.filter(c => {
+        return normalizarTexto(c.nome_fantasia).includes(termo) || normalizarTexto(c.nome_razao_social).includes(termo);
+      });
+
+      const sel = document.getElementById('campoClienteId');
+      sel.innerHTML = '<option value="">Selecione o Cliente / Contrato...</option>';
+      matches.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`;
+      });
+
+      if (matches.length === 1) {
+        sel.value = matches[0].id;
+        aoMudarCliente();
+      }
+    }
+
+    function limparBuscaCliente() {
+      document.getElementById('inputBuscaCliente').value = '';
+      document.getElementById('btnLimparBuscaCliente').classList.add('hidden');
+      popularSelectClientes();
+    }
+
+    // 4. Busca de Freelancer / Diarista
+    function aoDigitarBuscaFreelancer() {
+      const input = document.getElementById('inputBuscaFreelancer');
+      const btnLimpar = document.getElementById('btnLimparBuscaFree');
+      const termo = normalizarTexto(input.value);
+
+      if (termo.length > 0) {
+        btnLimpar.classList.remove('hidden');
+      } else {
+        btnLimpar.classList.add('hidden');
+        popularSelectFreelancers();
+        return;
+      }
+
+      const matches = state.freelancers.filter(f => normalizarTexto(f.nome).includes(termo));
+      const sel = document.getElementById('campoFreelancerId');
+      sel.innerHTML = '<option value="">Selecione o Diarista...</option>';
+      matches.forEach(f => {
+        sel.innerHTML += `<option value="${f.id}" data-valor="${f.valor_diaria_padrao || 140}">${f.nome} (PIX: ${f.chave_pix || 'N/D'})</option>`;
+      });
+
+      if (matches.length === 1) {
+        sel.value = matches[0].id;
+        aoMudarFreelancer();
+      }
+    }
+
+    function limparBuscaFreelancer() {
+      document.getElementById('inputBuscaFreelancer').value = '';
+      document.getElementById('btnLimparBuscaFree').classList.add('hidden');
+      popularSelectFreelancers();
+    }
+
+    function popularSelectClientes() {
+      const sel = document.getElementById('campoClienteId');
+      sel.innerHTML = '<option value="">Selecione o Cliente / Contrato...</option>';
+      state.clientes.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`;
+      });
+    }
+
+    function aoMudarCliente() {
+      const clienteId = parseInt(document.getElementById('campoClienteId').value, 10);
+      const selUni = document.getElementById('campoUnidadeId');
+      const selColab = document.getElementById('campoColaboradorId');
+      const labelTotal = document.getElementById('labelTotalColabs');
+      const campoTurno = document.getElementById('campoTurno');
+
+      // Limpar campos de busca e seleção de colaborador anterior
+      document.getElementById('inputBuscaColaborador').value = '';
+      document.getElementById('btnLimparBuscaColab').classList.add('hidden');
+      document.getElementById('boxSugestoesColaborador').classList.add('hidden');
+      document.getElementById('badgeColabSelecionado').classList.add('hidden');
+      if (campoTurno) campoTurno.value = 'Aguardando seleção do colaborador...';
+
+      if (!clienteId) {
+        selUni.innerHTML = '<option value="">Selecione o cliente primeiro...</option>';
+        selColab.innerHTML = '<option value="">Selecione o cliente primeiro...</option>';
+        if (labelTotal) labelTotal.textContent = '';
+        return;
+      }
+
+      // 1. Filtrar ESTRITAMENTE colaboradores alocados neste cliente
+      const colabsDoCliente = state.colaboradores.filter(c => c.cliente_id === clienteId);
+      if (labelTotal) {
+        labelTotal.textContent = `${colabsDoCliente.length} alocado(s) neste cliente`;
+      }
+
+      // 2. Preencher Unidades / Postos do Cliente
+      const unidadesCliente = state.unidades.filter(u => u.cliente_id === clienteId);
+      selUni.innerHTML = '';
+      if (unidadesCliente.length === 0) {
+        selUni.innerHTML = '<option value="1">Posto Principal (Geral)</option>';
+      } else if (unidadesCliente.length === 1) {
+        selUni.innerHTML = `<option value="${unidadesCliente[0].id}">${unidadesCliente[0].nome_unidade}</option>`;
+        selUni.value = unidadesCliente[0].id;
+      } else {
+        selUni.innerHTML = '<option value="">Todos os Postos / Selecione...</option>';
+        unidadesCliente.forEach(u => {
+          selUni.innerHTML += `<option value="${u.id}">${u.nome_unidade}</option>`;
+        });
+      }
+
+      // 3. Preencher Imediatamente o select de Colaboradores exclusivamente deste cliente
+      selColab.innerHTML = '';
+      if (colabsDoCliente.length === 0) {
+        selColab.innerHTML = '<option value="">Nenhum colaborador alocado neste cliente</option>';
+      } else {
+        selColab.innerHTML = '<option value="">Selecione o Colaborador que faltou...</option>';
+        colabsDoCliente.forEach(c => {
+          selColab.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo || 'Efetivo'}) - Escala: ${c.escala || '12x36'}</option>`;
+        });
+      }
+    }
+
+    function aoMudarUnidade() {
+      const clienteId = parseInt(document.getElementById('campoClienteId').value, 10);
+      const unidadeId = parseInt(document.getElementById('campoUnidadeId').value, 10);
+      const selColab = document.getElementById('campoColaboradorId');
+      const labelTotal = document.getElementById('labelTotalColabs');
+
+      if (!clienteId) return;
+
+      let colabs = state.colaboradores.filter(c => c.cliente_id === clienteId);
+
+      // Se filtrou por unidade específica e existem colaboradores nela
+      if (unidadeId && colabs.some(c => c.unidade_id === unidadeId)) {
+        colabs = colabs.filter(c => c.unidade_id === unidadeId);
+      }
+
+      if (labelTotal) {
+        labelTotal.textContent = `${colabs.length} alocado(s) neste cliente`;
+      }
+
+      selColab.innerHTML = '';
+      if (colabs.length === 0) {
+        selColab.innerHTML = '<option value="">Nenhum colaborador alocado neste posto</option>';
+        return;
+      }
+
+      selColab.innerHTML = '<option value="">Selecione o Colaborador que faltou...</option>';
+      colabs.forEach(c => {
+        selColab.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo || 'Efetivo'}) - Escala: ${c.escala || '12x36'}</option>`;
+      });
+    }
+
+    function popularSelectCobertores() {
+      const sel = document.getElementById('campoCobertorColabId');
+      sel.innerHTML = '<option value="">Selecione o Colaborador Substituto...</option>';
+      state.colaboradores.forEach(c => {
+        sel.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo || 'Efetivo'})</option>`;
+      });
+    }
+
+    function popularSelectFreelancers() {
+      const sel = document.getElementById('campoFreelancerId');
+      sel.innerHTML = '<option value="">Selecione o Diarista...</option>';
+      state.freelancers.forEach(f => {
+        sel.innerHTML += `<option value="${f.id}" data-valor="${f.valor_diaria_padrao || 140}">${f.nome} (PIX: ${f.chave_pix || 'N/D'})</option>`;
+      });
+    }
+
+    function aoMudarFreelancer() {
+      const sel = document.getElementById('campoFreelancerId');
+      const opt = sel.options[sel.selectedIndex];
+      const val = opt?.getAttribute('data-valor') || '140.00';
+      document.getElementById('campoValorFreelance').value = val;
+    }
+
+    function aoMudarMotivoFalta() {
+      const motivo = document.getElementById('campoMotivoFalta').value;
+      const bloco = document.getElementById('blocoAtestado');
+      if (motivo.includes('Atestado')) {
+        bloco.classList.remove('hidden');
+      } else {
+        bloco.classList.add('hidden');
+      }
+    }
+
+    // Alternância Visual de Cobertura
+    function alternarVisaoCobertura() {
+      const houve = document.querySelector('input[name="optHouveCob"]:checked').value === '1';
+      const btnSim = document.getElementById('btnToggleCobSim');
+      const btnNao = document.getElementById('btnToggleCobNao');
+      const painelSim = document.getElementById('painelHouveCobertura');
+      const painelNao = document.getElementById('painelNaoHouveCobertura');
+
+      if (houve) {
+        btnSim.className = 'cursor-pointer border-2 border-emerald-500 bg-emerald-50 rounded-2xl p-3.5 flex flex-col items-center text-center transition select-none shadow-sm';
+        btnNao.className = 'cursor-pointer border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl p-3.5 flex flex-col items-center text-center transition select-none';
+        painelSim.classList.remove('hidden');
+        painelNao.classList.add('hidden');
+      } else {
+        btnNao.className = 'cursor-pointer border-2 border-rose-500 bg-rose-50 rounded-2xl p-3.5 flex flex-col items-center text-center transition select-none shadow-sm';
+        btnSim.className = 'cursor-pointer border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-2xl p-3.5 flex flex-col items-center text-center transition select-none';
+        painelNao.classList.remove('hidden');
+        painelSim.classList.add('hidden');
+      }
+    }
+
+    function aoMudarTipoCobertura() {
+      const tipo = document.getElementById('campoTipoCobertura').value;
+      const boxEfetivo = document.getElementById('boxCobEfetivo');
+      const boxFree = document.getElementById('boxCobFreelancer');
+      if (tipo === 'freelancer') {
+        boxFree.classList.remove('hidden');
+        boxEfetivo.classList.add('hidden');
+      } else {
+        boxEfetivo.classList.remove('hidden');
+        boxFree.classList.add('hidden');
+      }
+    }
+
+    function alternarDigitarNomeManual() {
+      state.digitandoManual = !state.digitandoManual;
+      const divSel = document.getElementById('divSelectCobertor');
+      const divInp = document.getElementById('divInputManualCobertor');
+      const txtBtn = document.getElementById('txtBtnDigitarNome');
+
+      if (state.digitandoManual) {
+        divSel.classList.add('hidden');
+        divInp.classList.remove('hidden');
+        txtBtn.textContent = '← Escolher da lista';
+        document.getElementById('campoCobertorNomeManual').focus();
+      } else {
+        divInp.classList.add('hidden');
+        divSel.classList.remove('hidden');
+        txtBtn.textContent = '+ Digitar outro nome';
+      }
+    }
+
+    // Salvar Ocorrência
+    async function salvarOcorrenciaSupervisor(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('btnSalvarOcorrencia');
+      const alerta = document.getElementById('alertaSucessoEnvio');
+      alerta.classList.add('hidden');
+
+      const dataFalta = document.getElementById('campoDataFalta').value;
+      const clienteId = parseInt(document.getElementById('campoClienteId').value, 10);
+      const unidadeId = parseInt(document.getElementById('campoUnidadeId').value, 10);
+      const colabId = parseInt(document.getElementById('campoColaboradorId').value, 10);
+
+      if (!dataFalta || !clienteId || !unidadeId || !colabId) {
+        alert('Por favor, preencha todos os campos obrigatórios (Data, Cliente, Posto e Colaborador Ausente).');
+        return;
+      }
+
+      const houveCob = document.querySelector('input[name="optHouveCob"]:checked').value === '1';
+      const tipoCob = document.getElementById('campoTipoCobertura').value;
+      const cobColabId = document.getElementById('campoCobertorColabId').value;
+      const cobNomeManual = document.getElementById('campoCobertorNomeManual').value.trim();
+      const freeId = document.getElementById('campoFreelancerId').value;
+      const valorFree = document.getElementById('campoValorFreelance').value;
+      const motivoNaoCob = document.getElementById('campoMotivoNaoCobertura').value;
+
+      if (houveCob) {
+        if (tipoCob === 'efetivo' && !cobColabId && !cobNomeManual) {
+          alert('Informe quem realizou a cobertura do posto (selecione da lista ou digite o nome).');
+          return;
+        }
+        if (tipoCob === 'freelancer' && !freeId) {
+          alert('Selecione o diarista/freelancer que atendeu a ocorrência.');
+          return;
+        }
+      }
+
+      const payload = {
+        supervisor_id: state.supervisor ? state.supervisor.id : null,
+        data_falta: dataFalta,
+        cliente_id: clienteId,
+        unidade_id: unidadeId,
+        colaborador_id: colabId,
+        turno: document.getElementById('campoTurno').value,
+        motivo_falta: document.getElementById('campoMotivoFalta').value,
+        dias_afastamento: parseInt(document.getElementById('campoDiasAfastamento').value, 10) || 1,
+        cid_atestado: document.getElementById('campoCidAtestado').value.trim(),
+        houve_cobertura: houveCob ? 1 : 0,
+        tipo_cobertura: houveCob ? tipoCob : null,
+        cobertor_colaborador_id: (houveCob && tipoCob === 'efetivo' && cobColabId) ? parseInt(cobColabId, 10) : null,
+        cobertor_nome_manual: (houveCob && tipoCob === 'efetivo') ? cobNomeManual : null,
+        freelancer_id: (houveCob && tipoCob === 'freelancer' && freeId) ? parseInt(freeId, 10) : null,
+        valor_pago_freelance: (houveCob && tipoCob === 'freelancer') ? parseFloat(valorFree) || 0 : 0,
+        motivo_nao_cobertura: !houveCob ? motivoNaoCob : null,
+        observacoes_operacao: document.getElementById('campoObservacoes').value.trim()
+      };
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-lg"></i><span>Transmitindo ao sistema...</span>`;
+
+      try {
+        const res = await fetch('/api/supervisor/lancar-falta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          // Exibir feedback de sucesso
+          document.getElementById('alertaSucessoMsg').textContent = `Falta registrada com sucesso (ID #${data.id}). Já subiu para o sistema central.`;
+          alerta.classList.remove('hidden');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+
+          // Resetar campos específicos mantendo Data e Cliente prontos para o próximo
+          document.getElementById('campoColaboradorId').value = '';
+          document.getElementById('campoCobertorColabId').value = '';
+          document.getElementById('campoCobertorNomeManual').value = '';
+          document.getElementById('campoObservacoes').value = '';
+          limparBuscaColaborador();
+          limparBuscaCobertor();
+          limparBuscaFreelancer();
+
+          // Recarregar histórico de lançamentos do supervisor
+          carregarMinhasFaltas();
+        } else {
+          alert('Erro ao registrar: ' + (data.error || 'Erro desconhecido.'));
+        }
+      } catch (err) {
+        alert('Erro de conexão ao enviar: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane text-lg"></i><span>Registrar Ocorrência no Sistema</span>`;
+      }
+    }
+
+    // Carregar Ocorrências Recentes do Supervisor
+    async function carregarMinhasFaltas() {
+      const container = document.getElementById('listaMinhasOcorrencias');
+      if (!container) return;
+
+      const supId = state.supervisor ? state.supervisor.id : '';
+      let url = '/api/supervisor/minhas-faltas';
+      if (supId) url += `?supervisor_id=${supId}`;
+
+      try {
+        const res = await fetch(url);
+        const faltas = await res.json();
+
+        if (faltas.length === 0) {
+          container.innerHTML = `
+            <div class="bg-white rounded-xl p-4 text-center text-xs text-slate-400 font-medium border border-slate-200">
+              Nenhuma ocorrência registrada recentemente por este supervisor.
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = faltas.map(f => {
+          let badgeCob = '';
+          if (f.houve_cobertura === 1) {
+            const quem = f.cobertor_efetivo_nome || f.freelancer_nome || 'Substituto Efetivo';
+            badgeCob = `
+              <div class="flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                <span>Coberto por: ${quem}</span>
+              </div>
+            `;
+          } else {
+            badgeCob = `
+              <div class="flex items-center gap-1 text-[11px] font-bold text-rose-800 bg-rose-100/90 px-2 py-0.5 rounded-md">
+                <i class="fa-solid fa-circle-xmark text-rose-600"></i>
+                <span>Posto Descoberto</span>
+              </div>
+            `;
+          }
+
+          const dataBr = f.data_falta.split('-').reverse().join('/');
+
+          return `
+            <div class="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200 space-y-2">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h4 class="font-bold text-sm text-slate-900 leading-tight">${f.colaborador_nome}</h4>
+                  <p class="text-xs text-slate-500 font-medium mt-0.5">${f.cliente_nome} • ${f.nome_unidade}</p>
+                </div>
+                <span class="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">${dataBr}</span>
+              </div>
+              <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                <div>${badgeCob}</div>
+                <span class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                  <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i> Transmitido
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Erro ao buscar histórico:', err);
+      }
+    }
+  </script>
+</body>
+</html>

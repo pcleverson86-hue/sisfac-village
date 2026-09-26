@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1">
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <script src="../common/browsers_api.js"></script>
+        <script src="../common/popup_window_helpers.js"></script>
+        <script src="user_feedback_window.js"></script>
+    </head>
+    <body>
+        <div class="area-body">
+            <div class="logo-main"></div>
+            <div id="BeforeReportContent">
+                <div class="area-dialog area-dialog-before-report area-bodyDialog-background_custom">
+                    <div class="area-dialogContent">
+                        <div class="area-notification-logo logo-notification"></div>
+                        <div class="area-title-ufb">
+                            <span class="title-ufb" id="WindowPhfbTitleText">Сообщить о подозрении на фишинг</span>
+                        </div>
+                        <div class="area-info-msg-ufb">
+                            <span class="info-msg-ufb" id="WindowPhfbInfoText">Сообщая о подозрении на фишинг, вы помогаете сделать интернет безопаснее.</span>
+                        </div>
+                        <div class="area-link-button-ufb ufb-block">
+                            <button class="expand-button-ufb" id="phfbOpenInfoButton">
+                                <span id="WindowPhfbOpenInfoButtonText">Подробнее о фишинге</span>
+                            </button>
+                        </div>
+                        <div class="area-web-page-url-not-expanded" id="WindowPhfbWebsiteSectionSite">
+                            <span class="web-page-url-text web-page-url-text-title" id="WindowPhfbWebsiteTitleText">Сайт:</span>
+                            <span class="web-page-url-text web-page-url-text-body" id="WindowPhfbWebsiteUrlText"></span>
+                        </div>
+                        <div class="area-web-page-url-not-expanded" id="WindowPhfbSectionRedirected">
+                            <span class="web-page-url-text web-page-url-text-title" id="WindowPhfbRedirectedSitesTitleText">Перенаправившие сайты:</span>
+                            <span class="web-page-url-text web-page-url-text-body" id="WindowPhfbRedirectedSitesUrlText"></span>
+                        </div>
+                        <div class="area-expand-button-ufb ufb-block" id="areaPhfbExpandButton">
+                            <button class="expand-button-ufb" id="phfbExpandButton">
+                                <span id="WindowPhfbExpandButtonText">Показать больше</span>
+                                <div class="expand-button-ufb-image-not-expanded"></div>
+                            </button>
+                        </div>
+                        <div class="area-agreement-text-ufb">
+                            <span class="agreement-text-ufb" id="WindowPhfbAgreementText">Нажимая кнопку "Сообщить", я предоставляю следующую информацию для информирования о проблеме с сайтом: URL текущего сайта, название и версию браузера, название и версию программы, уникальный идентификатор установки программы и уникальный идентификатор устройства, на котором установлена программа.</span>
+                        </div>
+                        <div class="area-report-button">
+                            <button class="report-button area-enableButton-background_custom area-enableButton-foreground_custom area-enableButton-border_custom" id="phfbReportButton">
+                                <span id="WindowPhfbReportButtonText">Сообщить</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="optional-block" id="AfterReportContent">
+                <div class="area-dialog area-dialog-after-report area-bodyDialog-background_custom">
+                    <div class="area-dialogContent">
+                        <div class="logo-success-notification"></div>
+                        <div class="area-title-ufb">
+                            <span class="title-ufb" id="WindowPhfbThanksText">Спасибо, что сообщили нам о подозрении на фишинг!</span>
+                        </div>
+                        <div class="area-info-msg-ufb">
+                            <span class="info-msg-ufb" id="WindowPhfbAnalysisText">Мы уже проверяем этот сайт.</span>
+                        </div>
+                        <div class="area-close-button">
+                            <button class="report-button area-enableButton-background_custom area-enableButton-foreground_custom area-enableButton-border_custom" id="phfbCloseButton">
+                                <span id="WindowPhfbCloseButtonText">Закрыть</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

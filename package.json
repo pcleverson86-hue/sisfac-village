@@ -1,0 +1,16 @@
+{
+  "name": "sisfac-rh-suprimentos",
+  "version": "2.5.0",
+  "description": "Sistema integrado de RH, Faltas, Coberturas, Faturamento e Suprimentos para Village Administração e Serviços EIRELI",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node init_db.js"
+  },
+  "dependencies": {},
+  "author": "Village Administração e Serviços EIRELI",
+  "license": "UNLICENSED"
+}

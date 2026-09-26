@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Treinamentos & Capacitação</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    :root {
+      --cor-primaria: #0d9488;
+      --cor-secundaria: #1e293b;
+    }
+    .bg-custom-primary { background-color: var(--cor-primaria); }
+    .text-custom-primary { color: var(--cor-primaria); }
+    .border-custom-primary { border-color: var(--cor-primaria); }
+    .bg-custom-secondary { background-color: var(--cor-secundaria); }
+    .aspect-video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+    }
+    .aspect-video-container iframe,
+    .aspect-video-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOPBAR / CABEÇALHO -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <!-- Logo e Nome da Plataforma -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navegarAba('catalogo')">
+          <div id="topLogoContainer" class="h-10 px-2 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs overflow-hidden">
+            <i class="fa-solid fa-graduation-cap text-teal-600 text-lg" id="topLogoIcon"></i>
+            <img id="topLogoImg" src="" alt="Logo" class="h-7 w-auto object-contain hidden">
+          </div>
+          <div>
+            <h1 id="topNomePlataforma" class="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-none">
+              Academia de Treinamentos
+            </h1>
+            <p id="topSloganPlataforma" class="text-[11px] text-slate-500 font-medium hidden sm:block mt-0.5">
+              Desenvolvimento profissional e excelência operacional
+            </p>
+          </div>
+        </div>
+
+        <!-- Menu de Navegação -->
+        <nav class="hidden md:flex items-center space-x-1 lg:space-x-2">
+          <button onclick="navegarAba('catalogo')" id="navBtn-catalogo" class="nav-item px-3 py-2 rounded-lg text-xs font-semibold transition text-teal-700 bg-teal-50">
+            <i class="fa-solid fa-book-open mr-1.5"></i> Cursos & Treinamentos
+          </button>
+          <button onclick="navegarAba('instrutores')" id="navBtn-instrutores" class="nav-item px-3 py-2 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+            <i class="fa-solid fa-chalkboard-user mr-1.5"></i> Conheça os Instrutores
+          </button>
+          <button onclick="navegarAba('meus-cursos')" id="navBtn-meus-cursos" class="nav-item px-3 py-2 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100 hidden">
+            <i class="fa-solid fa-circle-play mr-1.5"></i> Meus Cursos
+          </button>
+          <button onclick="navegarAba('professor')" id="navBtn-professor" class="nav-item px-3 py-2 rounded-lg text-xs font-semibold transition text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hidden">
+            <i class="fa-solid fa-user-tie mr-1.5"></i> Painel do Instrutor
+          </button>
+          <button onclick="navegarAba('admin')" id="navBtn-admin" class="nav-item px-3 py-2 rounded-lg text-xs font-semibold transition text-rose-700 bg-rose-50 hover:bg-rose-100 hidden">
+            <i class="fa-solid fa-sliders mr-1.5"></i> Gestão Master
+          </button>
+        </nav>
+
+        <!-- Botões de Acesso / Usuário -->
+        <div class="flex items-center gap-2">
+          <a href="/" class="hidden sm:flex text-xs text-slate-600 hover:text-blue-600 font-semibold items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-blue-300 bg-slate-50 transition shadow-2xs" title="Voltar ao Sistema de Gestão SISFAC">
+            <i class="fa-solid fa-building-user text-blue-600"></i>
+            <span>Sistema de Gestão</span>
+          </a>
+          <a href="/denuncias" class="hidden sm:flex text-xs text-slate-600 hover:text-teal-600 font-semibold items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-teal-300 bg-slate-50 transition shadow-2xs" title="Acessar Canal de Denúncias & Integridade">
+            <i class="fa-solid fa-shield-halved text-teal-600"></i>
+            <span>Canal de Denúncia</span>
+          </a>
+
+          <!-- Não Logado -->
+          <div id="boxNaoLogado" class="flex items-center gap-2">
+            <button onclick="abrirModalLogin()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer">
+              <i class="fa-solid fa-right-to-bracket text-teal-400"></i> Entrar / Sala de Aula
+            </button>
+          </div>
+
+          <!-- Logado -->
+          <div id="boxLogado" class="hidden items-center gap-3">
+            <div class="text-right hidden sm:block">
+              <div id="userLogadoNome" class="text-xs font-bold text-slate-800 leading-tight">Nome Usuário</div>
+              <div id="userLogadoTipo" class="text-[10px] font-semibold text-teal-600 uppercase tracking-wide">Aluno</div>
+            </div>
+            <div id="userLogadoAvatar" class="w-9 h-9 rounded-full bg-teal-100 text-teal-800 font-bold flex items-center justify-center text-xs border border-teal-200 shadow-xs">
+              U
+            </div>
+            <button onclick="logoutEad()" class="text-slate-400 hover:text-rose-600 text-xs p-1.5 transition" title="Sair da Conta">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- 1. ABA: CATÁLOGO DE CURSOS -->
+    <section id="aba-catalogo" class="space-y-6">
+      <!-- Banner Hero -->
+      <div id="bannerHeroContainer" class="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-900 rounded-2xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden transition-all duration-300">
+        <div class="relative z-10 max-w-2xl space-y-3">
+          <span class="bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-flex items-center gap-1.5">
+            <i class="fa-solid fa-award"></i> Capacitação & Certificação Corporativa
+          </span>
+          <h2 id="bannerTitulo" class="text-2xl sm:text-3xl font-black tracking-tight leading-tight drop-shadow-sm">
+            Desenvolva suas habilidades operacionais e conquiste excelência
+          </h2>
+          <p id="bannerSubtitulo" class="text-xs sm:text-sm text-slate-200 leading-relaxed drop-shadow-xs">
+            Aulas interativas em vídeo, procedimentos passo a passo, testes didáticos de fixação e certificação oficial para os profissionais da nossa operação.
+          </p>
+        </div>
+
+        <!-- Botão de Edição Rápida (para Master/Admin) -->
+        <div class="absolute top-4 right-4 z-20 hidden" id="bannerHeroEditBtnBox">
+          <button type="button" onclick="navegarAba('admin')" class="bg-slate-900/80 hover:bg-slate-900 backdrop-blur-md text-white font-bold text-xs px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer" title="Personalizar Imagem de Fundo do Banner">
+            <i class="fa-solid fa-camera text-teal-400"></i> Trocar Capa do Banner
+          </button>
+        </div>
+
+        <div class="absolute right-4 -bottom-6 opacity-10 sm:opacity-20 text-9xl pointer-events-none text-white">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+      </div>
+
+      <!-- Filtros e Busca de Cursos -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div class="flex-1 max-w-md relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="buscaCursoInput" oninput="filtrarCursosCatalogo()" placeholder="Buscar treinamento por título, assunto ou instrutor..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none">
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="filtroCategoriaSelect" onchange="filtrarCursosCatalogo()" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            <option value="">Todas as Categorias</option>
+            <option value="Integração & Postura">Integração & Postura</option>
+            <option value="Operacional">Operacional & Limpeza</option>
+            <option value="Segurança & SST">Segurança do Trabalho & SST</option>
+            <option value="Portaria & Atendimento">Portaria & Atendimento</option>
+            <option value="Liderança">Liderança Operacional</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Grid de Cursos -->
+      <div id="gridCursosContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+    </section>
+
+    <!-- 2. ABA: CONHEÇA NOSSOS INSTRUTORES -->
+    <section id="aba-instrutores" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs">
+        <div class="max-w-3xl space-y-2">
+          <span class="bg-indigo-100 text-indigo-800 text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
+            Corpo Docente Especializado
+          </span>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight">
+            Conheça os Instrutores & Professores da Nossa Academia
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500">
+            Nossos treinamentos são ministrados por profissionais experientes com vivência prática no setor de terceirização, facilities e segurança operacional.
+          </p>
+        </div>
+      </div>
+
+      <!-- Grid de Cards dos Instrutores -->
+      <div id="gridInstrutoresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Renderizado dinamicamente via JS -->
+      </div>
+    </section>
+
+    <!-- 3. ABA: MEUS CURSOS (ALUNO) -->
+    <section id="aba-meus-cursos" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div>
+          <h2 class="text-xl font-black text-slate-900 tracking-tight">Meus Cursos Matriculados</h2>
+          <p class="text-xs text-slate-500">Acompanhe seu progresso, assista às aulas e realize suas provas de fixação.</p>
+        </div>
+        <span id="badgeQtdMeusCursos" class="bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold px-3 py-1 rounded-full">
+          0 curso(s)
+        </span>
+      </div>
+
+      <div id="gridMeusCursosContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Renderizado via JS -->
+      </div>
+    </section>
+
+    <!-- 4. ABA: SALA DE AULA / VISUALIZADOR DE CURSO INTERATIVO -->
+    <section id="aba-sala-aula" class="hidden space-y-6">
+      <!-- Barra Superior da Aula -->
+      <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex-wrap gap-2">
+        <button onclick="navegarAba('catalogo')" class="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrow-left"></i> Voltar aos Cursos
+        </button>
+        <div class="text-center flex-1 px-4">
+          <h2 id="salaCursoTitulo" class="text-sm sm:text-base font-black text-slate-900 truncate">Título do Curso</h2>
+          <span id="salaCursoCategoria" class="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded">Categoria</span>
+        </div>
+        <button onclick="abrirModalFazerProva()" id="btnIniciarProvaSala" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition">
+          <i class="fa-solid fa-file-signature"></i> Realizar Prova Didática
+        </button>
+      </div>
+
+      <!-- Layout da Sala: Vídeo/Conteúdo na Esquerda, Módulos/Aulas na Direita -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Área de Aula / Vídeo / Leitura -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="bg-black rounded-2xl overflow-hidden shadow-lg aspect-video-container" id="containerVideoAula">
+            <iframe id="iframeVideoAula" src="" title="Vídeo da Aula" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 id="salaAulaTitulo" class="text-base font-bold text-slate-900">Nome da Aula Selecionada</h3>
+                <span id="salaAulaDuracao" class="text-xs text-slate-400 font-mono"><i class="fa-regular fa-clock mr-1"></i> 15 min</span>
+              </div>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Resumo & Diretrizes da Matéria</h4>
+              <p id="salaAulaTexto" class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+                Conteúdo explicativo da aula.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra Lateral: Grade de Módulos e Aulas -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4 flex flex-col h-fit">
+          <div class="border-b border-slate-100 pb-2">
+            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+              <i class="fa-solid fa-list-check text-teal-600"></i> Grade de Conteúdo
+            </h4>
+          </div>
+          <div id="salaListaModulosContainer" class="space-y-3 overflow-y-auto max-h-[500px] pr-1">
+            <!-- Módulos e aulas renderizados via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ABA: PAINEL DO INSTRUTOR / PROFESSOR -->
+    <section id="aba-professor" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-indigo-900 text-white p-6 rounded-2xl shadow-md">
+        <div>
+          <span class="bg-indigo-700/50 text-indigo-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Área Docente</span>
+          <h2 class="text-xl sm:text-2xl font-black mt-1">Painel do Instrutor & Gestão de Aulas</h2>
+          <p class="text-xs text-indigo-200 mt-0.5">Crie treinamentos, adicione vídeos externos, formule provas e cadastre acessos de alunos.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="abrirModalNovoAluno()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+            <i class="fa-solid fa-user-plus"></i> + Cadastrar Aluno (Login & Senha)
+          </button>
+          <button onclick="abrirModalNovoCurso()" class="bg-teal-500 hover:bg-teal-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+            <i class="fa-solid fa-plus-circle"></i> + Criar Novo Treinamento
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela / Relação de Cursos do Professor -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-chalkboard text-indigo-600"></i> Meus Cursos & Provas Didáticas
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[10px]">
+              <tr>
+                <th class="p-3">ID</th>
+                <th class="p-3">Título do Treinamento</th>
+                <th class="p-3">Categoria</th>
+                <th class="p-3 text-center">Carga Horária</th>
+                <th class="p-3 text-center">Módulos/Aulas</th>
+                <th class="p-3 text-center">Alunos Inscritos</th>
+                <th class="p-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaCursosProfessorBody" class="divide-y divide-slate-100">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Relação de Alunos Cadastrados -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-users text-teal-600"></i> Alunos com Acesso Cadastrado
+          </h3>
+          <button onclick="abrirModalNovoAluno()" class="text-xs text-teal-700 hover:text-teal-900 font-bold">
+            + Cadastrar Novo Acesso
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold text-[10px]">
+              <tr>
+                <th class="p-3">Nome do Aluno</th>
+                <th class="p-3">Login de Acesso</th>
+                <th class="p-3">E-mail</th>
+                <th class="p-3 text-center">Cursos Vinculados</th>
+                <th class="p-3 text-center">Concluídos</th>
+                <th class="p-3 text-center">Data Cadastro</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaAlunosProfessorBody" class="divide-y divide-slate-100">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. ABA: GESTÃO MASTER (ADMINISTRADOR) -->
+    <section id="aba-admin" class="hidden space-y-6">
+      <!-- Banner Admin -->
+      <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <span class="bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Super Administrador</span>
+          <h2 class="text-2xl font-black mt-1">Configurações Gerais & White-Label da Plataforma</h2>
+          <p class="text-xs text-slate-300">Personalize cores, nome, logomarca corporativa e gerencie todos os instrutores.</p>
+        </div>
+      </div>
+
+      <!-- Cartões de Configuração White-Label -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Personalização Visual -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+            <i class="fa-solid fa-palette text-teal-600"></i> Identidade Visual & Nome da Plataforma
+          </h3>
+          <form id="formConfigEad" onsubmit="salvarConfigEad(event)" class="space-y-4 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Nome da Plataforma (Exibido no Cabeçalho):</label>
+              <input type="text" id="cfgNomePlataforma" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" required>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Slogan / Descrição Curta:</label>
+              <input type="text" id="cfgSlogan" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            </div>
+            <!-- Upload da Logomarca -->
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Logomarca da Empresa (Cabeçalho):</label>
+              <div class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <div id="cfgLogoPreviewBox" class="w-12 h-12 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center text-lg overflow-hidden border border-slate-200 shadow-2xs shrink-0">
+                  <i class="fa-solid fa-graduation-cap" id="cfgLogoPreviewIcon"></i>
+                  <img id="cfgLogoPreviewImg" src="" alt="Logo" class="w-full h-full object-cover hidden">
+                </div>
+                <div class="flex-1 space-y-1">
+                  <div class="flex items-center gap-2">
+                    <label for="cfgLogoFile" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs transition active:scale-95">
+                      <i class="fa-solid fa-cloud-arrow-up"></i> Carregar Logo
+                    </label>
+                    <input type="file" id="cfgLogoFile" accept="image/*" class="hidden" onchange="processarUploadLogoPlataforma(this)">
+                    <button type="button" id="btnRemoverLogo" onclick="removerLogoPlataforma()" class="text-slate-400 hover:text-rose-600 text-xs font-semibold hidden p-1">
+                      <i class="fa-solid fa-trash-can mr-0.5"></i> Remover
+                    </button>
+                  </div>
+                  <p class="text-[10px] text-slate-400">Formatos aceitos: PNG, JPG ou SVG.</p>
+                </div>
+              </div>
+              <input type="hidden" id="cfgLogoUrl">
+            </div>
+
+            <!-- Upload da Imagem de Fundo do Banner Hero (Capa Principal) -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-semibold text-slate-700">Imagem de Fundo do Banner Principal (Capa do Catálogo):</label>
+                <span class="text-[10px] text-teal-600 font-bold">Destaque do Topo</span>
+              </div>
+              <div class="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <!-- Preview do Banner -->
+                <div id="cfgBannerPreviewBox" class="h-24 w-full rounded-xl bg-gradient-to-r from-slate-900 to-teal-900 flex items-center justify-center text-white text-xs font-bold relative overflow-hidden border border-slate-300 shadow-2xs bg-cover bg-center">
+                  <span id="cfgBannerPreviewTxt" class="relative z-10 bg-slate-900/60 backdrop-blur-xs px-3 py-1 rounded-lg border border-white/20">
+                    <i class="fa-solid fa-image mr-1"></i> Prévia do Banner Hero
+                  </span>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <label for="cfgBannerFile" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs transition active:scale-95">
+                      <i class="fa-solid fa-cloud-arrow-up text-teal-400"></i> Carregar Imagem do Banner
+                    </label>
+                    <input type="file" id="cfgBannerFile" accept="image/*" class="hidden" onchange="processarUploadBannerHero(this)">
+                    <button type="button" id="btnRemoverBannerHero" onclick="removerBannerHero()" class="text-slate-400 hover:text-rose-600 text-xs font-semibold hidden p-1">
+                      <i class="fa-solid fa-trash-can mr-0.5"></i> Usar Gradiente Padrão
+                    </button>
+                  </div>
+                  <span class="text-[10px] text-slate-400 hidden sm:inline">Recomendado: 1200x400px</span>
+                </div>
+              </div>
+              <input type="hidden" id="cfgBannerUrl">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Cor Primária (Tema):</label>
+                <div class="flex items-center gap-2">
+                  <input type="color" id="cfgCorPrimaria" class="w-10 h-8 rounded border border-slate-200 cursor-pointer">
+                  <span id="cfgCorPrimariaTxt" class="font-mono text-[11px] text-slate-500">#0d9488</span>
+                </div>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Cor Secundária:</label>
+                <div class="flex items-center gap-2">
+                  <input type="color" id="cfgCorSecundaria" class="w-10 h-8 rounded border border-slate-200 cursor-pointer">
+                  <span id="cfgCorSecundariaTxt" class="font-mono text-[11px] text-slate-500">#1e293b</span>
+                </div>
+              </div>
+            </div>
+            <div class="pt-2">
+              <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+                <i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Identidade Visual & Cores
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Gestão de Instrutores / Professores -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-chalkboard-user text-indigo-600"></i> Instrutores Cadastrados
+            </h3>
+            <button onclick="abrirModalNovoInstrutor()" class="text-xs text-indigo-700 hover:text-indigo-900 font-bold">
+              + Novo Instrutor
+            </button>
+          </div>
+          <div id="listaInstrutoresAdmin" class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- RODAPÉ -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 space-y-1">
+      <p id="rodapeNomePlataforma" class="font-bold text-slate-600">Academia de Treinamentos & Capacitação</p>
+      <p>Espaço didático corporativo para capacitação contínua de colaboradores e líderes de facilities.</p>
+    </div>
+  </footer>
+
+  <!-- ============================================================= -->
+  <!-- MODAIS DO SISTEMA DE TREINAMENTOS -->
+  <!-- ============================================================= -->
+
+  <!-- MODAL: LOGIN -->
+  <div id="modalLoginEad" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-2xl mx-auto mb-2">
+          <i class="fa-solid fa-user-lock"></i>
+        </div>
+        <h3 class="text-lg font-black text-slate-900">Acesso à Sala de Aula</h3>
+        <p class="text-xs text-slate-500">Entre com seu login e senha fornecidos pelo seu instrutor ou administrador.</p>
+      </div>
+
+      <form id="formLoginEad" onsubmit="executarLoginEad(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Login / Usuário:</label>
+          <input type="text" id="loginEadUser" placeholder="Ex: joao.silva" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Senha:</label>
+          <input type="password" id="loginEadPass" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" required>
+        </div>
+        <div class="pt-2 flex items-center gap-2">
+          <button type="button" onclick="fecharModalLogin()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition">
+            Cancelar
+          </button>
+          <button type="submit" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded-xl text-xs shadow-xs transition">
+            Entrar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CADASTRAR ALUNO (LOGIN & SENHA) -->
+  <div id="modalNovoAlunoEad" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-emerald-600"></i> Cadastrar Acesso de Aluno
+        </h3>
+        <button onclick="fecharModalNovoAluno()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="formNovoAlunoEad" onsubmit="salvarNovoAlunoEad(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nome Completo do Aluno:</label>
+          <input type="text" id="cadAlunoNome" placeholder="Ex: Maria das Graças Oliveira" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">E-mail (Opcional):</label>
+          <input type="email" id="cadAlunoEmail" placeholder="maria@exemplo.com" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Login para Acesso:</label>
+            <input type="text" id="cadAlunoLogin" placeholder="Ex: maria.oliveira" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" required>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Senha Inicial:</label>
+            <input type="text" id="cadAlunoSenha" value="123456" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none" required>
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Matricular nos Cursos:</label>
+          <div id="checkCursosMatriculaAluno" class="space-y-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200">
+            <!-- Checkboxes de cursos via JS -->
+          </div>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="fecharModalNovoAluno()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition">
+            Cancelar
+          </button>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition">
+            Criar Acesso do Aluno
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CRIAR / EDITAR CURSO -->
+  <div id="modalNovoCursoEad" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-teal-600"></i> Criar Novo Treinamento
+        </h3>
+        <button onclick="fecharModalNovoCurso()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="formNovoCursoEad" onsubmit="salvarNovoCursoEad(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Título do Treinamento:</label>
+          <input type="text" id="cadCursoTitulo" placeholder="Ex: Higienização Hospitalar e Descarte de Resíduos" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Categoria:</label>
+            <select id="cadCursoCategoria" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none">
+              <option value="Integração & Postura">Integração & Postura</option>
+              <option value="Operacional">Operacional & Limpeza</option>
+              <option value="Segurança & SST">Segurança do Trabalho & SST</option>
+              <option value="Portaria & Atendimento">Portaria & Atendimento</option>
+              <option value="Liderança">Liderança Operacional</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Carga Horária (Horas):</label>
+            <input type="number" id="cadCursoHoras" value="4" min="1" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Instrutor Responsável:</label>
+          <select id="cadCursoInstrutor" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none">
+            <!-- Instrutores via JS -->
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Descrição / Objetivos do Treinamento:</label>
+          <textarea id="cadCursoDescricao" rows="3" placeholder="Explique os objetivos, público-alvo e conteúdo principal do curso..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">URL da Imagem de Capa (Opcional):</label>
+          <input type="url" id="cadCursoCapa" placeholder="https://exemplo.com/capa.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none">
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="fecharModalNovoCurso()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition">
+            Cancelar
+          </button>
+          <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition">
+            Salvar Treinamento
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GERENCIAR CONTEÚDO DO CURSO (MÓDULOS, AULAS & VÍDEOS) -->
+  <div id="modalGerenciarConteudoCurso" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 id="gerenciarCursoTitulo" class="text-sm font-bold text-slate-900">Gerenciar Grade: Nome do Curso</h3>
+          <p class="text-[11px] text-slate-500">Adicione módulos e vincule vídeos externos (YouTube, Vimeo, etc.) ou materiais didáticos.</p>
+        </div>
+        <button onclick="fecharModalGerenciarConteudo()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Ações Rápidas -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="abrirFormNovoModulo()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+          <i class="fa-solid fa-folder-plus text-teal-400"></i> + Novo Módulo
+        </button>
+        <button onclick="abrirFormNovaAula()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+          <i class="fa-solid fa-video"></i> + Nova Aula / Vídeo
+        </button>
+        <button onclick="abrirConfigProvaCurso()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+          <i class="fa-solid fa-file-circle-question"></i> Configurar Prova Didática
+        </button>
+      </div>
+
+      <!-- Lista de Módulos e Aulas -->
+      <div id="gradeModulosAulasLista" class="flex-1 overflow-y-auto space-y-3 pr-1 min-h-[250px]">
+        <!-- Renderizado via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURAR PROVA DIDÁTICA DO CURSO -->
+  <div id="modalConfigProvaEad" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-file-circle-question text-amber-600"></i> Configurar Prova Didática de Fixação
+          </h3>
+          <p id="provaNomeCursoSub" class="text-[11px] text-slate-500">Curso Selecionado</p>
+        </div>
+        <button onclick="fecharModalConfigProva()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs flex-1 overflow-y-auto pr-1">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Título da Prova:</label>
+            <input type="text" id="cfgProvaTitulo" value="Avaliação Didática de Fixação" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Nota Mínima para Aprovação (%):</label>
+            <input type="number" id="cfgProvaNotaMin" value="70" min="10" max="100" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-bold text-slate-800">Questões de Múltipla Escolha:</h4>
+            <button type="button" onclick="adicionarNovaQuestaoForm()" class="bg-amber-100 text-amber-800 hover:bg-amber-200 font-bold px-2.5 py-1 rounded text-xs">
+              + Adicionar Questão
+            </button>
+          </div>
+          <div id="containerQuestoesProva" class="space-y-4">
+            <!-- Questões dinâmicas via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+        <button type="button" onclick="fecharModalConfigProva()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition">
+          Cancelar
+        </button>
+        <button type="button" onclick="salvarProvaDidatica()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition">
+          Salvar Prova Didática
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REALIZAR PROVA DIDÁTICA (ALUNO) -->
+  <div id="modalFazerProvaAluno" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+        <div>
+          <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">Avaliação Oficial</span>
+          <h3 id="fazerProvaTitulo" class="text-base font-black text-slate-900 mt-1">Prova Didática</h3>
+        </div>
+        <button onclick="fecharModalFazerProva()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="fazerProvaQuestoesContainer" class="flex-1 overflow-y-auto space-y-4 text-xs pr-1">
+        <!-- Perguntas para o aluno responder -->
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-[11px] text-slate-400">Responda todas as questões com atenção.</span>
+        <button type="button" onclick="enviarRespostasProva()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-2 rounded-xl text-xs shadow-xs transition">
+          Enviar Respostas & Concluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CADASTRAR / EDITAR INSTRUTOR (ADMIN) -->
+  <div id="modalNovoInstrutorEad" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-tie text-indigo-600"></i> Cadastrar Professor / Instrutor
+        </h3>
+        <button onclick="fecharModalNovoInstrutor()" class="text-slate-400 hover:text-slate-600 text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="formNovoInstrutorEad" onsubmit="salvarNovoInstrutorEad(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nome do Professor(a):</label>
+          <input type="text" id="cadInstNome" placeholder="Ex: Prof. Roberto Alves" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" required>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Especialidade / Matérias:</label>
+          <input type="text" id="cadInstEspec" placeholder="Ex: Higienização Hospitalar, NR-35 e SST" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Login do Instrutor:</label>
+            <input type="text" id="cadInstLogin" placeholder="Ex: prof.roberto" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" required>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Senha de Acesso:</label>
+            <input type="text" id="cadInstSenha" value="123456" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" required>
+          </div>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Foto do Professor / Instrutor:</label>
+          <div class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <!-- Preview circular da foto -->
+            <div id="previewInstFotoBox" class="w-14 h-14 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xl overflow-hidden border-2 border-indigo-200 shadow-xs shrink-0">
+              <i class="fa-solid fa-user" id="previewInstFotoIcon"></i>
+              <img id="previewInstFotoImg" src="" alt="Foto Instrutor" class="w-full h-full object-cover hidden">
+            </div>
+
+            <!-- Botão de Upload de Arquivo -->
+            <div class="flex-1 space-y-1">
+              <div class="flex items-center gap-2">
+                <label for="cadInstFotoFile" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer flex items-center gap-1.5 shadow-2xs transition active:scale-95">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> Carregar Foto
+                </label>
+                <input type="file" id="cadInstFotoFile" accept="image/*" class="hidden" onchange="processarUploadFotoInstrutor(this)">
+
+                <button type="button" id="btnRemoverFotoInst" onclick="removerFotoInstrutor()" class="text-slate-400 hover:text-rose-600 text-xs font-semibold hidden p-1">
+                  <i class="fa-solid fa-trash-can mr-0.5"></i> Remover
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">Clique para carregar uma foto salva no computador ou celular.</p>
+            </div>
+          </div>
+          <input type="hidden" id="cadInstFoto">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Biografia Curta / Experiência:</label>
+          <textarea id="cadInstBio" rows="2" placeholder="Experiência profissional, formações e histórico..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Mensagem de Boas-Vindas aos Alunos:</label>
+          <textarea id="cadInstMsg" rows="2" placeholder="Mensagem motivacional exibida na aba de instrutores..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"></textarea>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" onclick="fecharModalNovoInstrutor()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs transition">
+            Cancelar
+          </button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition">
+            Cadastrar Instrutor
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT DA PLATAFORMA DE TREINAMENTOS -->
+  <script src="/js/treinamentos.js"></script>
+</body>
+</html>

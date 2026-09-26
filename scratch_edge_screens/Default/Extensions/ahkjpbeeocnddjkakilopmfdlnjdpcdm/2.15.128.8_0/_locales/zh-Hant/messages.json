@@ -1,0 +1,14 @@
+{
+    "ExtensionName": {
+        "message": "卡巴斯基防護",
+        "description": ""
+    },
+    "ExtensionDescription": {
+        "message": "直接在您的瀏覽器視窗中管理防護",
+        "description": ""
+    },
+    "ToolbarButtonText": {
+        "message": "卡巴斯基防護",
+        "description": ""
+    }
+}

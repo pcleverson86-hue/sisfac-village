@@ -1,0 +1,30 @@
+# render.yaml — Configuração de Deploy no Render.com
+# Sistema SISFAC 2.0 - Village Administração e Serviços EIRELI
+# Documentação: https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: sisfac-village
+    runtime: node
+    plan: free           # Plano gratuito (mude para "starter" se quiser sempre ligado)
+    region: oregon       # Servidor nos EUA (mais próximo do Brasil disponível no plano grátis)
+
+    buildCommand: "echo 'Build OK - sem dependências npm'"
+    startCommand: "node server.js"
+
+    # Variáveis de ambiente
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RENDER
+        value: "true"
+      - key: DB_PATH
+        value: /var/data/banco_dados.sqlite
+      - key: PORT
+        value: "10000"
+
+    # Disco persistente para o banco de dados SQLite
+    disk:
+      name: sisfac-db
+      mountPath: /var/data
+      sizeGB: 1          # 1 GB gratuito — suficiente para muitos anos de dados

@@ -1,0 +1,52 @@
+# Sistema SISFAC 2.0 - Gestão de RH para Terceirizadoras
+# Village Administração e Serviços EIRELI
+
+# =============================================
+# DEPENDÊNCIAS NODE (não enviar para o GitHub)
+# =============================================
+node_modules/
+
+# =============================================
+# BANCO DE DADOS (segurança - não enviar)
+# =============================================
+banco_dados.sqlite
+banco_dados.sqlite-shm
+banco_dados.sqlite-wal
+database.sqlite
+*.sqlite
+*.db
+
+# =============================================
+# ARQUIVOS DE SISTEMA E BINÁRIOS
+# =============================================
+cloudflared.exe
+*.exe
+*.bat
+*.log
+*.pid
+
+# =============================================
+# ARQUIVOS TEMPORÁRIOS E DE DESENVOLVIMENTO
+# =============================================
+scratch/
+scratch_*.js
+check_*.js
+fix_*.js
+normalize_*.js
+init_db.js
+INICIAR_*.bat
+LIBERAR_*.bat
+
+# =============================================
+# ARQUIVOS DO SISTEMA OPERACIONAL
+# =============================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =============================================
+# VARIÁVEIS DE AMBIENTE
+# =============================================
+.env
+.env.local
+.env.production

@@ -1,0 +1,49 @@
+{
+   "action": {
+      "default_icon": {
+         "19": "images/button/inactive_19.png",
+         "38": "images/button/inactive_38.png"
+      },
+      "default_popup": "/popup/popup.html",
+      "default_title": "__MSG_ToolbarButtonText__"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "content/browsers_api.js", "content/json.js", "content/common.js", "content/md5.js", "content/mutation_observer.js", "content/session.js", "content/balloon2.js", "content/dom_parser_lib_script.js", "content/transport.js", "content/password-strength-checker.js", "content/NeedToShowBalloon.js", "content/password_control.js", "content/password_control_balloon.js", "content/content_blocker.js", "content/focus_change_observer.js", "content/protectable_element_detector.js", "content/secure_input_tooltip.js", "content/virtual_keyboard_common.js", "content/virtual_keyboard_content.js", "content/virtual_keyboard_input_icon.js", "content/browser_keyboard_balloon.js", "content/browser_keyboard_content.js", "content/browser_keyboard_input_processor.js", "content/abp_filters_processor.js", "content/css_anti_banner.js", "content/url_advisor.js", "content/url_advisor_balloon.js", "content/web_session_monitor.js", "content/search_activity.js", "content/compromised_account.js", "content/website_credentials.js", "content/kpm_promo.js", "content/kpm_promo_balloon.js", "content/cookie_notice_selector.js", "content/webpage.js", "content/phishing_content.js", "content/document.js", "content/visited_sites.js" ],
+      "match_origin_as_fallback": true,
+      "matches": [ "http://*/*", "https://*/*" ],
+      "run_at": "document_start"
+   }, {
+      "all_frames": true,
+      "js": [ "content/url_advisor_bing.js" ],
+      "matches": [ "http://www.bing.com/*", "https://www.bing.com/*" ],
+      "run_at": "document_start"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; connect-src 'self'; object-src 'self'"
+   },
+   "default_locale": "en",
+   "description": "__MSG_ExtensionDescription__",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "images/icon_128.png",
+      "16": "images/icon_16.png",
+      "32": "images/icon_32.png",
+      "48": "images/icon_48.png",
+      "64": "images/icon_64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApdm15tM0fu8XtB9kx9/Yp/LM5MBPiQd3P+K24kGc+BtmJn5N1F7vzpknWKavZGE72SSiHR2HVuy7M+5ItEMB8a690NtsoWB4YvYklRwGX6Y4YU5r2HlHHEkm17dn4KFE77Dqhd2RY8M/WaDMjC5xL36iOWRUsMpleFovYf+ML+rDmLfk5BevSc84Zb5/2WleiwK1GquECkwmB4/nIoKc7PtdTWmBtPmfNO03+avghOUBUzUDw8gWKdmYFe1AIj2TjNh1Tu+J5JjOdnIepJz0+uA+Zo8DyM1ZakMns/gMy7ehP6u66E+SAml/YOiPy2ES2Dm+YgJdWd/tV6ZDHO/ApwIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_ExtensionName__",
+   "permissions": [ "contextMenus", "cookies", "declarativeNetRequest", "management", "storage", "webRequest", "alarms", "nativeMessaging", "scripting", "tabs", "webNavigation" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.15.128.8",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "snapshot_resources/*" ],
+      "use_dynamic_url": true
+   } ]
+}

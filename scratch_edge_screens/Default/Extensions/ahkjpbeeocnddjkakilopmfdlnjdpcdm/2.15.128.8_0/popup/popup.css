@@ -1,0 +1,227 @@
+.optional-block,
+.optional-line {
+    display: none;
+}
+
+.wait .popup-loader,
+.dnt .DntArea,
+.dntTaskDisabled .DntButtonEnable,
+.dntBlocking .DntMenuDisableBlockingOnThisSite,
+.dntBlocking .DntMenuDisableBlocking,
+.dntDetecting .DntBody,
+.dntUserDisabled .DntBody,
+.dntDetecting .DntMenuEnableBlocking,
+.dntUserDisabled .DntMenuEnableBlockingOnThiSite,
+.dntDetecting .scrollable-content .DntMenuDisableBlockingOnThisSite,
+.dntUserDisabled .scrollable-content .DntMenuDisableBlocking,
+.dntCheckLicense .DntCheckLicenseButton,
+.dntRestrictionSubscription .DntSubscriptionButton,
+.dntRestrictionSubscription .DntShieldIcon,
+.DntCategory .dnt-category,
+.dntIncompatible .scrollable-content .DntMenuDisableBlockingOnThisSite,
+.dntIncompatible .scrollable-content .DntMenuDisableBlocking,
+.dntIncompatibleDetecting .scrollable-content .DntMenuDisableBlockingOnThisSite,
+.dntIncompatibleDetecting .scrollable-content .DntMenuEnableBlocking,
+.dntOffAsPartner .scrollable-content .DntMenuDisableBlockingOnThisSite,
+.dntOffAsPartner .scrollable-content .DntMenuDisableBlocking,
+.dntOffAsPartnerDetecting .scrollable-content .DntMenuDisableBlockingOnThisSite,
+.dntOffAsPartnerDetecting .scrollable-content .DntMenuEnableBlocking,
+.dntFail .scrollable-content .dntMenuShowBlockingFailures,
+.scrollable-content .DntExpandedContent,
+.scrollable-content .DntMenuSettings,
+.scrollable-content .DntMenuHelp,
+.dntExpand .DntBody,
+.dntCategoryExpanded .dnt-tracker-name-blocked,
+.dntCategoryExpanded .dnt-tracker-name,
+.afp .AfpArea,
+.afpTaskDisabled .afpEnableButton,
+.afpBlocking .afpDisableBlockingOnSite,
+.afpBlocking .afpDisableBlocking,
+.afpDetecting .AfpBody,
+.afpDetecting .afpEnableBlocking,
+.afpDetecting .scrollable-content .afpDisableBlockingOnSite,
+.afpUserDisabled .AfpBody,
+.afpUserDisabled .afpEnableBlockingOnSite,
+.afpUserDisabled .scrollable-content .afpDisableBlocking,
+.afpCheckLicense .afpCheckLicenseButton,
+.afpExpand .AfpBody,
+.scrollable-content .afpSettingsButton,
+.scrollable-content .afpHelpButton,
+.afpIncompatible .scrollable-content .afpDisableBlockingOnSite,
+.afpIncompatible .scrollable-content .afpDisableBlocking,
+.afpIncompatibleDetecting .scrollable-content .afpDisableBlockingOnSite,
+.afpIncompatibleDetecting .scrollable-content .afpEnableBlocking,
+.afpOffAsPartner .scrollable-content .afpDisableBlockingOnSite,
+.afpOffAsPartner .scrollable-content .afpDisableBlocking,
+.afpOffAsPartnerDetecting .scrollable-content .afpDisableBlockingOnSite,
+.afpOffAsPartnerDetecting .scrollable-content .afpEnableBlocking,
+.ab .AntiBannerArea,
+.abBlocking .abDisableOnThisSiteButton,
+.abOffByUser .AbBody,
+.abOffByUser .abEnableBlockingOnSite,
+.abOffAsIncompatible .abDisableOnThisSiteButton,
+.abOffAsPartner .abDisableOnThisSiteButton,
+.abTaskOff .abEnable,
+.abExpand .AbBody,
+.abExpand .abDisableButton,
+.abExpand .abSettingsButton,
+.abExpand .abHelpButton,
+.abDisabledAfterReload .AbBody,
+.abDisabledAfterReload .abEnableBlockingOnSite,
+.abEnabledAfterReload .abDisableOnThisSiteButton,
+.abCheckLicense .abCheckLicenseButton,
+.abRestrictionSubscription .abRestrictionSubscriptionButton,
+.abRestrictionSubscription .abShieldIcon,
+.vk .VkArea,
+.ob .obArea,
+.obProtectMode,
+.obSubscription,
+.obAvailableProtectModeFirstStart .obBody,
+.obAvailableProtectModeFirstStart .obAgreementCheckbox,
+.obAvailableProtectModeFirstStart .obOpen,
+.obAvailableProtectModeFirstStart .obAgreementDescription,
+.obAvailableProtectModeNotFirstStart .obBody,
+.obAvailableProtectModeNotFirstStart .obOpen,
+.obNotAvailableProtectMode .obBody,
+.obNotAvailableProtectMode .obInactiveOpen,
+.obNotAvailableProtectMode .obInactiveOpenButtonDescription,
+.phfb .PhfbArea,
+.bwfb .BwfbArea,
+.noProtectionBanner .NoProtectionBannerAreaMac,
+.webavMac .WebAVAreaMac,
+.dntMac .DntAreaMac,
+.caMac .CaAreaMac,
+.safeMoneyMac .SafeMoneyAreaMac,
+.dupPasswordMac .DupPasswordAreaMac,
+.pcMac .PcAreaMac,
+.urlAdvMac .UrlAdvAreaMac,
+.vkMac .VkAreaMac,
+.helpInfoMac .HelpInfoAreaMac,
+.userConsent .userConsentArea,
+.ptp .PtpArea {
+    display: block;
+}
+
+.dntCheckLicense .DntCheckLicenseText,
+.dntTaskDisabled .DntTaskDisabledText,
+.dntRestrictionSubscription .DntTaskDisabledText,
+.dntDetecting .DntBlockingDisabledText,
+.dntUserDisabled .DntBlockingDisabledOnThisSiteText,
+.dntBlocking .DntBlockedTrackersText,
+.dntDetecting .DntDetectedTrackersText,
+.dntUserDisabled .DntDetectedTrackersText,
+.dntIncompatible .DntIncompatibleText,
+.dntIncompatible .DntBlockingDisabledOnThisSiteText,
+.dntIncompatibleDetecting .DntIncompatibleText,
+.dntIncompatibleDetecting .DntBlockingDisabledOnThisSiteText,
+.dntOffAsPartner .DntTrustedText,
+.dntOffAsPartner .DntBlockingDisabledOnThisSiteText,
+.dntOffAsPartnerDetecting .DntTrustedText,
+.dntOffAsPartnerDetecting .DntBlockingDisabledOnThisSiteText,
+.DntCategoryNotBlocked .PopupDntCategoryTitleNoteNotBlocked,
+.DntCategoryPartiallyBlocked .PopupDntCategoryTitleNotePartiallyBlocked,
+.afpCheckLicense .afpCheckLicenseText,
+.afpTaskDisabled .afpTaskDisabledText,
+.afpDetecting .afpBlockingDisabledText,
+.afpDetecting .afpBlockingText,
+.afpUserDisabled .afpBlockingDisabledOnThisSiteText,
+.afpUserDisabled .afpBlockingText,
+.afpBlocking .afpBlockingText,
+.afpIncompatible .afpIncompatibleText,
+.afpIncompatible .afpBlockingDisabledOnThisSiteText,
+.afpIncompatibleDetecting .afpIncompatibleText,
+.afpIncompatibleDetecting .afpBlockingDisabledOnThisSiteText,
+.afpOffAsPartner .afpTrustedText,
+.afpOffAsPartner .afpBlockingDisabledOnThisSiteText,
+.afpOffAsPartnerDetecting .afpTrustedText,
+.afpOffAsPartnerDetecting .afpBlockingDisabledOnThisSiteText,
+.abTaskOff .abTaskDisabledText,
+.abBlocking .abBlockingText,
+.abCheckLicense .abCheckLicenseText,
+.abOffByUser .adBlockingDisabledOnThisSite,
+.abOffAsIncompatible .adBlockingDisabledOnThisSite,
+.abOffAsPartner .adBlockingDisabledOnThisSite,
+.abOffAsIncompatible .abIncompatibleDescription,
+.abOffAsPartner .abIncompatiblePartnerDescription,
+.abEnabledAfterReload .abBlockAfterReloadText,
+.abDisabledAfterReload .abDisableAfterReloadText,
+.abRestrictionSubscription .abTaskDisabledText,
+.obProtectMode .obDescriptionProtected,
+.obSubscription .obSubscriptionText,
+.obAvailableProtectModeFirstStart .obDescription,
+.obAvailableProtectModeNotFirstStart .obDescription,
+.obNotAvailableProtectMode .obDescription {
+    display: inline;
+}
+
+html {
+    height: min-content !important;
+}
+
+@media (prefers-color-scheme: light) {
+    html {
+        --popup-title-color: #0D0D15;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    html {
+        --popup-title-color: #F5F8FB;
+    }
+}
+
+iframe {
+    border-width: 0;
+}
+
+.popup-loader-footer {
+    display: none;
+}
+
+.popup-header-area {
+    display: block;
+    padding: 8px 15px 0px 20px;
+    gap: 12px;
+    width: 370px;
+    height: 37px;
+}
+
+.popup-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0px;
+    gap: 8px;
+    height: 24px;
+}
+
+.popup-header-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+}
+
+.popup-header-Image_custom {
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAQYSURBVHgBrVZ/aFVVHP98733Be8O591a5VXu+26JMq5cUNkgrK4oR0Q9IRAO3JvRHTTQoKSPcglVGwawo/wlMKiSyLApaGLkWiLA/RKI/lrq3NcRh7YfpXOi9p+/3nHOPd2+pD/E8vvece+73fD/f7+d8z/c8oLKWZdnMMs4yaMeXrbWK0dp7b1RNe9appp/aVaZQqyxQ68UW0wW+LWfZnMpWLV/07go0rGli5QiKhSjCyI79GOjswemhsRLr3c9SqhRA6OhO1VS1BO0PIVj3IFK5jCIKSQBAIkrxmM6emFKD3Xtp4PUeWbedpbMciMoMr2fZcPWjd2YXvvM0MvNzYkx7LEY9ilifxwjtvBJANTX0F/7o/IFGPumfEOcs0AyAxSxf55YtCho3PYXa+xaysdAYY8PitXgMGwF5PAc9B/eNQoz1HsKBZ3YybeMSxZMsB3wLsK/x5ZXBLdvakQnmKU+AFTn8HzMtxFyj7rE72GtAILljIaOktYmqgivRuOEexQq5v3uPNPO3rZ4FCPLPP6GUmI5IyIAex700NqHn4bMBn8e+mvHOfSQ6kUcNLUu0TXmkYq5Sc6tZKWRlMlR4TLCCC0PpBxuKIu32yYMjdGbyJOYWr6MrcunErkZaL26eGzHrxCJT4g17Yj1OqfIISh/swa93dXCq7oNfMwfJiAETjXPc2dece27nheDEBzvr43RplA517UZ6/lW4+e3Ves05FY46CsmwMAvA1wr8Ey1ywanIJdyZiWnV39xFwteSnleRqqlGxMx7Ootk76NZxCQAPPHR+K3pgE2Vc0dl9Nt+zqbjWLBlDZ+ReZB0keMga5QccJtbLjGSUMThm030HNcSVWT5FBqqb2vUukc/+4Wj+VfJvkXwOAbR8R1d/wvAyQGdZrypiheZVDRpG7swp3iDuumtNvxzsITDXbt0OhOnpQDxmBPMOibrywH0HmiRkuOZjdLp5jtVMZh/7nGVW3Yrhj/8Hkc/7bPrGEj5pLMo0j3NAggnp0yamUOkqVFilL2qX/UwskuL1gEPxc834drVD3AkQwk6yfXJcxAjDRZeXFsobFwLzYkcFl2WTTGTShpXUMyoqFxhtU6o9eVsSn/4jS9Zvirxy/Uzil06f02w4P3XUHN30VVQU8iiuHeGbZFz1VZkvO83HHnzC4z1/S7GdbErvw86WNbXrXwkG2xsQzpfZ7yFraBiSLHXkgOSEraSTv95DAOvfIzj3+2Xcr0VpmRPJClKtsACtRReakPDsyvAtxpMfVL2UBnQ8MQpjGzbheGPvsHZyVPbefKF2HD5HuA8QD8LbQWOpn5Vc3wH6Np/bGcPSlt2YHp4tNc6tBeX2FpZBtP5enX77vdYulV26WIJoaJLv9Im12kHzN+WcTvOVrLwP2IK/GhfLOujAAAAAElFTkSuQmCC');
+    background-size: cover;
+}
+
+.popup-title {
+    display: flex;
+    height: 14px;
+    font-family: 'Kaspersky Sans Display';
+    font-style: normal;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0%;
+    align-items: center;
+    text-align: left;
+    font-feature-settings: 'liga' off;
+    color: var(--popup-title-color);
+}
+
+#PopupHelpInfo {
+    position: relative !important;
+    min-height: 486px !important;
+}
