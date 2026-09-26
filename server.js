@@ -10,12 +10,28 @@ const os = require('node:os');
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// Em produção (Render), o banco fica no volume persistente /var/data
-// Em desenvolvimento local, fica na pasta raiz do projeto
-const DB_PATH = process.env.DB_PATH
-  || (process.env.RENDER ? '/var/data/banco_dados.sqlite' : path.join(__dirname, 'banco_dados.sqlite'));
+// Resolução do caminho do banco de dados:
+// 1. Usa DB_PATH da variável de ambiente se definida (ex: /var/data com disco persistente)
+// 2. Se estiver no Render SEM disco, usa /tmp (dados resetam ao reiniciar, mas funciona)
+// 3. Em desenvolvimento local, usa a pasta raiz do projeto
+function resolverDbPath() {
+  if (process.env.DB_PATH) return process.env.DB_PATH;
+  if (process.env.RENDER) {
+    // Tenta usar /var/data (disco persistente), senão usa /tmp
+    try {
+      fs.accessSync('/var/data', fs.constants.W_OK);
+      return '/var/data/banco_dados.sqlite';
+    } catch (e) {
+      console.log('[DB] /var/data não disponível — usando /tmp (dados temporários)');
+      return '/tmp/banco_dados.sqlite';
+    }
+  }
+  return path.join(__dirname, 'banco_dados.sqlite');
+}
 
+const DB_PATH = resolverDbPath();
 const IS_PRODUCTION = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
+console.log(`[DB] Caminho do banco: ${DB_PATH}`);
 
 
 // Função para identificar o endereço IP da máquina na rede local
