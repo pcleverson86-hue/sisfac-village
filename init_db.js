@@ -143,6 +143,8 @@ db.exec(`
     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
     FOREIGN KEY (unidade_id) REFERENCES unidades(id),
     FOREIGN KEY (posto_trabalho_id) REFERENCES postos_trabalho(id)
+  );
+
   CREATE TABLE IF NOT EXISTS escalas_trabalho (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL UNIQUE,
