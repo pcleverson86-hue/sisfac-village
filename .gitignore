@@ -33,7 +33,6 @@ scratch_*.js
 check_*.js
 fix_*.js
 normalize_*.js
-init_db.js
 INICIAR_*.bat
 LIBERAR_*.bat
 

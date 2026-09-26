@@ -10,7 +10,7 @@ services:
     region: oregon       # Servidor nos EUA (mais próximo do Brasil disponível no plano grátis)
 
     buildCommand: "echo 'Build OK - sem dependências npm'"
-    startCommand: "node server.js"
+    startCommand: "node init_db.js && node server.js"
 
     # Variáveis de ambiente
     envVars:
