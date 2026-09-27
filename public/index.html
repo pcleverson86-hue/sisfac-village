@@ -3918,13 +3918,23 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Colaborador Efetivo *</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-[11px] font-semibold text-slate-600">Colaborador Efetivo *</label>
+                <span class="text-[10px] text-slate-400">Filtrar por nome ou função</span>
+              </div>
+              <div class="relative mb-1.5">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-indigo-500 pointer-events-none">
+                  <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                </span>
+                <input type="text" id="multiBuscaColaboradorInput" oninput="filtrarColaboradoresMultiModal(this.value)" placeholder="🔍 Digite para pesquisar funcionário..." class="w-full pl-8 pr-2 py-1.5 border border-indigo-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium shadow-2xs">
+              </div>
               <select id="multiColaboradorSelect" onchange="aoSelecionarColaboradorMultiCliente(this.value)" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 <option value="">Selecione o colaborador...</option>
               </select>
             </div>
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">Carga Horária Semanal Total Alvo</label>
+              <div class="h-[29px] hidden sm:block"></div>
               <select id="multiCargaTotalAlvo" onchange="recalcularTotalHorasMultiCliente()" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 <option value="44h" selected>44 Horas Semanais (Padrão CLT)</option>
                 <option value="40h">40 Horas Semanais</option>
@@ -3952,14 +3962,22 @@
             </div>
           </div>
 
-          <!-- Seletor Rápido de Clientes para Adicionar -->
-          <div class="flex items-center gap-2">
-            <select id="multiAdicionarClienteSelect" class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none">
-              <option value="">Selecione um cliente para adicionar ao agrupamento...</option>
-            </select>
-            <button type="button" onclick="adicionarClienteAoAgrupamentoMulti()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition">
-              <i class="fa-solid fa-plus"></i> Adicionar Cliente
-            </button>
+          <!-- Seletor Rápido de Clientes para Adicionar com Lupa de Pesquisa -->
+          <div class="space-y-1.5 bg-violet-50/50 p-2.5 rounded-xl border border-violet-100">
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-violet-500 pointer-events-none">
+                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+              </span>
+              <input type="text" id="multiBuscaClienteInput" oninput="filtrarClientesMultiModal(this.value)" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); adicionarClienteAoAgrupamentoMulti(); }" placeholder="🔍 Digite para pesquisar cliente pelo nome ou razão social (pressione Enter para adicionar)..." class="w-full pl-8 pr-2 py-1.5 border border-violet-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-violet-500 focus:outline-none font-medium shadow-2xs">
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="multiAdicionarClienteSelect" class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none">
+                <option value="">Selecione um cliente para adicionar ao agrupamento...</option>
+              </select>
+              <button type="button" onclick="adicionarClienteAoAgrupamentoMulti()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition whitespace-nowrap cursor-pointer">
+                <i class="fa-solid fa-plus"></i> Adicionar Cliente
+              </button>
+            </div>
           </div>
 
           <!-- Container dos Cards de Clientes Selecionados -->
@@ -10593,7 +10611,7 @@
   </div>
 
   <!-- Script Principal da Aplicação SISFAC 2.0 -->
-  <script src="js/app.js?v=2.5.0"></script>
+  <script src="js/app.js?v=2.6.0"></script>
 
 </body>
 </html>

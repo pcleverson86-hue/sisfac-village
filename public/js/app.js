@@ -1530,7 +1530,13 @@ function renderizarLinhasColaboradores() {
     let btnDemissao = '';
     let btnFerias = '';
     let btnAfastamento = '';
+    let btnFalta = '';
     if (!isDemitido) {
+      btnFalta = `
+        <button onclick="lancarFaltaDiretoColaborador(${c.id})" class="text-rose-600 hover:text-rose-800 p-1 mr-1 transition" title="Lançar Falta / Ocorrência Direta para ${escapeJsString(c.nome)}">
+          <i class="fa-solid fa-calendar-xmark"></i>
+        </button>
+      `;
       if (isAfastado) {
         btnAfastamento = `
           <button onclick="abrirModalRetornoAfastamento(${c.id}, '${escapeJsString(c.nome)}')" class="text-teal-600 hover:text-teal-800 p-1 mr-1" title="Registrar Retorno do Afastamento e Realocar">
@@ -1590,6 +1596,7 @@ function renderizarLinhasColaboradores() {
           <button onclick="abrirModalEditarBeneficiosRapido(${c.id})" class="text-emerald-600 hover:text-emerald-800 p-1 mr-1" title="Editar Benefícios (VT e VA) do Colaborador">
             <i class="fa-solid fa-utensils"></i>
           </button>
+          ${btnFalta}
           ${btnAfastamento}
           ${btnFerias}
           ${btnEditar}
@@ -8758,6 +8765,76 @@ async function exportarFaltasExcel() {
 function abrirModalNovaFalta() {
   popularSelectsGlobais();
   document.getElementById('modalNovaFalta').classList.remove('hidden');
+}
+
+function lancarFaltaDiretoColaborador(colabId) {
+  const colab = (state.colaboradores || []).find(c => c.id == colabId);
+  if (!colab) {
+    alert('Colaborador não encontrado.');
+    return;
+  }
+
+  // 1. Abre o modal e popula listas mestras
+  popularSelectsGlobais();
+  const modal = document.getElementById('modalNovaFalta');
+  if (modal) modal.classList.remove('hidden');
+
+  // 2. Data padrão de hoje
+  const campoData = document.getElementById('faltaData');
+  if (campoData && !campoData.value) {
+    const hoje = new Date().toISOString().split('T')[0];
+    campoData.value = hoje;
+  }
+
+  // 3. Preenche Cliente
+  if (colab.cliente_id) {
+    const selCli = document.getElementById('faltaClienteId');
+    if (selCli) {
+      selCli.value = colab.cliente_id;
+      aoSelecionarClienteFalta();
+    }
+  }
+
+  // 4. Preenche Unidade se houver
+  if (colab.unidade_id) {
+    const selUni = document.getElementById('faltaUnidadeId');
+    if (selUni) {
+      selUni.value = colab.unidade_id;
+      aoSelecionarUnidadeFalta();
+    }
+  } else {
+    // Popula os colaboradores vinculados ao cliente
+    const selColab = document.getElementById('faltaColaboradorId');
+    if (selColab) {
+      selColab.innerHTML = '<option value="">Selecione o Colaborador...</option>';
+      const listaFiltro = (state.colaboradores || []).filter(c => (colab.cliente_id && c.cliente_id === colab.cliente_id) || c.id === colab.id);
+      listaFiltro.forEach(c => {
+        selColab.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_cargo || 'Geral'})</option>`;
+      });
+    }
+  }
+
+  // 5. Seleciona o Colaborador específico no select
+  const selColabFinal = document.getElementById('faltaColaboradorId');
+  if (selColabFinal) {
+    if (!Array.from(selColabFinal.options).some(opt => opt.value == colab.id)) {
+      const opt = document.createElement('option');
+      opt.value = colab.id;
+      opt.textContent = `${colab.nome} (${colab.nome_cargo || 'Geral'}) - Selecionado`;
+      selColabFinal.appendChild(opt);
+    }
+    selColabFinal.value = colab.id;
+  }
+
+  // 6. Foco no campo de motivo da falta para agilizar
+  const selMotivo = document.getElementById('faltaMotivo');
+  if (selMotivo) {
+    selMotivo.focus();
+  }
+
+  if (typeof mostrarNotificacaoSucesso === 'function') {
+    mostrarNotificacaoSucesso(`Lançando falta para: ${colab.nome}`);
+  }
 }
 
 function aoSelecionarClienteFalta() {
@@ -19120,29 +19197,17 @@ async function excluirEscala(id, nome) {
 function abrirModalMultiCliente(preSelectedClienteId = null) {
   abrirModal('modalMultiCliente');
 
+  // Limpar campos de busca
+  const inColab = document.getElementById('multiBuscaColaboradorInput');
+  if (inColab) inColab.value = '';
+  const inCli = document.getElementById('multiBuscaClienteInput');
+  if (inCli) inCli.value = '';
+
   // Popular Select de Colaboradores
-  const selColab = document.getElementById('multiColaboradorSelect');
-  if (selColab) {
-    const ativos = (state.colaboradores || []).filter(c => c.ativo === 1);
-    selColab.innerHTML = `
-      <option value="">Selecione o colaborador...</option>
-      ${ativos.map(c => {
-        const postoInfo = c.nome_posto ? ` [Posto: ${c.nome_posto} - ${c.nome_fantasia || c.nome_razao_social || 'Cliente'}]` : ' [Reserva Técnica - Disponível]';
-        const multiInfo = c.is_multi_cliente ? ' (Já em Multi-Cliente)' : '';
-        return `<option value="${c.id}">${escapeHtml(c.nome)} - ${escapeHtml(c.nome_cargo || 'Geral')}${postoInfo}${multiInfo}</option>`;
-      }).join('')}
-    `;
-  }
+  filtrarColaboradoresMultiModal('');
 
   // Popular Select de Clientes para Adicionar
-  const selCli = document.getElementById('multiAdicionarClienteSelect');
-  if (selCli) {
-    const clientes = state.clientesComPostos || state.clientes || [];
-    selCli.innerHTML = `
-      <option value="">Selecione um cliente para adicionar ao agrupamento...</option>
-      ${clientes.map(c => `<option value="${c.id}">#${c.id} - ${escapeHtml(c.nome_fantasia || c.nome_razao_social)}</option>`).join('')}
-    `;
-  }
+  filtrarClientesMultiModal('');
 
   // Popular Select de Escala Geral
   popularSelectsEscalas();
@@ -19170,6 +19235,66 @@ function abrirModalMultiCliente(preSelectedClienteId = null) {
   renderizarClientesAgrupadosMulti();
   recalcularTotalHorasMultiCliente();
   carregarRoteirosMultiCliente();
+}
+
+function filtrarColaboradoresMultiModal(termo = '') {
+  const selColab = document.getElementById('multiColaboradorSelect');
+  if (!selColab) return;
+  const valorAtual = selColab.value;
+  const termoLimpo = (termo || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const ativos = (state.colaboradores || []).filter(c => c.ativo === 1);
+  const filtrados = ativos.filter(c => {
+    if (!termoLimpo) return true;
+    const nome = (c.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cargo = (c.nome_cargo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const posto = (c.nome_posto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cli = (c.nome_fantasia || c.nome_razao_social || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return nome.includes(termoLimpo) || cargo.includes(termoLimpo) || posto.includes(termoLimpo) || cli.includes(termoLimpo);
+  });
+
+  selColab.innerHTML = `
+    <option value="">${filtrados.length === 0 ? 'Nenhum funcionário encontrado...' : 'Selecione o colaborador...'}</option>
+    ${filtrados.map(c => {
+      const postoInfo = c.nome_posto ? ` [Posto: ${c.nome_posto} - ${c.nome_fantasia || c.nome_razao_social || 'Cliente'}]` : ' [Reserva Técnica - Disponível]';
+      const multiInfo = c.is_multi_cliente ? ' (Já em Multi-Cliente)' : '';
+      return `<option value="${c.id}">${escapeHtml(c.nome)} - ${escapeHtml(c.nome_cargo || 'Geral')}${postoInfo}${multiInfo}</option>`;
+    }).join('')}
+  `;
+
+  if (valorAtual && filtrados.some(c => c.id == valorAtual)) {
+    selColab.value = valorAtual;
+  } else if (termoLimpo && filtrados.length === 1) {
+    selColab.value = filtrados[0].id;
+    aoSelecionarColaboradorMultiCliente(filtrados[0].id);
+  }
+}
+
+function filtrarClientesMultiModal(termo = '') {
+  const selCli = document.getElementById('multiAdicionarClienteSelect');
+  if (!selCli) return;
+  const valorAtual = selCli.value;
+  const termoLimpo = (termo || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const clientes = state.clientesComPostos || state.clientes || [];
+  const filtrados = clientes.filter(c => {
+    if (!termoLimpo) return true;
+    const idStr = String(c.id);
+    const fantasia = (c.nome_fantasia || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const razao = (c.nome_razao_social || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return fantasia.includes(termoLimpo) || razao.includes(termoLimpo) || idStr === termoLimpo;
+  });
+
+  selCli.innerHTML = `
+    <option value="">${filtrados.length === 0 ? 'Nenhum cliente encontrado...' : 'Selecione um cliente para adicionar ao agrupamento...'}</option>
+    ${filtrados.map(c => `<option value="${c.id}">#${c.id} - ${escapeHtml(c.nome_fantasia || c.nome_razao_social)}</option>`).join('')}
+  `;
+
+  if (valorAtual && filtrados.some(c => c.id == valorAtual)) {
+    selCli.value = valorAtual;
+  } else if (termoLimpo && filtrados.length === 1) {
+    selCli.value = filtrados[0].id;
+  }
 }
 
 function abrirModalMultiClienteComSelecionados() {
@@ -19280,6 +19405,12 @@ function adicionarClienteAoAgrupamentoMulti() {
   });
 
   sel.value = '';
+  const inCli = document.getElementById('multiBuscaClienteInput');
+  if (inCli) {
+    inCli.value = '';
+    filtrarClientesMultiModal('');
+    inCli.focus();
+  }
   renderizarClientesAgrupadosMulti();
   recalcularTotalHorasMultiCliente();
 }
@@ -20150,3 +20281,7 @@ window.excluirTarefaImplantacao = excluirTarefaImplantacao;
 window.abrirAdicionarTarefaImplantacao = abrirAdicionarTarefaImplantacao;
 window.salvarNovaTarefaImplantacao = salvarNovaTarefaImplantacao;
 window.mostrarNotificacaoSucesso = mostrarNotificacaoSucesso;
+
+window.lancarFaltaDiretoColaborador = lancarFaltaDiretoColaborador;
+window.filtrarColaboradoresMultiModal = filtrarColaboradoresMultiModal;
+window.filtrarClientesMultiModal = filtrarClientesMultiModal;
