@@ -6207,8 +6207,21 @@ const server = http.createServer(async (req, res) => {
 
       if (pathname === '/api/faltas' && method === 'POST') {
         const body = await parseRequestBody(req);
-        if (!body.data_falta || !body.cliente_id || !body.unidade_id || !body.colaborador_id) {
-          return errorResponse(res, 'Data, Cliente, Unidade e Colaborador são obrigatórios', 400);
+        if (!body.data_falta || !body.cliente_id || !body.colaborador_id) {
+          return errorResponse(res, 'Data, Cliente e Colaborador são obrigatórios', 400);
+        }
+
+        let unidadeId = parseInt(body.unidade_id, 10);
+        if (!unidadeId || isNaN(unidadeId)) {
+          const uni = db.prepare('SELECT id FROM unidades WHERE cliente_id = ? LIMIT 1').get(parseInt(body.cliente_id, 10));
+          if (uni) {
+            unidadeId = uni.id;
+          } else {
+            const cli = db.prepare('SELECT nome_fantasia, nome_razao_social FROM clientes WHERE id = ?').get(parseInt(body.cliente_id, 10));
+            const nomeCli = cli ? (cli.nome_fantasia || cli.nome_razao_social) : 'Geral';
+            const insUni = db.prepare('INSERT INTO unidades (cliente_id, nome_unidade) VALUES (?, ?)').run(parseInt(body.cliente_id, 10), 'Unidade Principal - ' + nomeCli);
+            unidadeId = insUni.lastInsertRowid;
+          }
         }
 
         let cargoId = body.cargo_id;
@@ -6263,7 +6276,7 @@ const server = http.createServer(async (req, res) => {
         const result = stmt.run(
           body.data_falta,
           parseInt(body.cliente_id, 10),
-          parseInt(body.unidade_id, 10),
+          unidadeId,
           cargoId,
           parseInt(body.colaborador_id, 10),
           body.motivo_falta || 'Injustificada',
