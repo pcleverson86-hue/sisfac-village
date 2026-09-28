@@ -20804,16 +20804,34 @@ function abrirModalServicoExtra() {
   document.getElementById('extraMotivo').value = 'Serviço Extra / Avulso';
   
   const selCliente = document.getElementById('extraClienteId');
-  selCliente.innerHTML = '<option value="">Selecione...</option>' + state.clientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`).join('');
+  selCliente.innerHTML = '<option value="">Selecione o Cliente / Base...</option>' + state.clientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`).join('');
   
   const selFree = document.getElementById('extraFreelancerId');
-  selFree.innerHTML = '<option value="">Selecione...</option>' + state.freelancers.map(f => `<option value="${f.id}">${f.nome} (PIX: ${f.chave_pix || 'S/N'})</option>`).join('');
   
+  let html = '<option value="">Selecione o Profissional...</option>';
+  html += '<optgroup label="Freelancers">';
+  html += state.freelancers.map(f => `<option value="free_${f.id}">${f.nome} (PIX: ${f.chave_pix || 'S/N'})</option>`).join('');
+  html += '</optgroup>';
+  
+  html += '<optgroup label="Colaboradores Efetivos">';
+  html += state.colaboradores.map(c => `<option value="colab_${c.id}">${c.nome} - ${c.nome_cargo || ''}</option>`).join('');
+  html += '</optgroup>';
+  
+  selFree.innerHTML = html;
+  
+  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> Lançar Pagamento Avulso / Dobra Extra';
   document.getElementById('modalServicoExtra').classList.remove('hidden');
 }
 
 async function salvarServicoExtra(e) {
   e.preventDefault();
+  
+  const profSelecionado = document.getElementById('extraFreelancerId').value;
+  if (!profSelecionado) return alert('Selecione o profissional.');
+  
+  const isFree = profSelecionado.startsWith('free_');
+  const profId = parseInt(profSelecionado.split('_')[1], 10);
+  
   const payload = {
     data_falta: document.getElementById('extraData').value,
     cliente_id: parseInt(document.getElementById('extraClienteId').value, 10),
@@ -20822,10 +20840,11 @@ async function salvarServicoExtra(e) {
     motivo_falta: document.getElementById('extraMotivo').value,
     dias_afastamento: 1,
     houve_cobertura: 1,
-    tipo_cobertura: 'freelancer',
-    freelancer_id: parseInt(document.getElementById('extraFreelancerId').value, 10),
+    tipo_cobertura: isFree ? 'freelancer' : 'efetivo_dobra',
+    freelancer_id: isFree ? profId : null,
+    cobertor_colaborador_id: !isFree ? profId : null,
     valor_pago_freelance: parseFloat(document.getElementById('extraValor').value) || 0,
-    observacoes_operacao: 'Lançamento de Serviço Extra Avulso via Aba Freelancers'
+    observacoes_operacao: 'Lançamento de Pagamento Avulso / Dobra'
   };
 
   try {
@@ -20836,7 +20855,7 @@ async function salvarServicoExtra(e) {
     });
     const result = await res.json();
     if (res.ok) {
-      alert('Serviço Extra registrado com sucesso!');
+      alert('Pagamento Avulso registrado com sucesso!');
       document.getElementById('modalServicoExtra').classList.add('hidden');
       await carregarDadosBase();
       carregarDashboardFreelancers();
@@ -20849,4 +20868,5 @@ async function salvarServicoExtra(e) {
 }
 window.abrirModalServicoExtra = abrirModalServicoExtra;
 window.salvarServicoExtra = salvarServicoExtra;
+
 
