@@ -7137,6 +7137,7 @@ async function salvarNovoUsuario(e) {
     setor: document.getElementById('usrSetor').value,
     email: document.getElementById('usrEmail').value.trim(),
     pode_enviar_comunicados: document.getElementById('usrPodeEnviarComunicados')?.checked ? 1 : 0,
+    pode_autorizar_admissao: document.getElementById('userPermAdmissao')?.checked ? 1 : 0,
     permissoes
   };
 

@@ -1748,8 +1748,9 @@ const server = http.createServer(async (req, res) => {
 
         const ehAdminSetor = body.setor === 'admin' || body.setor === 'Administrador Master' || body.login === 'admin';
         const podeEnviar = body.pode_enviar_comunicados ? 1 : (ehAdminSetor ? 1 : 0);
-        const stmt = db.prepare('INSERT INTO usuarios (nome, login, senha, setor, email, pode_enviar_comunicados) VALUES (?, ?, ?, ?, ?, ?)');
-        const result = stmt.run(body.nome, body.login, body.senha, body.setor, body.email || '', podeEnviar);
+        const podeAutorizar = typeof body.pode_autorizar_admissao === 'number' ? body.pode_autorizar_admissao : 0;
+        const stmt = db.prepare('INSERT INTO usuarios (nome, login, senha, setor, email, pode_enviar_comunicados, pode_autorizar_admissao) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        const result = stmt.run(body.nome, body.login, body.senha, body.setor, body.email || '', podeEnviar, podeAutorizar);
         const userId = result.lastInsertRowid;
 
         // Inserir permissões selecionadas
@@ -1804,8 +1805,8 @@ const server = http.createServer(async (req, res) => {
           ? (body.pode_enviar_comunicados ? 1 : 0) 
           : (ehAdminSetor ? 1 : (usuarioAtual.pode_enviar_comunicados || 0));
 
-        let sql = 'UPDATE usuarios SET nome = ?, login = ?, setor = ?, email = ?, pode_enviar_comunicados = ?, ativo = ?';
-        const params = [nomeFinal, loginFinal, setorFinal, emailFinal, podeEnviar, body.ativo !== undefined ? (body.ativo ? 1 : 0) : usuarioAtual.ativo];
+        let sql = 'UPDATE usuarios SET nome = ?, login = ?, setor = ?, email = ?, pode_enviar_comunicados = ?, ativo = ?, pode_autorizar_admissao = ?';
+        const params = [nomeFinal, loginFinal, setorFinal, emailFinal, podeEnviar, body.ativo !== undefined ? (body.ativo ? 1 : 0) : usuarioAtual.ativo, typeof body.pode_autorizar_admissao === 'number' ? body.pode_autorizar_admissao : usuarioAtual.pode_autorizar_admissao];
 
         if (body.senha && body.senha.trim()) {
           sql += ', senha = ?';
@@ -1842,7 +1843,7 @@ const server = http.createServer(async (req, res) => {
           }
         }
 
-        const usuarioAtualizado = db.prepare('SELECT id, nome, login, setor, email, pode_enviar_comunicados, ativo FROM usuarios WHERE id = ?').get(id);
+        const usuarioAtualizado = db.prepare('SELECT id, nome, login, setor, email, pode_enviar_comunicados, pode_autorizar_admissao, ativo FROM usuarios WHERE id = ?').get(id);
         const permissoesAtualizadas = db.prepare('SELECT modulo, pode_visualizar, pode_criar, pode_editar, pode_excluir, pode_aprovar FROM permissoes_usuario WHERE usuario_id = ?').all(id);
 
         return jsonResponse(res, { success: true, usuario: usuarioAtualizado, permissoes: permissoesAtualizadas });
