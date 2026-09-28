@@ -20612,3 +20612,49 @@ window.adicionarClienteRoteiroEdicao = adicionarClienteRoteiroEdicao;
 
 
 
+
+function mudarAbaDashboard(painel) {
+  document.querySelectorAll('.painel-dashboard-interno').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('#navDashboardsInterno button').forEach(el => {
+    el.classList.remove('bg-cyan-600', 'text-white');
+    el.classList.add('bg-slate-100', 'text-slate-600');
+  });
+
+  const painelId = `painelDash${painel.charAt(0).toUpperCase() + painel.slice(1)}`;
+  const elPainel = document.getElementById(painelId);
+  if(elPainel) elPainel.classList.remove('hidden');
+
+  const btnId = `btnDash${painel.charAt(0).toUpperCase() + painel.slice(1)}`;
+  const elBtn = document.getElementById(btnId);
+  if(elBtn) {
+    elBtn.classList.remove('bg-slate-100', 'text-slate-600');
+    elBtn.classList.add('bg-cyan-600', 'text-white');
+  }
+
+  if(painel === 'executivo') carregarDashboardExecutivo();
+  else carregarDashboardSetorial(painel);
+}
+
+async function carregarDashboardSetorial(setor) {
+  // Placeholder para buscar métricas por setor
+  const mesInput = document.getElementById('dashboardMes');
+  const mes = mesInput?.value || state.mesAtual;
+  
+  try {
+    const res = await fetch(`/api/dashboard/setorial?setor=${setor}&mes=${mes}`);
+    const data = await res.json();
+    
+    // Render logic per setor (will be expanded later)
+    if(setor === 'operacional') {
+       document.getElementById('kpisOperacional').innerHTML = `<div class="col-span-full text-center text-slate-500 py-4"><i class="fa-solid fa-person-digging text-2xl mb-2 text-amber-500"></i><br>Dashboard em desenvolvimento...</div>`;
+    }
+    if(setor === 'rh') {
+       document.getElementById('kpisRh').innerHTML = `<div class="col-span-full text-center text-slate-500 py-4"><i class="fa-solid fa-users-gear text-2xl mb-2 text-purple-500"></i><br>Dashboard em desenvolvimento...</div>`;
+    }
+    if(setor === 'comercial') {
+       document.getElementById('kpisComercial').innerHTML = `<div class="col-span-full text-center text-slate-500 py-4"><i class="fa-solid fa-handshake-angle text-2xl mb-2 text-emerald-500"></i><br>Dashboard em desenvolvimento...</div>`;
+    }
+  } catch(e) {}
+}
+
+window.mudarAbaDashboard = mudarAbaDashboard;

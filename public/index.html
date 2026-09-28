@@ -375,85 +375,125 @@
     <!-- --------------------------------------------------------------- -->
     <!-- ABA 0: DASHBOARD EXECUTIVO GERAL -->
     <!-- --------------------------------------------------------------- -->
-    <section id="aba-dashboard" class="tab-content hidden space-y-6">
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="bg-cyan-100 text-cyan-800 text-xs font-bold px-2 py-0.5 rounded">VisÃ£o EstratÃ©gica 360Â°</span>
-              <h1 class="text-xl font-bold text-slate-900">Dashboard Executivo Geral</h1>
-            </div>
-            <p class="text-sm text-slate-500 mt-1">
-              Indicadores consolidados em tempo real de clientes, contratos, postos, vagas, efetivo, fÃ©rias, faltas, freelancers, benefÃ­cios e faturamento.
-            </p>
-          </div>
+        <section id="aba-dashboard" class="tab-content hidden space-y-6">
+      
+      <!-- NAVEGACAO INTERNA DOS DASHBOARDS -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-2 mb-4">
+        <nav class="flex flex-wrap gap-2" id="navDashboardsInterno">
+          <button onclick="mudarAbaDashboard('executivo')" id="btnDashExecutivo" class="flex-1 min-w-[140px] py-2 px-4 rounded-lg font-bold text-sm bg-cyan-600 text-white shadow-sm transition">
+            <i class="fa-solid fa-chart-line mr-2"></i>Executivo / Diretoria
+          </button>
+          <button onclick="mudarAbaDashboard('operacional')" id="btnDashOperacional" class="flex-1 min-w-[140px] py-2 px-4 rounded-lg font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            <i class="fa-solid fa-helmet-safety mr-2"></i>Operacional
+          </button>
+          <button onclick="mudarAbaDashboard('rh')" id="btnDashRh" class="flex-1 min-w-[140px] py-2 px-4 rounded-lg font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            <i class="fa-solid fa-users mr-2"></i>RH e DP
+          </button>
+          <button onclick="mudarAbaDashboard('comercial')" id="btnDashComercial" class="flex-1 min-w-[140px] py-2 px-4 rounded-lg font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+            <i class="fa-solid fa-handshake mr-2"></i>Comercial
+          </button>
+        </nav>
+      </div>
 
-          <div class="flex items-center gap-2 flex-wrap">
+      <!-- PAINEL EXECUTIVO (Atual) -->
+      <div id="painelDashExecutivo" class="painel-dashboard-interno space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-0.5">MÃªs de ReferÃªncia:</label>
-              <input type="month" id="dashboardMes" onchange="carregarDashboardExecutivo()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none">
+              <div class="flex items-center gap-2">
+                <span class="bg-cyan-100 text-cyan-800 text-xs font-bold px-2 py-0.5 rounded">Visão Estratégica 360°</span>
+                <h1 class="text-xl font-bold text-slate-900">Dashboard Executivo Geral</h1>
+              </div>
+              <p class="text-sm text-slate-500 mt-1">
+                Indicadores consolidados em tempo real de clientes, contratos, postos, vagas, efetivo, férias, faltas, freelancers, benefícios e faturamento.
+              </p>
             </div>
-            <button onclick="carregarDashboardExecutivo()" class="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition">
-              <i class="fa-solid fa-arrows-rotate"></i> Atualizar
-            </button>
-            <button onclick="abrirExplorarDashboard()" class="mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition" title="Explorar ocorrÃªncias detalhadas de faltas, coberturas e glosas">
-              <i class="fa-solid fa-magnifying-glass-chart"></i> Explorar OcorrÃªncias
-            </button>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Mês de Referência:</label>
+                <input type="month" id="dashboardMes" onchange="carregarDashboardExecutivo()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none">
+              </div>
+              <button onclick="carregarDashboardExecutivo()" class="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+              </button>
+              <button onclick="abrirExplorarDashboard()" class="mt-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition" title="Explorar ocorrências detalhadas">
+                <i class="fa-solid fa-magnifying-glass-chart"></i> Explorar Ocorrências
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- GRID DE 10 KPIS PRINCIPAIS -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5" id="dashboardKpisGrid">
+          <!-- Renderizado via JS -->
+        </div>
+
+        <!-- PAINÉIS ANALÍTICOS COMPARATIVOS -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-building-user text-violet-600"></i> Lotação por Cliente (Top)
+              </h3>
+              <span class="text-[10px] text-slate-400 font-semibold">Ocupadas vs Abertas</span>
+            </div>
+            <div id="dashLotaClientesContainer" class="space-y-3 flex-1 overflow-y-auto"></div>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-blue-600"></i> Despesas Consolidadas
+              </h3>
+              <span class="text-[10px] text-slate-400 font-semibold">Mensal</span>
+            </div>
+            <div id="dashFinanceiroContainer" class="flex-1 flex flex-col justify-center items-center"></div>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-ranking-star text-amber-500"></i> Faltas (Ranking)
+              </h3>
+              <span class="text-[10px] text-slate-400 font-semibold">Top Ocorrências</span>
+            </div>
+            <div id="dashFaltasRankingContainer" class="space-y-3 flex-1 overflow-y-auto"></div>
           </div>
         </div>
       </div>
 
-      <!-- GRID DE 10 KPIS PRINCIPAIS -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5" id="dashboardKpisGrid">
-        <!-- Renderizado dinamicamente via JS -->
-      </div>
-
-      <!-- PAINÃ‰IS ANALÃTICOS COMPARATIVOS -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Card 1: LotaÃ§Ã£o de Postos e Vagas Contratadas -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
-          <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-building-user text-violet-600"></i>
-              LotaÃ§Ã£o por Cliente (Top Contratos)
-            </h3>
-            <span class="text-[10px] text-slate-400 font-semibold">Ocupadas vs Abertas</span>
-          </div>
-          <div id="dashLotaClientesContainer" class="space-y-3 flex-1 overflow-y-auto">
-            <!-- Renderizado via JS -->
-          </div>
+      <!-- PAINEL OPERACIONAL -->
+      <div id="painelDashOperacional" class="painel-dashboard-interno hidden space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+           <h2 class="text-xl font-bold text-slate-900"><i class="fa-solid fa-helmet-safety text-amber-500 mr-2"></i>Dashboard Operacional</h2>
+           <p class="text-sm text-slate-500">Acompanhamento de faltas, coberturas, escalas e lotação de postos físicos.</p>
         </div>
-
-        <!-- Card 2: Comparativo Financeiro Operacional -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
-          <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-coins text-amber-500"></i>
-              Comparativo Financeiro Operacional
-            </h3>
-            <span class="text-[10px] text-slate-400 font-semibold">Custos do MÃªs</span>
-          </div>
-          <div id="dashFinanceiroContainer" class="space-y-3 flex-1">
-            <!-- Renderizado via JS -->
-          </div>
-        </div>
-
-        <!-- Card 3: Ranking de Faltas & Glosas -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
-          <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
-            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
-              Faltas & OcorrÃªncias por Cliente
-            </h3>
-            <button onclick="abrirExplorarDashboard()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-md transition shadow-2xs" title="Explorar todas as ocorrÃªncias detalhadas com filtros e custos">
-              <i class="fa-solid fa-magnifying-glass-chart"></i> Explorar Detalhes
-            </button>
-          </div>
-          <div id="dashFaltasRankingContainer" class="space-y-2 flex-1 overflow-y-auto">
-            <!-- Renderizado via JS -->
-          </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="kpisOperacional">
+           <!-- KPIs renderizados no JS -->
         </div>
       </div>
+
+      <!-- PAINEL RH -->
+      <div id="painelDashRh" class="painel-dashboard-interno hidden space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+           <h2 class="text-xl font-bold text-slate-900"><i class="fa-solid fa-users text-purple-600 mr-2"></i>Dashboard de RH e DP</h2>
+           <p class="text-sm text-slate-500">Métricas de efetivo, admissões, demissões, férias e turnover.</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="kpisRh">
+           <!-- KPIs renderizados no JS -->
+        </div>
+      </div>
+
+      <!-- PAINEL COMERCIAL -->
+      <div id="painelDashComercial" class="painel-dashboard-interno hidden space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+           <h2 class="text-xl font-bold text-slate-900"><i class="fa-solid fa-handshake text-emerald-600 mr-2"></i>Dashboard Comercial</h2>
+           <p class="text-sm text-slate-500">Acompanhamento de contratos, clientes ativos e rentabilidade de postos.</p>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="kpisComercial">
+           <!-- KPIs renderizados no JS -->
+        </div>
+      </div>
+
     </section>
 
     <!-- --------------------------------------------------------------- -->
@@ -10737,6 +10777,7 @@
 
 </body>
 </html>
+
 
 
 
