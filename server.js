@@ -2825,6 +2825,22 @@ const server = http.createServer(async (req, res) => {
           id
         );
 
+        // LOGICA MULTI CLIENTE
+        // Remove os roteiros antigos
+        db.prepare('DELETE FROM colaborador_clientes_compartilhados WHERE colaborador_id = ?').run(id);
+
+        if (body.is_multi_cliente && Array.isArray(body.multi_clientes)) {
+           const stmtMulti = db.prepare(`
+              INSERT INTO colaborador_clientes_compartilhados 
+              (colaborador_id, cliente_id, ativo)
+              VALUES (?, ?, 1)
+           `);
+           for (const mc of body.multi_clientes) {
+              if (mc.cliente_id) {
+                 stmtMulti.run(id, mc.cliente_id);
+              }
+           }
+        }
         // Registro de alterações no histórico da vida do colaborador
         if (colabAnterior) {
           try {
@@ -10176,4 +10192,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   iniciarOuVerificarTunnel();
 });
+
+
+
 
