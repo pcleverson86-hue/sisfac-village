@@ -20770,3 +20770,31 @@ window.imprimirDossieComercial = imprimirDossieComercial;
 
 
 
+
+function filtrarSelectLista(inputId, selectId) {
+  const filter = document.getElementById(inputId).value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const select = document.getElementById(selectId);
+  const options = select.options;
+  
+  // Guardar options originais em um atributo se não existir
+  if (!select.hasAttribute('data-original-options')) {
+    const originalHtml = select.innerHTML;
+    select.setAttribute('data-original-options', originalHtml);
+  }
+  
+  // Restaurar originais
+  select.innerHTML = select.getAttribute('data-original-options');
+  
+  // Filtrar
+  if (filter) {
+    for (let i = select.options.length - 1; i >= 0; i--) {
+      const opt = select.options[i];
+      if (opt.value === "") continue; // ignorar placeholder
+      const text = opt.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (!text.includes(filter)) {
+        select.remove(i);
+      }
+    }
+  }
+}
+window.filtrarSelectLista = filtrarSelectLista;
