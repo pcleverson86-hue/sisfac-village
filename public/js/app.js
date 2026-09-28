@@ -11718,7 +11718,7 @@ async function carregarDashboardExecutivo() {
       } else {
         containerFaltas.innerHTML = '';
         faltasLista.forEach((f, idx) => {
-          const nomeCli = f.cliente_nome || f.nome_fantasia || ('Cliente #' + (f.cliente_id || (idx + 1)));
+          const nomeCli = f.cliente_nome || f.nome_empresa || ('Cliente #' + (f.cliente_id || (idx + 1)));
           const clienteIdParam = f.cliente_id ? f.cliente_id : 'null';
           containerFaltas.innerHTML += `
             <div class="p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg border border-slate-200 flex items-center justify-between text-xs transition">
@@ -21234,7 +21234,7 @@ async function carregarCatalogoUniformes() {
     const res = await fetch('/api/uniformes/catalogo');
     const cat = await res.json();
     
-    const options = fornecedoresListaUniformes.map(f => `<option value="${f.id}">${f.nome_fantasia}</option>`).join('');
+    const options = fornecedoresListaUniformes.map(f => `<option value="${f.id}">${f.nome_empresa}</option>`).join('');
     
     tbody.innerHTML = cat.map(c => `
       <tr class="hover:bg-slate-50">
