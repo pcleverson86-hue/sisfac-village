@@ -20848,7 +20848,7 @@ async function salvarServicoExtra(e) {
   };
 
   try {
-    const res = await fetch('/api/operacional/faltas', {
+    const res = await fetch('/api/faltas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -20860,7 +20860,7 @@ async function salvarServicoExtra(e) {
       await carregarDadosBase();
       carregarDashboardFreelancers();
     } else {
-      alert(result.error || 'Erro ao registrar.');
+      alert(result.message || 'Erro ao registrar.');
     }
   } catch (err) {
     alert('Erro de conexão.');
@@ -20868,5 +20868,7 @@ async function salvarServicoExtra(e) {
 }
 window.abrirModalServicoExtra = abrirModalServicoExtra;
 window.salvarServicoExtra = salvarServicoExtra;
+
+
 
 
