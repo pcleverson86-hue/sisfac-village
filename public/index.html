@@ -1806,48 +1806,95 @@
       
 </div>
           <!-- Sub-aba 5: Gestão de Uniformes -->
-      <div id="subConteudo-sub-uniformes" class="hidden space-y-4 mt-6">
+            <div id="subConteudo-sub-uniformes" class="hidden space-y-4 mt-6">
+        
+        <!-- Painel de Abas Internas de Uniformes -->
         <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
           <div class="flex items-center justify-between mb-4">
             <div>
               <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-shirt text-teal-600"></i> Inteligência de Compras de Uniformes</h2>
-              <p class="text-sm text-slate-500">Gere orçamentos e listas de compras automaticamente baseados na função e tamanho de cada colaborador.</p>
+              <p class="text-sm text-slate-500">Configure as regras por cargo, cadastre os valores por fornecedor e gere orçamentos consolidados.</p>
             </div>
             <div class="flex gap-2">
               <button onclick="abrirModalTamanhosUniformes()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 border border-indigo-200">
                 <i class="fa-solid fa-users"></i> Medidas dos Colaboradores
               </button>
-              <button onclick="gerarNecessidadesUniformes()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Lista de Compras
-              </button>
             </div>
           </div>
           
-          <div id="listaNecessidadesUniformes" class="hidden mt-6">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold text-slate-700 text-sm">Lista de Compras Gerada</h3>
-              <button onclick="salvarOrcamentoUniforme()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
-                <i class="fa-solid fa-file-invoice"></i> Salvar Orçamento Completo
+          <div class="border-b border-slate-200 mb-4 mt-6">
+            <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+              <button onclick="trocarAbaUniformes('aba-uniformes-matriz')" id="btnAbaUni-matriz" class="border-teal-600 text-teal-600 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                <i class="fa-solid fa-sitemap mr-1"></i> Matriz (Regras por Cargo)
               </button>
+              <button onclick="trocarAbaUniformes('aba-uniformes-catalogo')" id="btnAbaUni-catalogo" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                <i class="fa-solid fa-tags mr-1"></i> Catálogo de Itens & Fornecedores
+              </button>
+              <button onclick="trocarAbaUniformes('aba-uniformes-orcamento')" id="btnAbaUni-orcamento" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm">
+                <i class="fa-solid fa-calculator mr-1"></i> Gerar Orçamento
+              </button>
+            </nav>
+          </div>
+
+          <!-- MATRIZ -->
+          <div id="aba-uniformes-matriz" class="space-y-4 block">
+            <div class="flex justify-between items-end bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-3 flex-1 mr-4">
+                <div><label class="block text-xs font-semibold mb-1">Cargo/Função:</label><input type="text" id="novaRegraFuncao" placeholder="Ex: PORTEIRO" class="w-full border rounded px-2 py-1 text-sm uppercase"></div>
+                <div><label class="block text-xs font-semibold mb-1">Peça (Item):</label><input type="text" id="novaRegraItem" placeholder="Ex: CAMISA SOCIAL" class="w-full border rounded px-2 py-1 text-sm uppercase"></div>
+                <div><label class="block text-xs font-semibold mb-1">Qtd p/ Pessoa:</label><input type="number" id="novaRegraQtd" value="1" class="w-full border rounded px-2 py-1 text-sm"></div>
+                <div><label class="block text-xs font-semibold mb-1">Sexo (Opcional):</label>
+                  <select id="novaRegraSexo" class="w-full border rounded px-2 py-1 text-sm">
+                    <option value="TODOS">Ambos / Todos</option><option value="MASCULINO">Masculino</option><option value="FEMININO">Feminino</option>
+                  </select>
+                </div>
+                <div><label class="block text-xs font-semibold mb-1">Numerações:</label><input type="text" id="novaRegraTamanhos" placeholder="P,M,G,GG" class="w-full border rounded px-2 py-1 text-sm"></div>
+              </div>
+              <button onclick="salvarNovaRegraUniforme()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-1.5 rounded text-sm whitespace-nowrap">Adicionar Regra</button>
             </div>
+            
             <div class="overflow-x-auto border border-slate-200 rounded-lg">
               <table class="w-full text-left text-sm whitespace-nowrap">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                  <tr>
-                    <th class="px-4 py-3">Item (Uniforme/EPI)</th>
-                    <th class="px-4 py-3">Tamanho</th>
-                    <th class="px-4 py-3">Qtd Total</th>
-                    <th class="px-4 py-3">Colaboradores Beneficiados</th>
-                    <th class="px-4 py-3">Preço Unitário (R$)</th>
-                    <th class="px-4 py-3">Valor Total (R$)</th>
-                  </tr>
+                <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+                  <tr><th class="px-3 py-2">Cargo/Função</th><th class="px-3 py-2">Peça (Item)</th><th class="px-3 py-2 text-center">Qtd</th><th class="px-3 py-2">Restrição de Sexo</th><th class="px-3 py-2">Ações</th></tr>
                 </thead>
-                <tbody id="tabelaNecessidadesUniformes" class="divide-y divide-slate-100 bg-white">
-                  <!-- Gerado via JS -->
-                </tbody>
+                <tbody id="tabelaRegrasUniformes" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
           </div>
+
+          <!-- CATÁLOGO -->
+          <div id="aba-uniformes-catalogo" class="space-y-4 hidden">
+             <div class="bg-blue-50 text-blue-800 p-3 rounded text-sm border border-blue-200">
+               Defina qual fornecedor atende cada peça de uniforme e o valor estimado para montar o orçamento final.
+             </div>
+             <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+                  <tr><th class="px-3 py-2">Peça (Item)</th><th class="px-3 py-2">Fornecedor Padrão</th><th class="px-3 py-2 text-right">Valor Unitário (R$)</th><th class="px-3 py-2 text-center">Salvar</th></tr>
+                </thead>
+                <tbody id="tabelaCatalogoUniformes" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ORÇAMENTO -->
+          <div id="aba-uniformes-orcamento" class="space-y-4 hidden">
+            <div class="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-200">
+               <div>
+                 <h3 class="font-bold text-slate-700">Orçamento Inteligente</h3>
+                 <p class="text-xs text-slate-500">O sistema calculará exatamente o que comprar com base nas regras, colaboradores ativos e tamanhos de cada um.</p>
+               </div>
+               <button onclick="gerarNecessidadesUniformes()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm flex items-center gap-2">
+                 <i class="fa-solid fa-wand-magic-sparkles"></i> Processar Orçamento
+               </button>
+            </div>
+            
+            <div id="resultadoOrcamentoUniformes" class="hidden space-y-6 mt-4">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
         </div>
       </div>
     </section>
@@ -10943,6 +10990,8 @@
     </div>
 </body>
 </html>
+
+
 
 
 

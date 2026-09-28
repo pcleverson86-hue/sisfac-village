@@ -21148,3 +21148,220 @@ async function importarCsvMedidas() {
   fileInput.value = '';
 }
 window.importarCsvMedidas = importarCsvMedidas;
+
+
+// =====================================
+// UNIFORMES - NOVAS ABAS (MATRIZ, CATALOGO, ORCAMENTO)
+// =====================================
+
+function trocarAbaUniformes(abaId) {
+  ['aba-uniformes-matriz', 'aba-uniformes-catalogo', 'aba-uniformes-orcamento'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+    document.getElementById(id).classList.remove('block');
+    document.getElementById(`btnAbaUni-${id.split('-').pop()}`).classList.remove('border-teal-600', 'text-teal-600');
+    document.getElementById(`btnAbaUni-${id.split('-').pop()}`).classList.add('border-transparent', 'text-slate-500');
+  });
+  
+  document.getElementById(abaId).classList.remove('hidden');
+  document.getElementById(abaId).classList.add('block');
+  const btn = document.getElementById(`btnAbaUni-${abaId.split('-').pop()}`);
+  btn.classList.add('border-teal-600', 'text-teal-600');
+  btn.classList.remove('border-transparent', 'text-slate-500');
+  
+  if (abaId === 'aba-uniformes-matriz') carregarRegrasUniformes();
+  if (abaId === 'aba-uniformes-catalogo') carregarCatalogoUniformes();
+}
+
+async function carregarRegrasUniformes() {
+  const tbody = document.getElementById('tabelaRegrasUniformes');
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-500">Carregando regras...</td></tr>';
+  try {
+    const res = await fetch('/api/uniformes/regras');
+    const regras = await res.json();
+    if(regras.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-500">Nenhuma regra cadastrada.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = regras.map(r => `
+      <tr class="hover:bg-slate-50">
+        <td class="px-3 py-2 font-bold text-slate-700">${r.funcao}</td>
+        <td class="px-3 py-2 font-medium">${r.item}</td>
+        <td class="px-3 py-2 text-center bg-slate-100 font-bold">${r.quantidade}</td>
+        <td class="px-3 py-2 text-xs text-slate-500">${r.sexo_aplicavel}</td>
+        <td class="px-3 py-2 text-center"><button onclick="deletarRegraUniforme(${r.id})" class="text-red-500 hover:text-red-700" title="Remover"><i class="fa-solid fa-trash"></i></button></td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function salvarNovaRegraUniforme() {
+  const f = document.getElementById('novaRegraFuncao').value.trim();
+  const i = document.getElementById('novaRegraItem').value.trim();
+  const q = document.getElementById('novaRegraQtd').value;
+  const s = document.getElementById('novaRegraSexo').value;
+  const t = document.getElementById('novaRegraTamanhos').value.trim();
+  
+  if(!f || !i) return alert('Cargo e Peça são obrigatórios!');
+  
+  await fetch('/api/uniformes/regras', {
+    method: 'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({funcao:f, item:i, quantidade:q, sexo_aplicavel:s, tamanhos_disponiveis:t})
+  });
+  
+  document.getElementById('novaRegraFuncao').value = '';
+  document.getElementById('novaRegraItem').value = '';
+  carregarRegrasUniformes();
+}
+
+async function deletarRegraUniforme(id) {
+  if(!confirm('Deletar esta regra?')) return;
+  await fetch(`/api/uniformes/regras/${id}`, {method: 'DELETE'});
+  carregarRegrasUniformes();
+}
+
+let fornecedoresListaUniformes = [];
+
+async function carregarCatalogoUniformes() {
+  const tbody = document.getElementById('tabelaCatalogoUniformes');
+  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-500">Carregando catálogo...</td></tr>';
+  try {
+    if(fornecedoresListaUniformes.length === 0) {
+      const rf = await fetch('/api/uniformes/fornecedores');
+      fornecedoresListaUniformes = await rf.json();
+    }
+    
+    const res = await fetch('/api/uniformes/catalogo');
+    const cat = await res.json();
+    
+    const options = fornecedoresListaUniformes.map(f => `<option value="${f.id}">${f.nome_fantasia}</option>`).join('');
+    
+    tbody.innerHTML = cat.map(c => `
+      <tr class="hover:bg-slate-50">
+        <td class="px-3 py-3 font-bold text-slate-700">${c.item_nome}</td>
+        <td class="px-3 py-3">
+          <select id="cat-fornecedor-${c.id}" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white" onchange="mostrarBtnCat(${c.id})">
+            <option value="">- Selecione um Fornecedor -</option>
+            ${options.replace(`value="${c.fornecedor_id}"`, `value="${c.fornecedor_id}" selected`)}
+          </select>
+        </td>
+        <td class="px-3 py-3 text-right">
+          <input type="number" step="0.01" id="cat-valor-${c.id}" value="${c.valor_unitario}" class="w-24 border border-slate-300 rounded px-2 py-1 text-sm text-right" oninput="mostrarBtnCat(${c.id})">
+        </td>
+        <td class="px-3 py-3 text-center">
+           <button id="cat-btn-${c.id}" onclick="salvarItemCatalogo(${c.id}, '${c.item_nome}')" class="hidden bg-indigo-600 text-white font-bold px-3 py-1 rounded text-xs">Salvar</button>
+           <span id="cat-ok-${c.id}" class="hidden text-emerald-600"><i class="fa-solid fa-check"></i></span>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+function mostrarBtnCat(id) {
+  document.getElementById(`cat-btn-${id}`).classList.remove('hidden');
+  document.getElementById(`cat-ok-${id}`).classList.add('hidden');
+}
+
+async function salvarItemCatalogo(id, nome) {
+  const forn = document.getElementById(`cat-fornecedor-${id}`).value;
+  const val = document.getElementById(`cat-valor-${id}`).value;
+  await fetch(`/api/uniformes/catalogo/${id}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({item_nome: nome, fornecedor_id: forn || null, valor_unitario: val})
+  });
+  document.getElementById(`cat-btn-${id}`).classList.add('hidden');
+  document.getElementById(`cat-ok-${id}`).classList.remove('hidden');
+}
+
+async function gerarNecessidadesUniformes() {
+  const container = document.getElementById('resultadoOrcamentoUniformes');
+  container.classList.remove('hidden');
+  container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Calculando necessidades e orçamentos...</div>';
+  
+  try {
+    const res = await fetch('/api/uniformes/gerar-necessidades');
+    const necessidades = await res.json();
+    
+    // Group by Fornecedor
+    const porFornecedor = {};
+    
+    necessidades.forEach(n => {
+      const fName = n.fornecedor_nome;
+      if(!porFornecedor[fName]) {
+        porFornecedor[fName] = { itens: {}, total_fornecedor: 0 };
+      }
+      
+      const key = `${n.item} - Tam: ${n.tamanho}`;
+      if(!porFornecedor[fName].itens[key]) {
+        porFornecedor[fName].itens[key] = {
+          item: n.item,
+          tamanho: n.tamanho,
+          quantidade: 0,
+          valor_unitario: n.valor_unitario,
+          valor_total: 0
+        };
+      }
+      porFornecedor[fName].itens[key].quantidade += n.quantidade;
+      const subtotal = n.quantidade * n.valor_unitario;
+      porFornecedor[fName].itens[key].valor_total += subtotal;
+      porFornecedor[fName].total_fornecedor += subtotal;
+    });
+    
+    let html = '';
+    let totalGeral = 0;
+    
+    for (const [forn, dados] of Object.entries(porFornecedor)) {
+      totalGeral += dados.total_fornecedor;
+      
+      html += `
+        <div class="border border-slate-200 rounded-lg overflow-hidden mb-6">
+          <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+            <h4 class="font-bold"><i class="fa-solid fa-building mr-2"></i> ${forn}</h4>
+            <span class="font-black text-emerald-400">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
+          </div>
+          <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-slate-100 text-slate-600">
+              <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${Object.values(dados.itens).map(i => `
+                <tr>
+                  <td class="px-4 py-2 font-medium">${i.item}</td>
+                  <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
+                  <td class="px-4 py-2 text-center font-bold">${i.quantidade}</td>
+                  <td class="px-4 py-2 text-right">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
+                  <td class="px-4 py-2 text-right font-bold text-slate-700">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    
+    if(Object.keys(porFornecedor).length === 0) {
+      container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessário.</div>';
+    } else {
+      container.innerHTML = html + `
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex justify-between items-center mt-6">
+          <div class="text-emerald-800 uppercase font-bold tracking-wider">Custo Total de Uniformes</div>
+          <div class="text-3xl font-black text-emerald-700">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
+        </div>
+      `;
+    }
+    
+  } catch(e) { console.error(e); }
+}
+
+// Sobrescreve a global de carregarComprasMultiPredios (apenas para garantir que ele ative matriz no início)
+setTimeout(() => { trocarAbaUniformes('aba-uniformes-matriz'); }, 1000);
+
+window.trocarAbaUniformes = trocarAbaUniformes;
+window.carregarRegrasUniformes = carregarRegrasUniformes;
+window.salvarNovaRegraUniforme = salvarNovaRegraUniforme;
+window.deletarRegraUniforme = deletarRegraUniforme;
+window.carregarCatalogoUniformes = carregarCatalogoUniformes;
+window.salvarItemCatalogo = salvarItemCatalogo;
+window.mostrarBtnCat = mostrarBtnCat;
+window.gerarNecessidadesUniformes = gerarNecessidadesUniformes;

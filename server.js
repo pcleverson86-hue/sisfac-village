@@ -10170,9 +10170,54 @@ const server = http.createServer(async (req, res) => {
           return jsonResponse(res, { success: true });
         }
 
+        
+        if (pathname === '/api/uniformes/catalogo' && method === 'GET') {
+          const catalogo = db.prepare('SELECT c.*, f.nome_fantasia as fornecedor_nome FROM uniformes_catalogo c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id WHERE c.ativo = 1 ORDER BY c.item_nome ASC').all();
+          return jsonResponse(res, catalogo);
+        }
+        
+        if (pathname === '/api/uniformes/catalogo' && method === 'POST') {
+          const body = await parseRequestBody(req);
+          db.prepare('INSERT INTO uniformes_catalogo (item_nome, fornecedor_id, valor_unitario) VALUES (?, ?, ?)').run(body.item_nome.toUpperCase(), body.fornecedor_id || null, body.valor_unitario || 0);
+          return jsonResponse(res, {success:true});
+        }
+        
+        if (pathname.startsWith('/api/uniformes/catalogo/') && method === 'PUT') {
+          const id = parseInt(pathname.split('/').pop(), 10);
+          const body = await parseRequestBody(req);
+          db.prepare('UPDATE uniformes_catalogo SET item_nome = ?, fornecedor_id = ?, valor_unitario = ? WHERE id = ?').run(body.item_nome.toUpperCase(), body.fornecedor_id || null, body.valor_unitario || 0, id);
+          return jsonResponse(res, {success:true});
+        }
+
+        if (pathname.startsWith('/api/uniformes/catalogo/') && method === 'DELETE') {
+          const id = parseInt(pathname.split('/').pop(), 10);
+          db.prepare('DELETE FROM uniformes_catalogo WHERE id = ?').run(id);
+          return jsonResponse(res, {success:true});
+        }
+
+        if (pathname === '/api/uniformes/regras' && method === 'POST') {
+          const body = await parseRequestBody(req);
+          db.prepare('INSERT INTO uniformes_regras (funcao, item, quantidade, tamanhos_disponiveis, sexo_aplicavel) VALUES (?, ?, ?, ?, ?)').run(
+            body.funcao.toUpperCase(), body.item.toUpperCase(), body.quantidade || 1, body.tamanhos_disponiveis || '', body.sexo_aplicavel || 'TODOS'
+          );
+          return jsonResponse(res, {success:true});
+        }
+
+        if (pathname.startsWith('/api/uniformes/regras/') && method === 'DELETE') {
+          const id = parseInt(pathname.split('/').pop(), 10);
+          db.prepare('DELETE FROM uniformes_regras WHERE id = ?').run(id);
+          return jsonResponse(res, {success:true});
+        }
+
+        if (pathname === '/api/uniformes/fornecedores' && method === 'GET') {
+          const fornecedores = db.prepare('SELECT id, nome_fantasia FROM fornecedores WHERE ativo = 1 ORDER BY nome_fantasia ASC').all();
+          return jsonResponse(res, fornecedores);
+        }
+
+
         if (pathname === '/api/uniformes/gerar-necessidades' && method === 'GET') {
           const colabs = db.prepare("SELECT c.id, c.nome, cg.nome_cargo, uc.sexo, uc.tamanho_camisa, uc.tamanho_calca, uc.tamanho_sapato, uc.tamanho_jaqueta, uc.tamanho_blazer FROM colaboradores c LEFT JOIN cargos cg ON c.cargo_id = cg.id LEFT JOIN uniformes_colaboradores uc ON c.id = uc.colaborador_id WHERE c.ativo = 1").all();
-          const regras = db.prepare('SELECT * FROM uniformes_regras WHERE ativo = 1').all();
+          const regras = db.prepare("SELECT r.*, c.fornecedor_id, c.valor_unitario, f.nome_fantasia as fornecedor_nome FROM uniformes_regras r LEFT JOIN uniformes_catalogo c ON r.item = c.item_nome LEFT JOIN fornecedores f ON c.fornecedor_id = f.id WHERE r.ativo = 1").all();
           
           let necessidades = [];
 
@@ -10182,9 +10227,7 @@ const server = http.createServer(async (req, res) => {
             
             for (const r of regrasCargo) {
               if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS' && r.sexo_aplicavel.trim() !== '') {
-                if (c.sexo && !r.sexo_aplicavel.toUpperCase().includes(c.sexo.toUpperCase())) {
-                  continue; 
-                }
+                if (c.sexo && !r.sexo_aplicavel.toUpperCase().includes(c.sexo.toUpperCase())) continue; 
               }
 
               let tam = '';
@@ -10193,7 +10236,7 @@ const server = http.createServer(async (req, res) => {
               else if (itemUpper.includes('CALÇA') || itemUpper.includes('CALCA')) tam = c.tamanho_calca;
               else if (itemUpper.includes('SAPATO') || itemUpper.includes('BOTA') || itemUpper.includes('BOTINA')) tam = c.tamanho_sapato;
               else if (itemUpper.includes('JAQUETA')) tam = c.tamanho_jaqueta;
-              else if (itemUpper.includes('BLAZER')) tam = c.tamanho_blazer;
+              else if (itemUpper.includes('BLAZER') || itemUpper.includes('COLETE')) tam = c.tamanho_blazer;
 
               if (!tam && r.tamanhos_disponiveis) tam = 'SEM MEDIDA'; 
 
@@ -10203,12 +10246,16 @@ const server = http.createServer(async (req, res) => {
                 cargo: c.nome_cargo,
                 item: r.item,
                 quantidade: r.quantidade,
-                tamanho: tam || 'N/A'
+                tamanho: tam || 'N/A',
+                fornecedor_id: r.fornecedor_id,
+                fornecedor_nome: r.fornecedor_nome || 'Sem Fornecedor Definido',
+                valor_unitario: r.valor_unitario || 0
               });
             }
           }
           return jsonResponse(res, necessidades);
         }
+
 
 return errorResponse(res, 'Endpoint não encontrado', 404);
 
