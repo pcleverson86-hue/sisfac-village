@@ -2915,7 +2915,7 @@ function renderizarCalendarioFerias(feriasList, anoMes) {
       // Detalhe de Cobertura
       let coberturaTag = '';
       if (f.havera_cobertura === 1) {
-        if (f.tipo_cobertura === 'freelancer') {
+        if ((f.tipo_cobertura === 'freelancer' || f.tipo_cobertura === 'efetivo_dobra')) {
           const nomeDiarista = f.freelancer_nome || 'Diarista';
           coberturaTag = `<span class="text-[9px] text-amber-700 font-bold block truncate" title="Cob: ${nomeDiarista} (Diarista Freelancer)"><i class="fa-solid fa-user-clock"></i> ${nomeDiarista}</span>`;
         } else if (f.tipo_cobertura === 'remanejamento') {
@@ -3027,7 +3027,7 @@ function renderizarTabelaProcessosFerias(feriasList) {
     // Cobertura
     let cobHtml = '';
     if (f.havera_cobertura === 1) {
-      if (f.tipo_cobertura === 'freelancer') {
+      if ((f.tipo_cobertura === 'freelancer' || f.tipo_cobertura === 'efetivo_dobra')) {
         cobHtml = `
           <div class="font-bold text-amber-700 flex items-center gap-1 text-xs">
             <i class="fa-solid fa-user-clock text-amber-600"></i>
@@ -8357,7 +8357,7 @@ function renderizarTabelaFaltasFiltradas(faltas) {
     let quemHtml = '';
 
     if (f.houve_cobertura === 1) {
-      if (f.tipo_cobertura === 'freelancer') {
+      if ((f.tipo_cobertura === 'freelancer' || f.tipo_cobertura === 'efetivo_dobra')) {
         badgeCob = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">Freelancer</span>`;
         quemHtml = `<div class="font-bold text-slate-800">${f.freelancer_nome || 'Diarista'}</div><div class="text-xs text-blue-700 font-bold">${formatarMoeda(f.valor_pago_freelance)}</div>`;
       } else {
@@ -8830,7 +8830,7 @@ async function exportarFaltasExcel() {
       'Dias Afastamento': f.dias_afastamento || 1,
       'CID Atestado': f.cid_atestado || '',
       'Houve Cobertura?': f.houve_cobertura === 1 ? 'SIM' : 'NÃƒO',
-      'Tipo de Cobertura': f.houve_cobertura === 1 ? (f.tipo_cobertura === 'freelancer' ? 'Freelancer' : 'Efetivo / Reserva') : 'Posto Descoberto',
+      'Tipo de Cobertura': f.houve_cobertura === 1 ? ((f.tipo_cobertura === 'freelancer' || f.tipo_cobertura === 'efetivo_dobra') ? 'Freelancer' : 'Efetivo / Reserva') : 'Posto Descoberto',
       'Quem Cobriu': f.cobertor_efetivo_nome || f.freelancer_nome || (f.houve_cobertura === 1 ? 'Sim' : 'NinguÃ©m'),
       'Custo Freelance (R$)': f.valor_pago_freelance || 0,
       'Motivo NÃ£o Cobertura': f.motivo_nao_cobertura || '',
@@ -9169,7 +9169,16 @@ function aoMudarHouveCobertura() {
 function aoMudarTipoCobertura() {
   const tipo = document.querySelector('input[name="tipoCobertura"]:checked').value;
   document.getElementById('blocoFreelancer').classList.toggle('hidden', tipo !== 'freelancer');
-  document.getElementById('blocoEfetivo').classList.toggle('hidden', tipo !== 'efetivo');
+  
+  const blocoEfetivo = document.getElementById('blocoEfetivo');
+  if (tipo === 'efetivo' || tipo === 'efetivo_dobra') {
+    blocoEfetivo.classList.remove('hidden');
+    blocoEfetivo.classList.add('grid');
+    document.getElementById('blocoValorDobraEfetivo').classList.toggle('hidden', tipo !== 'efetivo_dobra');
+  } else {
+    blocoEfetivo.classList.add('hidden');
+    blocoEfetivo.classList.remove('grid');
+  }
 }
 
 function aoSelecionarFreelancer() {
@@ -9195,8 +9204,8 @@ async function salvarNovaFalta(e) {
     houve_cobertura: houveCobertura ? 1 : 0,
     tipo_cobertura: tipoCobertura,
     freelancer_id: (houveCobertura && tipoCobertura === 'freelancer') ? parseInt(document.getElementById('faltaFreelancerId').value, 10) : null,
-    valor_pago_freelance: (houveCobertura && tipoCobertura === 'freelancer') ? parseFloat(document.getElementById('faltaValorDiariaFreelance').value) || 0 : 0,
-    cobertor_colaborador_id: (houveCobertura && tipoCobertura === 'efetivo') ? parseInt(document.getElementById('faltaCobertorEfetivoId').value, 10) : null,
+    valor_pago_freelance: (houveCobertura && tipoCobertura === 'freelancer') ? (parseFloat(document.getElementById('faltaValorDiariaFreelance').value) || 0) : ((houveCobertura && tipoCobertura === 'efetivo_dobra') ? (parseFloat(document.getElementById('faltaValorDobraEfetivo').value) || 0) : 0),
+    cobertor_colaborador_id: (houveCobertura && (tipoCobertura === 'efetivo' || tipoCobertura === 'efetivo_dobra')) ? parseInt(document.getElementById('faltaCobertorEfetivoId').value, 10) : null,
     valor_desconto_sugerido: !houveCobertura ? parseFloat(document.getElementById('faltaValorDescontoSugerido').value) || 150.00 : 0,
     observacoes_operacao: document.getElementById('faltaObservacoes').value
   };
@@ -13947,7 +13956,8 @@ function renderizarKanbanComercial() {
     const badge = document.getElementById(`badgeCount-${etapa}`);
     if (!col) return;
 
-    const leadsEtapa = leads.filter(l => l.etapa === etapa);
+    // Filter out leads that have already been converted to an actual client system-wide
+    const leadsEtapa = leads.filter(l => l.etapa === etapa && !l.cliente_id_convertido);
     if (badge) badge.textContent = leadsEtapa.length;
 
     if (leadsEtapa.length === 0) {
@@ -20658,3 +20668,105 @@ async function carregarDashboardSetorial(setor) {
 }
 
 window.mudarAbaDashboard = mudarAbaDashboard;
+
+
+function imprimirDossieComercial() {
+  const lead = state.comercial.leadAtual;
+  if (!lead) return alert('Nenhum lead selecionado para impressão.');
+
+  const printWindow = window.open('', '_blank');
+  
+  let htmlInteracoes = '';
+  if (lead.interacoes && lead.interacoes.length > 0) {
+    htmlInteracoes = lead.interacoes.map(i => {
+      const data = new Date(i.data_interacao).toLocaleString('pt-BR');
+      return `
+        <div style="border-bottom: 1px solid #ddd; padding: 10px 0; margin-bottom: 10px;">
+          <div style="font-size: 12px; color: #666; font-weight: bold; margin-bottom: 5px;">
+            [${data}] - Resp: ${i.usuario_nome || 'Sistema'} | Tipo: ${i.tipo.toUpperCase()}
+          </div>
+          <div style="font-size: 14px; color: #333;">${i.descricao}</div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    htmlInteracoes = '<p style="color: #666;">Nenhuma interação registrada.</p>';
+  }
+
+  const dataCriacao = new Date(lead.created_at).toLocaleDateString('pt-BR');
+  const valorFmt = Number(lead.valor_mensal_estimado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Dossiê Comercial - ${lead.razao_social}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #222; }
+          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+          .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+          .header p { margin: 5px 0 0 0; font-size: 14px; color: #555; }
+          .section { margin-bottom: 30px; }
+          .section h2 { font-size: 16px; border-bottom: 1px solid #aaa; padding-bottom: 5px; margin-bottom: 15px; background: #f9f9f9; padding: 5px 10px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          th, td { text-align: left; padding: 8px; border: 1px solid #ddd; font-size: 14px; }
+          th { background-color: #f1f1f1; width: 30%; }
+          .print-btn { display: block; margin: 20px auto; padding: 10px 20px; font-size: 16px; cursor: pointer; background: #000; color: #fff; border: none; border-radius: 5px; }
+          @media print { .print-btn { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>DOSSIÊ COMERCIAL - RELATÓRIO DE PROSPECÇÃO</h1>
+          <p>Documento gerado em: ${new Date().toLocaleString('pt-BR')} pelo Sistema Integrado</p>
+        </div>
+        
+        <div class="section">
+          <h2>1. DADOS DO CLIENTE / PROSPECT</h2>
+          <table>
+            <tr><th>Razão Social</th><td>${lead.razao_social || '-'}</td></tr>
+            <tr><th>Nome Fantasia</th><td>${lead.nome_fantasia || '-'}</td></tr>
+            <tr><th>CNPJ</th><td>${lead.cnpj || 'Não informado'}</td></tr>
+            <tr><th>Segmento</th><td>${lead.segmento || 'Geral'}</td></tr>
+            <tr><th>Data de Início da Prospecção</th><td>${dataCriacao}</td></tr>
+            <tr><th>Status Atual (Etapa)</th><td><b>${lead.etapa.toUpperCase()}</b> ${lead.cliente_id_convertido ? '(CONVERTIDO EM CLIENTE)' : ''}</td></tr>
+            <tr><th>Origem</th><td>${lead.origem || 'Não informada'}</td></tr>
+            <tr><th>Endereço</th><td>${lead.endereco || 'Não informado'}</td></tr>
+          </table>
+        </div>
+
+        <div class="section">
+          <h2>2. CONTATO PRINCIPAL</h2>
+          <table>
+            <tr><th>Nome do Contato</th><td>${lead.contato_nome || '-'}</td></tr>
+            <tr><th>Cargo / Função</th><td>${lead.contato_cargo || '-'}</td></tr>
+            <tr><th>Telefone</th><td>${lead.contato_telefone || '-'}</td></tr>
+            <tr><th>E-mail</th><td>${lead.contato_email || '-'}</td></tr>
+          </table>
+        </div>
+
+        <div class="section">
+          <h2>3. DETALHES DA PROPOSTA</h2>
+          <table>
+            <tr><th>Quantidade de Postos / Vagas</th><td>${lead.vagas_estimadas || '0'}</td></tr>
+            <tr><th>Valor Mensal Estimado / Fechado</th><td>${valorFmt}</td></tr>
+            <tr><th>Observações Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
+          </table>
+        </div>
+
+        <div class="section" style="page-break-inside: avoid;">
+          <h2>4. HISTÓRICO DE INTERAÇÕES E NEGOCIAÇÃO</h2>
+          <div style="background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+            ${htmlInteracoes}
+          </div>
+        </div>
+
+        <button class="print-btn" onclick="window.print()">??? IMPRIMIR DOSSIÊ</button>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+window.imprimirDossieComercial = imprimirDossieComercial;
+
+
+

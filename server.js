@@ -6229,7 +6229,7 @@ const server = http.createServer(async (req, res) => {
           if (query.tipo_cobertura === 'descoberto') {
             sql += ` AND fc.houve_cobertura = 0 `;
           } else if (query.tipo_cobertura === 'freelancer') {
-            sql += ` AND fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' `;
+            sql += ` AND fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') `;
           } else if (query.tipo_cobertura === 'efetivo') {
             sql += ` AND fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'efetivo' `;
           }
@@ -6872,10 +6872,10 @@ const server = http.createServer(async (req, res) => {
             f.chave_pix,
             f.banco,
             f.valor_diaria_padrao,
-            COUNT(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) THEN fc.id END) as total_diarias_mes,
-            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_total_mes,
-            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) AND fc.status_pagamento_freelance = 'Pendente' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pendente,
-            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) AND fc.status_pagamento_freelance = 'Pago' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pago
+            COUNT(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) THEN fc.id END) as total_diarias_mes,
+            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_total_mes,
+            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) AND fc.status_pagamento_freelance = 'Pendente' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pendente,
+            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL) AND fc.status_pagamento_freelance = 'Pago' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pago
           FROM freelancers f
           LEFT JOIN faltas_coberturas fc ON fc.freelancer_id = f.id
           WHERE f.ativo = 1
@@ -6930,9 +6930,9 @@ const server = http.createServer(async (req, res) => {
             COUNT(*) as total_faltas,
             SUM(CASE WHEN houve_cobertura = 1 THEN 1 ELSE 0 END) as total_cobertas,
             SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura = 'efetivo' THEN 1 ELSE 0 END) as cobertas_efetivo,
-            SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura = 'freelancer' THEN 1 ELSE 0 END) as cobertas_freelance,
+            SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura IN ('freelancer', 'efetivo_dobra') THEN 1 ELSE 0 END) as cobertas_freelance,
             SUM(CASE WHEN houve_cobertura = 0 THEN 1 ELSE 0 END) as total_descobertas,
-            SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura = 'freelancer' THEN valor_pago_freelance ELSE 0 END) as custo_total_freelance,
+            SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura IN ('freelancer', 'efetivo_dobra') THEN valor_pago_freelance ELSE 0 END) as custo_total_freelance,
             SUM(CASE WHEN houve_cobertura = 0 THEN valor_desconto_sugerido ELSE 0 END) as total_desconto_faturamento
           FROM faltas_coberturas
           WHERE strftime('%Y-%m', data_falta) = ? AND (excluido = 0 OR excluido IS NULL)
@@ -6958,7 +6958,7 @@ const server = http.createServer(async (req, res) => {
             CASE 
               WHEN fc.houve_cobertura = 0 THEN 'POSTO DESCOBERTO'
               WHEN fc.tipo_cobertura = 'efetivo' THEN 'Colaborador: ' || cobertor.nome
-              WHEN fc.tipo_cobertura = 'freelancer' THEN 'Freelance: ' || free.nome
+              WHEN fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') THEN 'Freelance: ' || free.nome
             END as quem_cobriu,
             fc.valor_pago_freelance as custo_cobertura,
             fc.valor_desconto_sugerido as valor_glosa
@@ -7030,7 +7030,7 @@ const server = http.createServer(async (req, res) => {
             COUNT(*) as total_faltas,
             SUM(CASE WHEN houve_cobertura = 1 THEN 1 ELSE 0 END) as cobertas,
             SUM(CASE WHEN houve_cobertura = 0 THEN 1 ELSE 0 END) as descobertas,
-            SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura = 'freelancer' THEN valor_pago_freelance ELSE 0 END) as custo_freelancer_faltas,
+            SUM(CASE WHEN houve_cobertura = 1 AND tipo_cobertura IN ('freelancer', 'efetivo_dobra') THEN valor_pago_freelance ELSE 0 END) as custo_freelancer_faltas,
             SUM(CASE WHEN houve_cobertura = 0 THEN valor_desconto_sugerido ELSE 0 END) as glosas_faltas
           FROM faltas_coberturas
           WHERE strftime('%Y-%m', data_falta) = ?
@@ -7104,7 +7104,7 @@ const server = http.createServer(async (req, res) => {
             SUM(CASE WHEN fc.houve_cobertura = 0 THEN 1 ELSE 0 END) as faltas_glosa,
             SUM(CASE WHEN fc.houve_cobertura = 1 THEN 1 ELSE 0 END) as faltas_cobertas,
             SUM(CASE WHEN fc.houve_cobertura = 0 THEN fc.valor_desconto_sugerido ELSE 0 END) as total_glosa,
-            SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' THEN fc.valor_pago_freelance ELSE 0 END) as total_custo_freelance
+            SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') THEN fc.valor_pago_freelance ELSE 0 END) as total_custo_freelance
           FROM faltas_coberturas fc
           JOIN clientes c ON fc.cliente_id = c.id
           WHERE strftime('%Y-%m', fc.data_falta) = ? AND (fc.excluido = 0 OR fc.excluido IS NULL)
@@ -7274,10 +7274,10 @@ const server = http.createServer(async (req, res) => {
             f.chave_pix,
             f.banco,
             f.valor_diaria_padrao,
-            COUNT(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? THEN fc.id END) as total_diarias_mes,
-            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_total_mes,
-            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? AND fc.status_pagamento_freelance = 'Pendente' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pendente,
-            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura = 'freelancer' AND strftime('%Y-%m', fc.data_falta) = ? AND fc.status_pagamento_freelance = 'Pago' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pago
+            COUNT(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? THEN fc.id END) as total_diarias_mes,
+            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_total_mes,
+            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? AND fc.status_pagamento_freelance = 'Pendente' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pendente,
+            COALESCE(SUM(CASE WHEN fc.houve_cobertura = 1 AND fc.tipo_cobertura IN ('freelancer', 'efetivo_dobra') AND strftime('%Y-%m', fc.data_falta) = ? AND fc.status_pagamento_freelance = 'Pago' THEN fc.valor_pago_freelance ELSE 0 END), 0) as valor_pago
           FROM freelancers f
           LEFT JOIN faltas_coberturas fc ON fc.freelancer_id = f.id
           WHERE f.ativo = 1
@@ -10192,6 +10192,9 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   iniciarOuVerificarTunnel();
 });
+
+
+
 
 
 
