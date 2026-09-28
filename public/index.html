@@ -1803,6 +1803,52 @@
           </div>
         </div>
 
+      
+</div>
+          <!-- Sub-aba 5: Gestão de Uniformes -->
+      <div id="subConteudo-sub-uniformes" class="hidden space-y-4 mt-6">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-shirt text-teal-600"></i> Inteligência de Compras de Uniformes</h2>
+              <p class="text-sm text-slate-500">Gere orçamentos e listas de compras automaticamente baseados na função e tamanho de cada colaborador.</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="abrirModalTamanhosUniformes()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 border border-indigo-200">
+                <i class="fa-solid fa-users"></i> Medidas dos Colaboradores
+              </button>
+              <button onclick="gerarNecessidadesUniformes()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shadow-sm">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Lista de Compras
+              </button>
+            </div>
+          </div>
+          
+          <div id="listaNecessidadesUniformes" class="hidden mt-6">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-bold text-slate-700 text-sm">Lista de Compras Gerada</h3>
+              <button onclick="salvarOrcamentoUniforme()" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-file-invoice"></i> Salvar Orçamento Completo
+              </button>
+            </div>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="w-full text-left text-sm whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <tr>
+                    <th class="px-4 py-3">Item (Uniforme/EPI)</th>
+                    <th class="px-4 py-3">Tamanho</th>
+                    <th class="px-4 py-3">Qtd Total</th>
+                    <th class="px-4 py-3">Colaboradores Beneficiados</th>
+                    <th class="px-4 py-3">Preço Unitário (R$)</th>
+                    <th class="px-4 py-3">Valor Total (R$)</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaNecessidadesUniformes" class="divide-y divide-slate-100 bg-white">
+                  <!-- Gerado via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -10891,6 +10937,9 @@
     </div>
 </body>
 </html>
+
+
+
 
 
 

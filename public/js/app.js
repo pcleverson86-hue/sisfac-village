@@ -1,4 +1,4 @@
-// app.js - Lógica Completa SISFAC 2.0 (Autenticação, RBAC, Postos, Férias, Benefícios, Compras & Importação)
+﻿// app.js - Lógica Completa SISFAC 2.0 (Autenticação, RBAC, Postos, Férias, Benefícios, Compras & Importação)
 
 // Estado Global da Aplicação
 const state = {
@@ -427,7 +427,7 @@ function trocarSubAbaCompras(subId) {
     btn.classList.add('text-teal-700', 'border-b-2', 'border-teal-600');
   }
 
-  ['sub-matriz-compras', 'sub-cadastro-predios', 'sub-orcamentos-aprovacao', 'sub-fornecedores-cartela'].forEach(id => {
+  ['sub-matriz-compras', 'sub-cadastro-predios', 'sub-orcamentos-aprovacao', 'sub-fornecedores-cartela', 'sub-uniformes'].forEach(id => {
     const el = document.getElementById(`subConteudo-${id}`);
     if (el) el.classList.add('hidden');
   });
@@ -21069,4 +21069,5 @@ window.calcTotalUnif = calcTotalUnif;
 window.salvarOrcamentoUniforme = salvarOrcamentoUniforme;
 window.filtrarTabelaMedidas = filtrarTabelaMedidas;
 window.marcarAlterado = marcarAlterado;
+
 
