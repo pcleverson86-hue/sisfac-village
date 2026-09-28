@@ -20872,3 +20872,201 @@ window.salvarServicoExtra = salvarServicoExtra;
 
 
 
+
+
+// =====================================
+// INTELIGÊNCIA DE UNIFORMES
+// =====================================
+
+let colabsUniformesCache = [];
+let necessidadesGeradas = [];
+
+async function abrirModalTamanhosUniformes() {
+  document.getElementById('modalTamanhosUniformes').classList.remove('hidden');
+  document.getElementById('tabelaMedidasColab').innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500">Carregando dados...</td></tr>';
+  
+  try {
+    const res = await fetch('/api/uniformes/colaboradores');
+    colabsUniformesCache = await res.json();
+    renderTabelaMedidas(colabsUniformesCache);
+  } catch (err) {
+    alert('Erro ao carregar colaboradores');
+  }
+}
+
+function renderTabelaMedidas(lista) {
+  const tbody = document.getElementById('tabelaMedidasColab');
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500">Nenhum colaborador encontrado.</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = lista.map(c => `
+    <tr class="hover:bg-slate-50" id="row-medida-${c.id}">
+      <td class="px-4 py-3">
+        <div class="font-bold text-slate-800">${c.nome}</div>
+        <div class="text-[10px] text-slate-500">${c.nome_cargo || 'Sem Cargo'}</div>
+      </td>
+      <td class="px-4 py-3">
+        <select id="med-sexo-${c.id}" class="border border-slate-300 rounded px-2 py-1 bg-white text-xs" onchange="marcarAlterado(${c.id})">
+          <option value="" ${!c.sexo ? 'selected' : ''}>-</option>
+          <option value="MASCULINO" ${c.sexo === 'MASCULINO' ? 'selected' : ''}>Masc</option>
+          <option value="FEMININO" ${c.sexo === 'FEMININO' ? 'selected' : ''}>Fem</option>
+        </select>
+      </td>
+      <td class="px-4 py-3"><input type="text" id="med-camisa-${c.id}" value="${c.tamanho_camisa || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-calca-${c.id}" value="${c.tamanho_calca || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-sapato-${c.id}" value="${c.tamanho_sapato || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-jaqueta-${c.id}" value="${c.tamanho_jaqueta || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-blazer-${c.id}" value="${c.tamanho_blazer || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3 text-center">
+        <button id="btn-med-${c.id}" onclick="salvarMedidasColab(${c.id})" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded text-xs shadow-sm">
+          Salvar
+        </button>
+        <span id="ok-med-${c.id}" class="hidden text-emerald-600 font-bold"><i class="fa-solid fa-check"></i></span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filtrarTabelaMedidas() {
+  const busca = document.getElementById('buscaMedidasColab').value.toLowerCase();
+  const filtrados = colabsUniformesCache.filter(c => 
+    c.nome.toLowerCase().includes(busca) || 
+    (c.nome_cargo && c.nome_cargo.toLowerCase().includes(busca))
+  );
+  renderTabelaMedidas(filtrados);
+}
+
+function marcarAlterado(id) {
+  document.getElementById(`btn-med-${id}`).classList.remove('hidden');
+  document.getElementById(`ok-med-${id}`).classList.add('hidden');
+}
+
+async function salvarMedidasColab(id) {
+  const payload = {
+    sexo: document.getElementById(`med-sexo-${id}`).value,
+    tamanho_camisa: document.getElementById(`med-camisa-${id}`).value,
+    tamanho_calca: document.getElementById(`med-calca-${id}`).value,
+    tamanho_sapato: document.getElementById(`med-sapato-${id}`).value,
+    tamanho_jaqueta: document.getElementById(`med-jaqueta-${id}`).value,
+    tamanho_blazer: document.getElementById(`med-blazer-${id}`).value
+  };
+
+  try {
+    const res = await fetch(`/api/uniformes/colaboradores/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      document.getElementById(`btn-med-${id}`).classList.add('hidden');
+      document.getElementById(`ok-med-${id}`).classList.remove('hidden');
+    } else {
+      alert('Erro ao salvar.');
+    }
+  } catch (err) {
+    alert('Erro de conexão.');
+  }
+}
+
+async function gerarNecessidadesUniformes() {
+  document.getElementById('listaNecessidadesUniformes').classList.remove('hidden');
+  document.getElementById('tabelaNecessidadesUniformes').innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Analisando regras e tamanhos...</td></tr>';
+  
+  try {
+    const res = await fetch('/api/uniformes/gerar-necessidades');
+    const necessidades = await res.json();
+    
+    // Agrupar por Item e Tamanho
+    const grupos = {};
+    necessidades.forEach(n => {
+      const key = `${n.item}_${n.tamanho}`;
+      if (!grupos[key]) {
+        grupos[key] = {
+          item: n.item,
+          tamanho: n.tamanho,
+          quantidade_total: 0,
+          colaboradores: []
+        };
+      }
+      grupos[key].quantidade_total += n.quantidade;
+      grupos[key].colaboradores.push(`${n.colaborador_nome} (${n.quantidade}x)`);
+    });
+    
+    necessidadesGeradas = Object.values(grupos);
+    necessidadesGeradas.sort((a, b) => a.item.localeCompare(b.item));
+    
+    renderTabelaNecessidades();
+    
+  } catch (err) {
+    alert('Erro ao gerar lista');
+  }
+}
+
+function renderTabelaNecessidades() {
+  const tbody = document.getElementById('tabelaNecessidadesUniformes');
+  if (necessidadesGeradas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhum item necessário no momento.</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = necessidadesGeradas.map((g, i) => `
+    <tr class="hover:bg-slate-50">
+      <td class="px-4 py-3 font-bold text-slate-800">${g.item}</td>
+      <td class="px-4 py-3">
+        <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded">${g.tamanho}</span>
+      </td>
+      <td class="px-4 py-3 font-bold text-teal-700">${g.quantidade_total}</td>
+      <td class="px-4 py-3 text-[10px] text-slate-500 max-w-xs truncate" title="${g.colaboradores.join('\n')}">
+        ${g.colaboradores.length} colaborador(es)
+      </td>
+      <td class="px-4 py-3">
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400">R$</span>
+          <input type="number" step="0.01" id="preco-unif-${i}" class="w-24 pl-7 pr-2 py-1 border border-slate-300 rounded text-xs" oninput="calcTotalUnif(${i})">
+        </div>
+      </td>
+      <td class="px-4 py-3 font-bold text-slate-800" id="total-unif-${i}">R$ 0,00</td>
+    </tr>
+  `).join('');
+  
+  // Linha de TOTAL GERAL
+  tbody.innerHTML += `
+    <tr class="bg-slate-100 border-t border-slate-300">
+      <td colspan="5" class="px-4 py-4 text-right font-bold text-slate-700 uppercase">Total do Orçamento:</td>
+      <td class="px-4 py-4 font-black text-emerald-700 text-lg" id="total-geral-unif">R$ 0,00</td>
+    </tr>
+  `;
+}
+
+function calcTotalUnif(index) {
+  const g = necessidadesGeradas[index];
+  const precoStr = document.getElementById(`preco-unif-${index}`).value;
+  const preco = parseFloat(precoStr) || 0;
+  const total = preco * g.quantidade_total;
+  
+  document.getElementById(`total-unif-${index}`).innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+  
+  // Atualizar total geral
+  let totalGeral = 0;
+  for (let i = 0; i < necessidadesGeradas.length; i++) {
+    const p = parseFloat(document.getElementById(`preco-unif-${i}`).value) || 0;
+    totalGeral += p * necessidadesGeradas[i].quantidade_total;
+  }
+  document.getElementById('total-geral-unif').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+}
+
+function salvarOrcamentoUniforme() {
+  alert('Funcionalidade de salvar PDF / Aprovação de Uniformes em desenvolvimento! Por enquanto, você pode imprimir esta tela.');
+  window.print();
+}
+
+window.abrirModalTamanhosUniformes = abrirModalTamanhosUniformes;
+window.salvarMedidasColab = salvarMedidasColab;
+window.gerarNecessidadesUniformes = gerarNecessidadesUniformes;
+window.calcTotalUnif = calcTotalUnif;
+window.salvarOrcamentoUniforme = salvarOrcamentoUniforme;
+window.filtrarTabelaMedidas = filtrarTabelaMedidas;
+window.marcarAlterado = marcarAlterado;
+
