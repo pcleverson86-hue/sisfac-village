@@ -2545,7 +2545,7 @@ async function salvarEdicaoColaborador(e) {
       if (postoIdVal && (!colabAtual || colabAtual.posto_trabalho_id !== postoIdVal)) {
         const p = (state.postos || []).find(x => x.id === postoIdVal);
         if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
-          if (!confirm('BLOQUEIO DE LOTA��O: O setor "' + p.nome_posto + '" j� atingiu a capacidade m�xima. Deseja ignorar a lota��o e salvar?')) {
+          if (!confirm('BLOQUEIO DE LOTA��O: O setor "' + p.nome_posto + '" j� atingiu a capacidade m�xima. Deseja ignorar a lota��o e salvar?')) {
              return;
           }
         }
@@ -2599,12 +2599,12 @@ async function salvarEdicaoColaborador(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
-      alert('Informa��es do colaborador atualizadas com sucesso!');
+      alert('Informa��es do colaborador atualizadas com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao salvar edic�o: ' + err.message);
+    alert('Erro ao salvar edic�o: ' + err.message);
   }
 }
 
@@ -20179,7 +20179,7 @@ window.renderizarCalendarioSemanalPostos = renderizarCalendarioSemanalPostos;
 
 
 // =============================================================
-// MÃ“DULO: ALERTA SONORO & POLLING DE COMUNICADOS
+// MÓDULO: ALERTA SONORO & POLLING DE COMUNICADOS
 // =============================================================
 
 var _pollingComunicadosInterval = null;
@@ -20204,7 +20204,7 @@ function tocarAlertaNovoComunicado(titulo) {
       osc.stop(t0 + 0.3);
     });
   } catch (e) {
-    console.warn('[Som] Web Audio API indisponÃ­vel:', e.message);
+    console.warn('[Som] Web Audio API indisponível:', e.message);
   }
   mostrarToastNovoComunicado(titulo);
 }
@@ -20251,7 +20251,7 @@ window.iniciarPollingComunicados = iniciarPollingComunicados;
 
 
 // =============================================================
-// MÃ“DULO: EDITAR COMUNICADO (ADMIN MASTER)
+// MÓDULO: EDITAR COMUNICADO (ADMIN MASTER)
 // =============================================================
 
 function abrirModalEditarComunicado(id, titulo, mensagem, categoria, prioridade) {
@@ -20274,7 +20274,7 @@ async function salvarEdicaoComunicado() {
   var mensagem = document.getElementById('editComunicadoMensagem').value.trim();
   var categoria = (document.getElementById('editComunicadoCategoria') || {}).value || 'geral';
   var prioridade = (document.getElementById('editComunicadoPrioridade') || {}).value || 'normal';
-  if (!titulo || !mensagem) { alert('Preencha tÃ­tulo e mensagem.'); return; }
+  if (!titulo || !mensagem) { alert('Preencha título e mensagem.'); return; }
   try {
     var r = await fetch('/api/comunicados/' + id, {
       method: 'PUT',
@@ -20287,7 +20287,7 @@ async function salvarEdicaoComunicado() {
       if (typeof carregarComunicados === 'function') await carregarComunicados();
       mostrarNotificacaoSucesso('Comunicado editado com sucesso! âœ…');
     } else { alert(data.message || 'Erro ao editar comunicado.'); }
-  } catch (e) { alert('Erro de conexÃ£o.'); }
+  } catch (e) { alert('Erro de conexão.'); }
 }
 
 window.abrirModalEditarComunicado = abrirModalEditarComunicado;
@@ -20295,13 +20295,13 @@ window.salvarEdicaoComunicado = salvarEdicaoComunicado;
 
 
 // =============================================================
-// MÃ“DULO: FLUXO DE IMPLANTAÃ‡ÃƒO (VISÃVEL A TODOS OS USUÃRIOS)
+// MÓDULO: FLUXO DE IMPLANTAÇÃO (VISÍVEL A TODOS OS USUÁRIOS)
 // =============================================================
 
 async function carregarFluxoImplantacao() {
   var container = document.getElementById('containerFluxoImplantacao');
   if (!container) return;
-  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-400"></i>Carregando ordens de implantaÃ§Ã£o...</div>';
+  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-400"></i>Carregando ordens de implantação...</div>';
   try {
     var r = await fetch('/api/comercial/implantacoes');
     if (!r.ok) throw new Error('Servidor retornou erro ' + r.status);
@@ -20309,7 +20309,7 @@ async function carregarFluxoImplantacao() {
     var ordens = data.ordens || data || [];
     renderizarFluxoImplantacao(Array.isArray(ordens) ? ordens : []);
   } catch (e) {
-    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3 block"></i><p class="font-bold">Erro ao carregar implantaÃ§Ãµes</p><p class="text-xs mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
+    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3 block"></i><p class="font-bold">Erro ao carregar implantações</p><p class="text-xs mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
   }
 }
 
@@ -20317,10 +20317,10 @@ function renderizarFluxoImplantacao(ordens) {
   var container = document.getElementById('containerFluxoImplantacao');
   var ehAdmin = isUsuarioAdminMaster();
   var setorUsuario = ((state.usuarioLogado && state.usuarioLogado.setor) ? state.usuarioLogado.setor : '').toLowerCase();
-  var setorLabels = { rh: 'RH / Recrutamento', beneficios: 'BenefÃ­cios (VT/VA)', compras: 'Compras / Uniformes', operacional: 'Operacional', faturamento: 'Faturamento', diretoria: 'Diretoria', comercial: 'Comercial', outros: 'Outros' };
+  var setorLabels = { rh: 'RH / Recrutamento', beneficios: 'Benefícios (VT/VA)', compras: 'Compras / Uniformes', operacional: 'Operacional', faturamento: 'Faturamento', diretoria: 'Diretoria', comercial: 'Comercial', outros: 'Outros' };
 
   if (!ordens || ordens.length === 0) {
-    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-3 block text-orange-300"></i><p class="font-bold text-slate-600 text-base">Nenhuma implantaÃ§Ã£o ativa no momento</p><p class="text-xs mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantaÃ§Ã£o aparecerÃ¡ aqui automaticamente.</p></div>';
+    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-3 block text-orange-300"></i><p class="font-bold text-slate-600 text-base">Nenhuma implantação ativa no momento</p><p class="text-xs mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantação aparecerá aqui automaticamente.</p></div>';
     ['kpiImplantacoesAtivas','kpiTarefasPendentes','kpiTarefasConcluidas','kpiImplantacoesCompletas'].forEach(function(id) {
       var el = document.getElementById(id); if (el) el.textContent = '0';
     });
@@ -20330,7 +20330,7 @@ function renderizarFluxoImplantacao(ordens) {
   var totalAtivas = 0, totalPendentes = 0, totalConcluidas = 0, totalCompletas = 0;
   ordens.forEach(function(o) {
     var tarefas = o.tarefas || [];
-    var conc = tarefas.filter(function(t) { return t.status === 'ConcluÃ­da'; }).length;
+    var conc = tarefas.filter(function(t) { return t.status === 'Concluída'; }).length;
     totalConcluidas += conc;
     totalPendentes += tarefas.length - conc;
     if (tarefas.length > 0 && conc === tarefas.length) totalCompletas++;
@@ -20342,21 +20342,21 @@ function renderizarFluxoImplantacao(ordens) {
   var html = ordens.map(function(ordem) {
     var tarefas = ordem.tarefas || [];
     var total = tarefas.length;
-    var concluidas = tarefas.filter(function(t) { return t.status === 'ConcluÃ­da'; }).length;
+    var concluidas = tarefas.filter(function(t) { return t.status === 'Concluída'; }).length;
     var pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
     var completa = total > 0 && concluidas === total;
     var corPct = pct < 30 ? 'bg-red-500' : pct < 70 ? 'bg-amber-500' : pct < 100 ? 'bg-blue-500' : 'bg-emerald-500';
 
     var tarefasHtml = tarefas.map(function(t) {
       var podeMudarStatus = ehAdmin || setorUsuario.indexOf((t.setor_responsavel || '').toLowerCase().substring(0,4)) !== -1;
-      var sc = t.status === 'ConcluÃ­da' ? 'bg-emerald-100 text-emerald-800' : t.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+      var sc = t.status === 'Concluída' ? 'bg-emerald-100 text-emerald-800' : t.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
       var prazoFmt = t.prazo_limite ? new Date(t.prazo_limite + 'T00:00:00').toLocaleDateString('pt-BR') : 'â€”';
       var tarefaEscapada = JSON.stringify(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return '<div class="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0 group">'
-        + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'ConcluÃ­da' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
+        + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'Concluída' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
         + '<div class="flex-1 min-w-0">'
           + '<div class="flex items-start justify-between gap-2 flex-wrap">'
-            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'ConcluÃ­da' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€”') + '</span>'
+            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'Concluída' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€”') + '</span>'
             + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ' + sc + ' shrink-0">' + t.status + '</span>'
           + '</div>'
           + (t.descricao ? '<p class="text-[11px] text-slate-500 mt-0.5">' + t.descricao + '</p>' : '')
@@ -20368,7 +20368,7 @@ function renderizarFluxoImplantacao(ordens) {
           + (t.observacoes_conclusao ? '<p class="text-[10px] text-emerald-700 bg-emerald-50 rounded px-2 py-1 mt-1.5 italic">âœ… ' + t.observacoes_conclusao + '</p>' : '')
         + '</div>'
         + '<div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">'
-          + (podeMudarStatus && t.status !== 'ConcluÃ­da' ? '<button onclick="marcarTarefaImplantacaoConcluida(' + t.id + ',' + ordem.id + ')" title="Marcar concluÃ­da" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-check"></i></button>' : '')
+          + (podeMudarStatus && t.status !== 'Concluída' ? '<button onclick="marcarTarefaImplantacaoConcluida(' + t.id + ',' + ordem.id + ')" title="Marcar concluída" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-check"></i></button>' : '')
           + (ehAdmin ? '<button onclick="abrirEditarTarefaImplantacao(' + t.id + ',' + ordem.id + ',\'' + tarefaEscapada + '\')" title="Editar" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-pen-to-square"></i></button>'
             + '<button onclick="excluirTarefaImplantacao(' + t.id + ',' + ordem.id + ')" title="Excluir" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-trash"></i></button>' : '')
         + '</div>'
@@ -20384,11 +20384,11 @@ function renderizarFluxoImplantacao(ordens) {
             + (completa ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-rocket"></i>')
           + '</div>'
           + '<div>'
-            + '<h3 class="font-black text-sm text-slate-900">' + (ordem.nome_cliente || ordem.cliente_nome || 'ImplantaÃ§Ã£o #' + ordem.id) + '</h3>'
+            + '<h3 class="font-black text-sm text-slate-900">' + (ordem.nome_cliente || ordem.cliente_nome || 'Implantação #' + ordem.id) + '</h3>'
             + '<div class="flex items-center gap-2 mt-0.5 flex-wrap">'
               + (ordem.contrato_numero ? '<span class="text-[10px] text-slate-500">Contrato: <b>' + ordem.contrato_numero + '</b></span>' : '')
-              + (dataInicioFmt ? '<span class="text-[10px] text-slate-500">InÃ­cio: <b>' + dataInicioFmt + '</b></span>' : '')
-              + (completa ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">âœ… CONCLUÃDA</span>' : '')
+              + (dataInicioFmt ? '<span class="text-[10px] text-slate-500">Início: <b>' + dataInicioFmt + '</b></span>' : '')
+              + (completa ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">âœ… CONCLUÍDA</span>' : '')
             + '</div>'
           + '</div>'
         + '</div>'
@@ -20396,7 +20396,7 @@ function renderizarFluxoImplantacao(ordens) {
       + '</div>'
       + '<div class="px-5 py-3 border-b border-slate-100">'
         + '<div class="flex items-center justify-between mb-1.5">'
-          + '<span class="text-[11px] font-bold text-slate-600">Progresso da ImplantaÃ§Ã£o</span>'
+          + '<span class="text-[11px] font-bold text-slate-600">Progresso da Implantação</span>'
           + '<span class="text-[11px] font-black ' + (pct === 100 ? 'text-emerald-600' : 'text-slate-700') + '">' + concluidas + '/' + total + ' tarefas â€” ' + pct + '%</span>'
         + '</div>'
         + '<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="' + corPct + ' h-full rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div>'
@@ -20411,19 +20411,19 @@ function renderizarFluxoImplantacao(ordens) {
 }
 
 async function marcarTarefaImplantacaoConcluida(tarefaId, ordemId) {
-  if (!confirm('Marcar esta tarefa como ConcluÃ­da?')) return;
+  if (!confirm('Marcar esta tarefa como Concluída?')) return;
   try {
     var r = await fetch('/api/comercial/implantacoes/tarefas/' + tarefaId, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'ConcluÃ­da', concluido_por: (state.usuarioLogado && state.usuarioLogado.nome) ? state.usuarioLogado.nome : 'UsuÃ¡rio' })
+      body: JSON.stringify({ status: 'Concluída', concluido_por: (state.usuarioLogado && state.usuarioLogado.nome) ? state.usuarioLogado.nome : 'Usuário' })
     });
     var data = await r.json();
     if (data.success) {
-      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ ImplantaÃ§Ã£o 100% concluÃ­da! Comunicado enviado ao mural!' : 'Tarefa concluÃ­da! âœ…');
+      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ Implantação 100% concluída! Comunicado enviado ao mural!' : 'Tarefa concluída! âœ…');
       await carregarFluxoImplantacao();
     } else { alert(data.message || 'Erro ao atualizar.'); }
-  } catch (e) { alert('Erro de conexÃ£o.'); }
+  } catch (e) { alert('Erro de conexão.'); }
 }
 
 function abrirEditarTarefaImplantacao(tarefaId, ordemId, tarefaJson) {
@@ -20453,20 +20453,20 @@ async function salvarEdicaoTarefaImplantacao() {
   var status = document.getElementById('editTarefaStatus').value;
   var descricao = document.getElementById('editTarefaDescricao').value.trim();
   var obs = document.getElementById('editTarefaObsConclusao').value.trim();
-  if (!titulo) { alert('Informe o tÃ­tulo da tarefa.'); return; }
+  if (!titulo) { alert('Informe o título da tarefa.'); return; }
   try {
     var r = await fetch('/api/comercial/implantacoes/tarefas/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: titulo, setor_responsavel: setor, responsavel_nome: responsavel, prazo_limite: prazo || null, status: status, descricao: descricao, observacoes_conclusao: obs, concluido_por: status === 'ConcluÃ­da' ? ((state.usuarioLogado && state.usuarioLogado.nome) || 'Admin') : null })
+      body: JSON.stringify({ titulo: titulo, setor_responsavel: setor, responsavel_nome: responsavel, prazo_limite: prazo || null, status: status, descricao: descricao, observacoes_conclusao: obs, concluido_por: status === 'Concluída' ? ((state.usuarioLogado && state.usuarioLogado.nome) || 'Admin') : null })
     });
     var data = await r.json();
     if (data.success) {
       fecharModal('modalEditarTarefaImplantacao');
-      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ ImplantaÃ§Ã£o 100% concluÃ­da! Comunicado gerado!' : 'Tarefa salva! âœ…');
+      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ Implantação 100% concluída! Comunicado gerado!' : 'Tarefa salva! âœ…');
       await carregarFluxoImplantacao();
     } else { alert(data.message || 'Erro ao salvar.'); }
-  } catch (e) { alert('Erro de conexÃ£o.'); }
+  } catch (e) { alert('Erro de conexão.'); }
 }
 
 async function excluirTarefaImplantacao(tarefaId, ordemId) {
@@ -20474,9 +20474,9 @@ async function excluirTarefaImplantacao(tarefaId, ordemId) {
   try {
     var r = await fetch('/api/comercial/implantacoes/tarefas/' + tarefaId, { method: 'DELETE' });
     var data = await r.json();
-    if (data.success) { mostrarNotificacaoSucesso('Tarefa excluÃ­da.'); await carregarFluxoImplantacao(); }
+    if (data.success) { mostrarNotificacaoSucesso('Tarefa excluída.'); await carregarFluxoImplantacao(); }
     else { alert(data.message || 'Erro ao excluir.'); }
-  } catch (e) { alert('Erro de conexÃ£o.'); }
+  } catch (e) { alert('Erro de conexão.'); }
 }
 
 function abrirAdicionarTarefaImplantacao(ordemId) {
@@ -20495,7 +20495,7 @@ async function salvarNovaTarefaImplantacao() {
   var responsavel = document.getElementById('novaTarefaResponsavel').value.trim();
   var prazo = document.getElementById('novaTarefaPrazo').value;
   var descricao = document.getElementById('novaTarefaDescricao').value.trim();
-  if (!titulo) { alert('Informe o tÃ­tulo da tarefa.'); return; }
+  if (!titulo) { alert('Informe o título da tarefa.'); return; }
   try {
     var r = await fetch('/api/comercial/implantacoes/' + ordemId + '/tarefas', {
       method: 'POST',
@@ -20508,7 +20508,7 @@ async function salvarNovaTarefaImplantacao() {
       mostrarNotificacaoSucesso('Tarefa adicionada com sucesso! âœ…');
       await carregarFluxoImplantacao();
     } else { alert(data.message || 'Erro ao adicionar tarefa.'); }
-  } catch (e) { alert('Erro de conexÃ£o.'); }
+  } catch (e) { alert('Erro de conexão.'); }
 }
 
 function mostrarNotificacaoSucesso(msg) {
@@ -20553,10 +20553,10 @@ function filtrarFreelancersLocalmente() {
     html += '<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">';
     html += '<div class="flex items-center gap-3"><input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="' + f.freelancer_id + '" onchange="aoAlternarChkFree(this)">';
     html += '<div><div class="flex items-center gap-2"><h3 class="font-bold text-slate-900">' + f.nome + '</h3>';
-    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plant�es</span>';
-    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Di�ria: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
+    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plant�es</span>';
+    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Di�ria: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
     html += '<div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">';
-    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'N�o cadastrado') + '</span>';
+    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'N�o cadastrado') + '</span>';
     if(f.telefone) html += '<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>' + f.telefone + '</span>';
     html += '</div></div></div>';
     html += '<div class="flex flex-wrap items-center justify-end gap-3">';
@@ -20646,7 +20646,7 @@ function mudarAbaDashboard(painel) {
 }
 
 async function carregarDashboardSetorial(setor) {
-  // Placeholder para buscar m�tricas por setor
+  // Placeholder para buscar m�tricas por setor
   const mesInput = document.getElementById('dashboardMes');
   const mes = mesInput?.value || state.mesAtual;
   
@@ -20672,7 +20672,7 @@ window.mudarAbaDashboard = mudarAbaDashboard;
 
 function imprimirDossieComercial() {
   const lead = state.comercial.leadAtual;
-  if (!lead) return alert('Nenhum lead selecionado para impress�o.');
+  if (!lead) return alert('Nenhum lead selecionado para impress�o.');
 
   const printWindow = window.open('', '_blank');
   
@@ -20690,7 +20690,7 @@ function imprimirDossieComercial() {
       `;
     }).join('');
   } else {
-    htmlInteracoes = '<p style="color: #666;">Nenhuma intera��o registrada.</p>';
+    htmlInteracoes = '<p style="color: #666;">Nenhuma intera��o registrada.</p>';
   }
 
   const dataCriacao = new Date(lead.created_at).toLocaleDateString('pt-BR');
@@ -20699,7 +20699,7 @@ function imprimirDossieComercial() {
   printWindow.document.write(`
     <html>
       <head>
-        <title>Dossi� Comercial - ${lead.razao_social}</title>
+        <title>Dossi� Comercial - ${lead.razao_social}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #222; }
           .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
@@ -20716,21 +20716,21 @@ function imprimirDossieComercial() {
       </head>
       <body>
         <div class="header">
-          <h1>DOSSI� COMERCIAL - RELAT�RIO DE PROSPEC��O</h1>
+          <h1>DOSSI� COMERCIAL - RELAT�RIO DE PROSPEC��O</h1>
           <p>Documento gerado em: ${new Date().toLocaleString('pt-BR')} pelo Sistema Integrado</p>
         </div>
         
         <div class="section">
           <h2>1. DADOS DO CLIENTE / PROSPECT</h2>
           <table>
-            <tr><th>Raz�o Social</th><td>${lead.razao_social || '-'}</td></tr>
+            <tr><th>Raz�o Social</th><td>${lead.razao_social || '-'}</td></tr>
             <tr><th>Nome Fantasia</th><td>${lead.nome_fantasia || '-'}</td></tr>
-            <tr><th>CNPJ</th><td>${lead.cnpj || 'N�o informado'}</td></tr>
+            <tr><th>CNPJ</th><td>${lead.cnpj || 'N�o informado'}</td></tr>
             <tr><th>Segmento</th><td>${lead.segmento || 'Geral'}</td></tr>
-            <tr><th>Data de In�cio da Prospec��o</th><td>${dataCriacao}</td></tr>
+            <tr><th>Data de In�cio da Prospec��o</th><td>${dataCriacao}</td></tr>
             <tr><th>Status Atual (Etapa)</th><td><b>${lead.etapa.toUpperCase()}</b> ${lead.cliente_id_convertido ? '(CONVERTIDO EM CLIENTE)' : ''}</td></tr>
-            <tr><th>Origem</th><td>${lead.origem || 'N�o informada'}</td></tr>
-            <tr><th>Endere�o</th><td>${lead.endereco || 'N�o informado'}</td></tr>
+            <tr><th>Origem</th><td>${lead.origem || 'N�o informada'}</td></tr>
+            <tr><th>Endere�o</th><td>${lead.endereco || 'N�o informado'}</td></tr>
           </table>
         </div>
 
@@ -20738,7 +20738,7 @@ function imprimirDossieComercial() {
           <h2>2. CONTATO PRINCIPAL</h2>
           <table>
             <tr><th>Nome do Contato</th><td>${lead.contato_nome || '-'}</td></tr>
-            <tr><th>Cargo / Fun��o</th><td>${lead.contato_cargo || '-'}</td></tr>
+            <tr><th>Cargo / Fun��o</th><td>${lead.contato_cargo || '-'}</td></tr>
             <tr><th>Telefone</th><td>${lead.contato_telefone || '-'}</td></tr>
             <tr><th>E-mail</th><td>${lead.contato_email || '-'}</td></tr>
           </table>
@@ -20749,18 +20749,18 @@ function imprimirDossieComercial() {
           <table>
             <tr><th>Quantidade de Postos / Vagas</th><td>${lead.vagas_estimadas || '0'}</td></tr>
             <tr><th>Valor Mensal Estimado / Fechado</th><td>${valorFmt}</td></tr>
-            <tr><th>Observa��es Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
+            <tr><th>Observa��es Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
           </table>
         </div>
 
         <div class="section" style="page-break-inside: avoid;">
-          <h2>4. HIST�RICO DE INTERA��ES E NEGOCIA��O</h2>
+          <h2>4. HIST�RICO DE INTERA��ES E NEGOCIA��O</h2>
           <div style="background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
             ${htmlInteracoes}
           </div>
         </div>
 
-        <button class="print-btn" onclick="window.print()">??? IMPRIMIR DOSSI�</button>
+        <button class="print-btn" onclick="window.print()">??? IMPRIMIR DOSSI�</button>
       </body>
     </html>
   `);
@@ -20776,7 +20776,7 @@ function filtrarSelectLista(inputId, selectId) {
   const select = document.getElementById(selectId);
   const options = select.options;
   
-  // Guardar options originais em um atributo se n�o existir
+  // Guardar options originais em um atributo se n�o existir
   if (!select.hasAttribute('data-original-options')) {
     const originalHtml = select.innerHTML;
     select.setAttribute('data-original-options', originalHtml);
@@ -20801,7 +20801,7 @@ window.filtrarSelectLista = filtrarSelectLista;
 
 function abrirModalServicoExtra() {
   document.getElementById('extraData').value = new Date().toISOString().split('T')[0];
-  document.getElementById('extraMotivo').value = 'Servi�o Extra / Avulso';
+  document.getElementById('extraMotivo').value = 'Servi�o Extra / Avulso';
   
   const selCliente = document.getElementById('extraClienteId');
   selCliente.innerHTML = '<option value="">Selecione o Cliente / Base...</option>' + state.clientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`).join('');
@@ -20819,7 +20819,7 @@ function abrirModalServicoExtra() {
   
   selFree.innerHTML = html;
   
-  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> Lan�ar Pagamento Avulso / Dobra Extra';
+  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> Lan�ar Pagamento Avulso / Dobra Extra';
   document.getElementById('modalServicoExtra').classList.remove('hidden');
 }
 
@@ -20836,7 +20836,7 @@ async function salvarServicoExtra(e) {
     data_falta: document.getElementById('extraData').value,
     cliente_id: parseInt(document.getElementById('extraClienteId').value, 10),
     unidade_id: null,
-    colaborador_id: 180, // [SISTEMA] SERVI�O EXTRA
+    colaborador_id: 180, // [SISTEMA] SERVI�O EXTRA
     motivo_falta: document.getElementById('extraMotivo').value,
     dias_afastamento: 1,
     houve_cobertura: 1,
@@ -20844,7 +20844,7 @@ async function salvarServicoExtra(e) {
     freelancer_id: isFree ? profId : null,
     cobertor_colaborador_id: !isFree ? profId : null,
     valor_pago_freelance: parseFloat(document.getElementById('extraValor').value) || 0,
-    observacoes_operacao: 'Lan�amento de Pagamento Avulso / Dobra'
+    observacoes_operacao: 'Lan�amento de Pagamento Avulso / Dobra'
   };
 
   try {
@@ -20863,7 +20863,7 @@ async function salvarServicoExtra(e) {
       alert(result.message || 'Erro ao registrar.');
     }
   } catch (err) {
-    alert('Erro de conex�o.');
+    alert('Erro de conex�o.');
   }
 }
 window.abrirModalServicoExtra = abrirModalServicoExtra;
