@@ -2505,14 +2505,32 @@ async function salvarEdicaoColaborador(e) {
   const id = document.getElementById('editColabId').value;
   const colabId = parseInt(id, 10);
   const colabAtual = (state.colaboradores || []).find(c => c.id === colabId);
-  const postoIdVal = document.getElementById('editColabPostoId').value ? parseInt(document.getElementById('editColabPostoId').value, 10) : null;
+  
+  const tipoAlocacao = document.getElementById('editColabTipoAlocacao') ? document.getElementById('editColabTipoAlocacao').value : 'fixo';
+  let multiClientes = [];
+  let postoIdVal = null;
+  let clienteIdVal = null;
 
-  if (postoIdVal && (!colabAtual || colabAtual.posto_trabalho_id !== postoIdVal)) {
-    const p = (state.postos || []).find(x => x.id === postoIdVal);
-    if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
-      alert(`âš ï¸ BLOQUEIO DE LOTAÃ‡ÃƒO: O setor "${p.nome_posto}" jÃ¡ atingiu a capacidade mÃ¡xima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, selecione outro setor com vagas abertas ou crie um novo posto.`);
-      return;
-    }
+  if (tipoAlocacao === 'multi') {
+      const selects = document.querySelectorAll('.sel-multi-cliente-edicao');
+      selects.forEach(s => {
+          if(s.value) multiClientes.push({ cliente_id: parseInt(s.value, 10) });
+      });
+      if (multiClientes.length === 0) {
+          alert('Por favor, adicione ao menos um cliente no roteiro.');
+          return;
+      }
+  } else {
+      postoIdVal = document.getElementById('editColabPostoId').value ? parseInt(document.getElementById('editColabPostoId').value, 10) : null;
+      clienteIdVal = document.getElementById('editColabClienteId').value ? parseInt(document.getElementById('editColabClienteId').value, 10) : null;
+      if (postoIdVal && (!colabAtual || colabAtual.posto_trabalho_id !== postoIdVal)) {
+        const p = (state.postos || []).find(x => x.id === postoIdVal);
+        if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
+          if (!confirm('BLOQUEIO DE LOTAÇÃO: O setor "' + p.nome_posto + '" já atingiu a capacidade máxima. Deseja ignorar a lotação e salvar?')) {
+             return;
+          }
+        }
+      }
   }
 
   const linhasArray = state.linhasTransporteEdicao || [];
@@ -2526,13 +2544,13 @@ async function salvarEdicaoColaborador(e) {
   const totalDiarioVT = Math.round(somaVal * 100) / 100;
   const passagensDia = somaPass > 0 ? somaPass : 2;
   const tarifaMedia = somaPass > 0 ? Math.round((totalDiarioVT / somaPass) * 100) / 100 : 4.40;
-  const resumoLinhas = linhasArray.map(l => `${l.nome_linha || 'Linha'} (${(Number(l.qtd_ida) || 1) + (Number(l.qtd_volta) || 1)}x R$ ${(Number(l.tarifa) || 0).toFixed(2)})`).join(' + ');
+  const resumoLinhas = linhasArray.map(l => (l.nome_linha || 'Linha') + ' (' + ((Number(l.qtd_ida) || 1) + (Number(l.qtd_volta) || 1)) + 'x R$ ' + (Number(l.tarifa) || 0).toFixed(2) + ')').join(' + ');
 
   const payload = {
     nome: document.getElementById('editColabNome').value,
     cpf: document.getElementById('editColabCpf').value,
     cargo_id: parseInt(document.getElementById('editColabCargoId').value, 10),
-    cliente_id: document.getElementById('editColabClienteId').value ? parseInt(document.getElementById('editColabClienteId').value, 10) : null,
+    cliente_id: clienteIdVal,
     posto_trabalho_id: postoIdVal,
     escala: document.getElementById('editColabEscala').value,
     data_admissao: document.getElementById('editColabAdmissao').value,
@@ -2543,12 +2561,15 @@ async function salvarEdicaoColaborador(e) {
     total_diario_vt: totalDiarioVT,
     linhas_transporte_json: JSON.stringify(linhasArray),
     valor_diario_va: parseFloat(document.getElementById('editColabValorVA').value) || 28.00,
-    modelo_os_id: document.getElementById('editColabModeloOSId')?.value ? parseInt(document.getElementById('editColabModeloOSId').value, 10) : null
+    modelo_os_id: document.getElementById('editColabModeloOSId')?.value ? parseInt(document.getElementById('editColabModeloOSId').value, 10) : null,
+    
+    is_multi_cliente: (tipoAlocacao === 'multi'),
+    multi_clientes: multiClientes
   };
 
 
   try {
-    const res = await fetch(`/api/colaboradores/${id}`, {
+    const res = await fetch('/api/colaboradores/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -2559,12 +2580,12 @@ async function salvarEdicaoColaborador(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
-      alert('Dados do colaborador atualizados com sucesso!');
+      alert('Informações do colaborador atualizadas com sucesso!');
     } else {
-      alert(json.message || 'Erro ao atualizar colaborador');
+      alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao salvar alteraÃ§Ãµes: ' + err.message);
+    alert('Erro ao salvar edicão: ' + err.message);
   }
 }
 
@@ -20567,5 +20588,6 @@ function adicionarClienteRoteiroEdicao(clienteIdSelecionado = '') {
 }
 window.aoMudarTipoAlocacaoEdicao = aoMudarTipoAlocacaoEdicao;
 window.adicionarClienteRoteiroEdicao = adicionarClienteRoteiroEdicao;
+
 
 
