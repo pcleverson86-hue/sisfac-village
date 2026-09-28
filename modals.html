@@ -1,0 +1,60 @@
+﻿  <!-- MODAL DE ADMISSÕES PENDENTES -->
+  <div id="modalAdmissoesPendentes" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col">
+      <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl sticky top-0 z-10">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-user-clock text-amber-500 mr-2"></i>Aprovações de Admissão (Gerência/Auditoria)</h2>
+          <p class="text-sm text-slate-500 mt-1">Gerencie os colaboradores cadastrados pelo Operacional aguardando autorização para entrar no sistema.</p>
+        </div>
+        <button onclick="fecharModal('modalAdmissoesPendentes')" class="text-slate-400 hover:text-slate-600 bg-white rounded-full p-2 shadow-sm border border-slate-200">
+          <i class="fa-solid fa-xmark fa-lg"></i>
+        </button>
+      </div>
+      <div class="p-6 flex-1 bg-slate-50/50">
+        <div class="overflow-x-auto border border-slate-200 rounded-lg shadow-sm bg-white">
+          <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+              <tr>
+                <th class="px-4 py-3">Data Solicitação</th>
+                <th class="px-4 py-3">Colaborador</th>
+                <th class="px-4 py-3">Cargo / Posto</th>
+                <th class="px-4 py-3">Solicitante</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3 text-center">Ações / Interagir</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaAdmissoesBody" class="divide-y divide-slate-100">
+              <!-- Renderizado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE INTERAÇÃO/CHAT DE ADMISSÃO -->
+  <div id="modalInteracaoAdmissao" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+      <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
+        <h3 class="font-bold"><i class="fa-solid fa-comments mr-2"></i> Detalhes & Interação</h3>
+        <button onclick="fecharModal('modalInteracaoAdmissao')" class="text-white hover:text-indigo-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-4 border-b border-slate-200 bg-slate-50 text-sm">
+         <div class="font-bold text-slate-800" id="interacaoAdmNome">Nome do Colab</div>
+         <div class="text-slate-500 text-xs mt-1" id="interacaoAdmDetalhes">Detalhes...</div>
+      </div>
+      <div class="p-4 bg-slate-100 flex-1 overflow-y-auto max-h-64 space-y-3" id="listaMensagensAdmissao">
+         <!-- Msgs via JS -->
+      </div>
+      <div class="p-4 border-t border-slate-200 bg-white">
+         <textarea id="textoMensagemAdmissao" rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none mb-2" placeholder="Digite uma dúvida, questionamento ou resposta..."></textarea>
+         <div class="flex justify-between items-center">
+            <div id="botoesAprovacaoAdm" class="flex gap-2">
+               <!-- Botões Aprovar/Reprovar via JS -->
+            </div>
+            <button onclick="enviarMensagemAdmissao()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-1.5 rounded text-sm shadow-sm">Enviar <i class="fa-solid fa-paper-plane ml-1"></i></button>
+         </div>
+      </div>
+    </div>
+  </div>
+</body>
