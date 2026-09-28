@@ -21071,3 +21071,80 @@ window.filtrarTabelaMedidas = filtrarTabelaMedidas;
 window.marcarAlterado = marcarAlterado;
 
 
+
+
+async function importarCsvMedidas() {
+  const fileInput = document.getElementById('arquivoCsvMedidas');
+  if (!fileInput.files.length) return;
+  const file = fileInput.files[0];
+  
+  if (!confirm('Deseja importar e sobrescrever os tamanhos com base neste arquivo CSV? As colunas devem estar na ordem: Nome, Sexo, Função, Supervisor, Camisa, Calça, Sapato, Jaqueta, Blazer')) return;
+  
+  const text = await file.text();
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  
+  let successCount = 0;
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    let cols = [];
+    let current = '';
+    let inQuotes = false;
+    for (let c of line) {
+      if (c === '"') inQuotes = !inQuotes;
+      else if (c === ',' && !inQuotes) {
+        cols.push(current.trim());
+        current = '';
+      } else {
+        current += c;
+      }
+    }
+    cols.push(current.trim());
+    
+    if (cols.length < 5) continue;
+    
+    const nomeBase = cols[0].split('-')[0].trim().toLowerCase();
+    const sexo = cols[1] ? cols[1].toUpperCase().substring(0, 8) : '';
+    let sexoFinal = '';
+    if (sexo.includes('MASC')) sexoFinal = 'MASCULINO';
+    if (sexo.includes('FEM')) sexoFinal = 'FEMININO';
+    
+    const camisa = cols[4] || '';
+    const calca = cols[5] || '';
+    const sapato = cols[6] || '';
+    const jaqueta = cols[7] || '';
+    const blazer = cols[8] || '';
+    
+    // Procura na cache atual
+    const colabEncontrado = colabsUniformesCache.find(c => c.nome.toLowerCase().includes(nomeBase) || c.nome.toLowerCase() === nomeBase);
+    
+    if (colabEncontrado) {
+      colabEncontrado.sexo = sexoFinal || colabEncontrado.sexo;
+      colabEncontrado.tamanho_camisa = camisa;
+      colabEncontrado.tamanho_calca = calca;
+      colabEncontrado.tamanho_sapato = sapato;
+      colabEncontrado.tamanho_jaqueta = jaqueta;
+      colabEncontrado.tamanho_blazer = blazer;
+      
+      // Update UI if visible
+      const selectSexo = document.getElementById(`med-sexo-${colabEncontrado.id}`);
+      if (selectSexo) {
+        selectSexo.value = colabEncontrado.sexo;
+        document.getElementById(`med-camisa-${colabEncontrado.id}`).value = camisa;
+        document.getElementById(`med-calca-${colabEncontrado.id}`).value = calca;
+        document.getElementById(`med-sapato-${colabEncontrado.id}`).value = sapato;
+        document.getElementById(`med-jaqueta-${colabEncontrado.id}`).value = jaqueta;
+        document.getElementById(`med-blazer-${colabEncontrado.id}`).value = blazer;
+        marcarAlterado(colabEncontrado.id);
+      }
+      
+      // Send to server implicitly (this can be slow if we do it one by one, but for 200 it's fine asynchronously)
+      salvarMedidasColab(colabEncontrado.id);
+      successCount++;
+    }
+  }
+  
+  alert(`Importação concluída! ${successCount} colaboradores foram atualizados com base no nome.`);
+  fileInput.value = '';
+}
+window.importarCsvMedidas = importarCsvMedidas;
