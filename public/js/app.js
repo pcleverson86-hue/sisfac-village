@@ -1532,19 +1532,18 @@ function renderizarLinhasColaboradores() {
         </div>
         <div class="text-xs text-purple-700 font-semibold">📍 Posto: AFASTADOS</div>
       `;
-    } else {
-      const isMulti = c.is_multi_cliente === 1 || c.escala === 'Multi-Cliente';
-      if (isMulti && state.roteirosMultiCliente) {
-        const rot = state.roteirosMultiCliente.find(r => r.colaborador_id === c.id);
-        if (rot && Array.isArray(rot.clientes_compartilhados) && rot.clientes_compartilhados.length > 0) {
-          const cliNomes = rot.clientes_compartilhados.map(cc => cc.nome_fantasia || `Cli #${cc.cliente_id}`).join(', ');
+        } else {
+      const isMulti = c.is_multi_cliente === true || c.is_multi_cliente === 1 || c.escala === 'Multi-Cliente' || (c.clientes_compartilhados && c.clientes_compartilhados.length > 0);
+      if (isMulti) {
+        if (Array.isArray(c.clientes_compartilhados) && c.clientes_compartilhados.length > 0) {
+          const cliNomes = c.clientes_compartilhados.map(cc => cc.cliente_nome || cc.nome_fantasia || 'Cli #' + cc.cliente_id).join(', ');
           clientePostoHtml = `
-            <div class="font-bold text-blue-700"><i class="fa-solid fa-layer-group text-xs mr-1"></i>Multi-Clientes</div>
-            <div class="text-[10px] text-slate-600 mt-0.5" style="line-height:1.2;">${cliNomes}</div>
+            <div class="font-bold text-indigo-700"><i class="fa-solid fa-layer-group text-xs mr-1"></i>Multi-Clientes (Roteiro)</div>
+            <div class="text-[10px] font-bold text-slate-600 mt-0.5 uppercase" style="line-height:1.3;">${cliNomes}</div>
           `;
         } else {
           clientePostoHtml = `
-            <div class="font-bold text-blue-700"><i class="fa-solid fa-layer-group text-xs mr-1"></i>Multi-Clientes</div>
+            <div class="font-bold text-indigo-700"><i class="fa-solid fa-layer-group text-xs mr-1"></i>Multi-Clientes</div>
             <div class="text-[11px] text-slate-600">Sem clientes no roteiro</div>
           `;
         }
@@ -2304,7 +2303,27 @@ async function abrirModalEditarColaborador(id) {
     }
     state.linhasTransporteEdicao = linhasArray;
     renderizarLinhasTransporte('edicao');
-    document.getElementById('editColabValorVA').value = (c.valor_diario_va !== undefined && c.valor_diario_va !== null) ? Number(c.valor_diario_va).toFixed(2) : '28.00';
+        document.getElementById('editColabValorVA').value = (c.valor_diario_va !== undefined && c.valor_diario_va !== null) ? Number(c.valor_diario_va).toFixed(2) : '28.00';
+
+    const tipoAlocacao = document.getElementById('editColabTipoAlocacao');
+    const containerLista = document.getElementById('listaMultiClientesEdicao');
+    if (tipoAlocacao && containerLista) {
+      if (c.is_multi_cliente) {
+        tipoAlocacao.value = 'multi';
+        containerLista.innerHTML = '';
+        if (c.clientes_compartilhados && c.clientes_compartilhados.length > 0) {
+          c.clientes_compartilhados.forEach(comp => {
+            adicionarClienteRoteiroEdicao(comp.cliente_id);
+          });
+        } else {
+          adicionarClienteRoteiroEdicao();
+        }
+      } else {
+        tipoAlocacao.value = 'fixo';
+        containerLista.innerHTML = '';
+      }
+      aoMudarTipoAlocacaoEdicao();
+    }
     atualizarResumoBeneficiosEdicaoColab();
 
     document.getElementById('modalEditarColaborador').classList.remove('hidden');
@@ -20588,6 +20607,8 @@ function adicionarClienteRoteiroEdicao(clienteIdSelecionado = '') {
 }
 window.aoMudarTipoAlocacaoEdicao = aoMudarTipoAlocacaoEdicao;
 window.adicionarClienteRoteiroEdicao = adicionarClienteRoteiroEdicao;
+
+
 
 
 
