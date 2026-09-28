@@ -2470,7 +2470,66 @@ const server = http.createServer(async (req, res) => {
       // -----------------------------------------------------------
       // 4. COLABORADORES COM TRAVA RÍGIDA DE LOTAÇÃO MÁXIMA DO POSTO
       // -----------------------------------------------------------
-      if (pathname === '/api/colaboradores' && method === 'GET') {
+      
+      // ==========================================
+      // ADMISSÕES (FLUXO DE APROVAÇÃO)
+      // ==========================================
+
+      if (pathname === '/api/admissoes' && method === 'GET') {
+        const adms = db.prepare('SELECT a.*, cg.nome_cargo as cargo_nome, c.nome_fantasia as cliente_nome, pt.nome_posto as posto_nome FROM solicitacoes_admissao a LEFT JOIN cargos cg ON a.cargo_id = cg.id LEFT JOIN clientes c ON a.cliente_id = c.id LEFT JOIN postos_trabalho pt ON a.posto_trabalho_id = pt.id ORDER BY a.id DESC').all();
+        return jsonResponse(res, adms);
+      }
+
+      if (pathname === '/api/admissoes' && method === 'POST') {
+        const body = await parseRequestBody(req);
+        const st = db.prepare('INSERT INTO solicitacoes_admissao (nome, cpf, cargo_id, cliente_id, posto_trabalho_id, escala, solicitante_nome, dados_completos_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const r = st.run(
+           body.nome, body.cpf, body.cargo_id, body.cliente_id, body.posto_trabalho_id, body.escala, body.solicitante_nome, JSON.stringify(body), 'Pendente Autorização'
+        );
+        return jsonResponse(res, { success: true, id: r.lastInsertRowid });
+      }
+
+      if (pathname.match(/^/api/admissoes/d+/aprovar$/) && method === 'POST') {
+        const id = parseInt(pathname.split('/')[3], 10);
+        const body = await parseRequestBody(req); // who approved it
+        
+        // Update admission status
+        db.prepare("UPDATE solicitacoes_admissao SET status = 'Autorizado', gerencia_aprovado_por = ?, gerencia_aprovado_em = CURRENT_TIMESTAMP WHERE id = ?").run(body.aprovador, id);
+        
+        // Insert into colaboradores
+        const adm = db.prepare("SELECT dados_completos_json FROM solicitacoes_admissao WHERE id = ?").get(id);
+        if (adm && adm.dados_completos_json) {
+           const cBody = JSON.parse(adm.dados_completos_json);
+           const st = db.prepare('INSERT INTO colaboradores (nome, rg, cpf, data_nascimento, endereco, bairro, cidade, estado, cep, telefone, email, cargo_id, salario_base, periculosidade_insalubridade, vt_valor, va_vr_valor, vale_transporte, vale_refeicao, cliente_id, posto_trabalho_id, vinculo, escala, data_admissao, tem_filhos, estado_civil, pis, nome_mae, nome_pai, num_calcado, num_calca, num_camisa, exame_admissional, uniforme_entregue, observacoes, created_at, updated_at, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)');
+           st.run(
+             cBody.nome, cBody.rg, cBody.cpf, cBody.data_nascimento, cBody.endereco, cBody.bairro, cBody.cidade, cBody.estado, cBody.cep, cBody.telefone, cBody.email, cBody.cargo_id, cBody.salario_base, cBody.periculosidade_insalubridade, cBody.vt_valor, cBody.va_vr_valor, cBody.vale_transporte, cBody.vale_refeicao, cBody.cliente_id, cBody.posto_trabalho_id, cBody.vinculo, cBody.escala, cBody.data_admissao, cBody.tem_filhos, cBody.estado_civil, cBody.pis, cBody.nome_mae, cBody.nome_pai, cBody.num_calcado, cBody.num_calca, cBody.num_camisa, cBody.exame_admissional, cBody.uniforme_entregue, cBody.observacoes
+           );
+        }
+        return jsonResponse(res, { success: true });
+      }
+
+      if (pathname.match(/^/api/admissoes/d+/reprovar$/) && method === 'POST') {
+        const id = parseInt(pathname.split('/')[3], 10);
+        db.prepare("UPDATE solicitacoes_admissao SET status = 'Reprovado / Cancelado' WHERE id = ?").run(id);
+        return jsonResponse(res, { success: true });
+      }
+
+      if (pathname.match(/^/api/admissoes/d+/mensagens$/) && method === 'GET') {
+        const id = parseInt(pathname.split('/')[3], 10);
+        const msgs = db.prepare('SELECT * FROM admissao_mensagens WHERE solicitacao_id = ? ORDER BY id ASC').all(id);
+        return jsonResponse(res, msgs);
+      }
+
+      if (pathname.match(/^/api/admissoes/d+/mensagens$/) && method === 'POST') {
+        const id = parseInt(pathname.split('/')[3], 10);
+        const body = await parseRequestBody(req);
+        db.prepare('INSERT INTO admissao_mensagens (solicitacao_id, usuario_nome, mensagem) VALUES (?, ?, ?)').run(id, body.usuario_nome, body.mensagem);
+        // Change status to show interaction
+        db.prepare("UPDATE solicitacoes_admissao SET status = 'Pendente (Respondido)' WHERE id = ? AND status != 'Autorizado' AND status != 'Reprovado / Cancelado'").run(id);
+        return jsonResponse(res, { success: true });
+      }
+
+if (pathname === '/api/colaboradores' && method === 'GET') {
         let sql = `
           SELECT col.*,
                  cg.nome_cargo,

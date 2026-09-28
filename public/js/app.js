@@ -2189,11 +2189,25 @@ async function salvarNovoColaborador(e) {
 
 
   try {
-    const res = await fetch('/api/colaboradores', {
+    
+    const user = state.usuarioLogado;
+    const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
+    
+    let urlTarget = '/api/colaboradores';
+    let msgTarget = 'Colaborador cadastrado e vinculado ao posto de trabalho com sucesso!';
+    
+    if (!isAutorizador) {
+      urlTarget = '/api/admissoes';
+      msgTarget = 'Solicitação de Admissão enviada com sucesso! Ela ficará pendente de autorização pela gerência.';
+      payload.solicitante_nome = user ? user.nome : 'Desconhecido';
+    }
+
+    const res = await fetch(urlTarget, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
     const json = await res.json();
     if (json.success) {
       fecharModal('modalNovoColaborador');
@@ -2201,7 +2215,7 @@ async function salvarNovoColaborador(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
-      alert('Colaborador cadastrado e vinculado ao posto de trabalho com sucesso!');
+      alert(msgTarget);
     } else {
       alert(json.message); // Trava de lotação
     }
@@ -21562,3 +21576,192 @@ function baixarModeloCsvUniformes() {
   document.body.removeChild(link);
 }
 window.baixarModeloCsvUniformes = baixarModeloCsvUniformes;
+
+
+// =====================================
+// ADMISSÕES (FLUXO DE APROVAÇÃO)
+// =====================================
+
+let currentAdmissaoId = null;
+let currentAdmissaoData = null;
+
+async function carregarAdmissoesPendentes() {
+  const tbody = document.getElementById('tabelaAdmissoesBody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando solicitações...</td></tr>';
+  
+  try {
+    const res = await fetch('/api/admissoes');
+    const adms = await res.json();
+    
+    // Update badge globally
+    const pendentesCount = adms.filter(a => !a.status.includes('Autorizado') && !a.status.includes('Reprovado')).length;
+    const badge = document.getElementById('badgeAdmissoesPendentes');
+    if (badge) {
+       if(pendentesCount > 0) { badge.textContent = pendentesCount; badge.classList.remove('hidden'); }
+       else { badge.classList.add('hidden'); }
+    }
+    
+    if (adms.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500">Nenhuma solicitação de admissão encontrada.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = adms.map(a => {
+      let statusColor = 'bg-amber-100 text-amber-800 border-amber-200';
+      if (a.status === 'Autorizado') statusColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      if (a.status.includes('Reprovado')) statusColor = 'bg-red-100 text-red-800 border-red-200';
+      if (a.status.includes('Respondido')) statusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+      
+      const isConcluido = a.status === 'Autorizado' || a.status.includes('Reprovado');
+      
+      return `
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3 text-xs text-slate-500">${new Date(a.created_at).toLocaleString('pt-BR')}</td>
+        <td class="px-4 py-3 font-bold text-slate-800">${a.nome}<br><span class="text-[10px] font-normal text-slate-500">CPF: ${a.cpf || 'Não inf.'}</span></td>
+        <td class="px-4 py-3 text-xs text-slate-600">${a.cargo_nome || 'N/A'}<br><span class="font-bold text-indigo-700">${a.posto_nome || 'N/A'}</span></td>
+        <td class="px-4 py-3 text-xs text-slate-600"><i class="fa-solid fa-user-pen mr-1"></i> ${a.solicitante_nome || 'Desconhecido'}</td>
+        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusColor}">${a.status}</span></td>
+        <td class="px-4 py-3 text-center">
+          <button onclick='abrirInteracaoAdmissao(${JSON.stringify(a).replace(/'/g, "&apos;")})' class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs border border-indigo-200 shadow-sm">
+            <i class="fa-solid fa-comments mr-1"></i> Ver & Interagir
+          </button>
+        </td>
+      </tr>
+    `}).join('');
+    
+  } catch(e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Erro ao carregar solicitações.</td></tr>';
+  }
+}
+
+function abrirModalAdmissoesPendentes() {
+  document.getElementById('modalAdmissoesPendentes').classList.remove('hidden');
+  carregarAdmissoesPendentes();
+}
+
+async function abrirInteracaoAdmissao(admObj) {
+  currentAdmissaoId = admObj.id;
+  currentAdmissaoData = admObj;
+  
+  document.getElementById('interacaoAdmNome').textContent = admObj.nome;
+  document.getElementById('interacaoAdmDetalhes').innerHTML = `Posto: <b>${admObj.posto_nome || 'N/A'}</b> | Cargo: <b>${admObj.cargo_nome || 'N/A'}</b><br>Solicitante: <b>${admObj.solicitante_nome || 'N/A'}</b> em ${new Date(admObj.created_at).toLocaleDateString('pt-BR')}`;
+  
+  const botoes = document.getElementById('botoesAprovacaoAdm');
+  botoes.innerHTML = '';
+  
+  const user = state.usuarioLogado;
+  const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
+  
+  if (!admObj.status.includes('Autorizado') && !admObj.status.includes('Reprovado')) {
+    if (isAutorizador) {
+      botoes.innerHTML = `
+        <button onclick="aprovarAdmissao(${admObj.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-check"></i> Aprovar Admissão</button>
+        <button onclick="reprovarAdmissao(${admObj.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-ban"></i> Reprovar</button>
+      `;
+    } else {
+      botoes.innerHTML = `<span class="text-xs text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando Autorização da Gerência</span>`;
+    }
+  } else {
+    botoes.innerHTML = `<span class="text-xs font-bold px-2 py-1 rounded ${admObj.status === 'Autorizado' ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'}">${admObj.status}</span>`;
+  }
+  
+  document.getElementById('modalInteracaoAdmissao').classList.remove('hidden');
+  carregarMensagensAdmissao(admObj.id);
+}
+
+async function carregarMensagensAdmissao(id) {
+  const lista = document.getElementById('listaMensagensAdmissao');
+  lista.innerHTML = '<div class="text-center text-xs text-slate-400 py-2">Carregando...</div>';
+  try {
+    const res = await fetch(`/api/admissoes/${id}/mensagens`);
+    const msgs = await res.json();
+    if(msgs.length === 0) {
+      lista.innerHTML = '<div class="text-center text-xs text-slate-400 py-2 italic">Nenhuma interação registrada ainda. Envie o primeiro questionamento.</div>';
+      return;
+    }
+    
+    lista.innerHTML = msgs.map(m => {
+      const isMe = (state.usuarioLogado && m.usuario_nome === state.usuarioLogado.nome);
+      return `
+        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+           <span class="text-[10px] text-slate-400 font-bold mb-0.5 ml-1">${m.usuario_nome} • ${new Date(m.created_at).toLocaleString('pt-BR').slice(0,16)}</span>
+           <div class="px-3 py-2 rounded-xl text-sm shadow-sm max-w-[85%] ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none'}">
+              ${m.mensagem}
+           </div>
+        </div>
+      `;
+    }).join('');
+    
+    // auto scroll to bottom
+    setTimeout(() => { lista.scrollTop = lista.scrollHeight; }, 100);
+  } catch(e) { console.error(e); }
+}
+
+async function enviarMensagemAdmissao() {
+  if(!currentAdmissaoId) return;
+  const txt = document.getElementById('textoMensagemAdmissao').value.trim();
+  if(!txt) return;
+  
+  try {
+    await fetch(`/api/admissoes/${currentAdmissaoId}/mensagens`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        usuario_nome: state.usuarioLogado ? state.usuarioLogado.nome : 'Usuário',
+        mensagem: txt
+      })
+    });
+    document.getElementById('textoMensagemAdmissao').value = '';
+    carregarMensagensAdmissao(currentAdmissaoId);
+    carregarAdmissoesPendentes(); // update status
+  } catch(e) { console.error(e); alert('Erro ao enviar.'); }
+}
+
+async function aprovarAdmissao(id) {
+  if(!confirm('Tem certeza que deseja AUTORIZAR esta admissão?\nO colaborador entrará imediatamente no sistema e aparecerá no quadro de funcionários ativos.')) return;
+  
+  try {
+    const res = await fetch(`/api/admissoes/${id}/aprovar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        aprovador: state.usuarioLogado ? state.usuarioLogado.nome : 'Desconhecido'
+      })
+    });
+    const j = await res.json();
+    if(j.success) {
+      alert('Colaborador autorizado e inserido no sistema com sucesso!');
+      fecharModal('modalInteracaoAdmissao');
+      carregarAdmissoesPendentes();
+      if(state.abaAtiva === 'colaboradores') carregarColaboradores();
+    } else {
+      alert('Erro: ' + j.message);
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function reprovarAdmissao(id) {
+  if(!confirm('Tem certeza que deseja REPROVAR esta admissão?\nA solicitação será cancelada e ele não entrará no sistema.')) return;
+  
+  try {
+    await fetch(`/api/admissoes/${id}/reprovar`, { method: 'POST' });
+    alert('Admissão reprovada/cancelada com sucesso.');
+    fecharModal('modalInteracaoAdmissao');
+    carregarAdmissoesPendentes();
+  } catch(e) { console.error(e); }
+}
+
+window.abrirModalAdmissoesPendentes = abrirModalAdmissoesPendentes;
+window.abrirInteracaoAdmissao = abrirInteracaoAdmissao;
+window.enviarMensagemAdmissao = enviarMensagemAdmissao;
+window.aprovarAdmissao = aprovarAdmissao;
+window.reprovarAdmissao = reprovarAdmissao;
+
+// Add a hook to update the badge silently when dashboard loads
+const oldCarregarColaboradores = carregarColaboradores;
+window.carregarColaboradores = async function() {
+   await oldCarregarColaboradores();
+   carregarAdmissoesPendentes(); // update badge
+}
