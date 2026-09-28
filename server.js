@@ -2511,9 +2511,9 @@ const server = http.createServer(async (req, res) => {
         const adm = db.prepare("SELECT dados_completos_json, solicitante_nome FROM solicitacoes_admissao WHERE id = ?").get(id);
         if (adm && adm.dados_completos_json) {
            const cBody = JSON.parse(adm.dados_completos_json);
-           const st = db.prepare('INSERT INTO colaboradores (nome, rg, cpf, data_nascimento, endereco, bairro, cidade, estado, cep, telefone, email, cargo_id, salario_base, periculosidade_insalubridade, vt_valor, va_vr_valor, vale_transporte, vale_refeicao, cliente_id, posto_trabalho_id, vinculo, escala, data_admissao, tem_filhos, estado_civil, pis, nome_mae, nome_pai, num_calcado, num_calca, num_camisa, exame_admissional, uniforme_entregue, observacoes, created_at, updated_at, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)');
+           const st = db.prepare('INSERT INTO colaboradores (nome, matricula, rg, cpf, data_nascimento, endereco, bairro, cidade, estado, cep, telefone, email, cargo_id, salario_base, periculosidade_insalubridade, vt_valor, va_vr_valor, vale_transporte, vale_refeicao, cliente_id, posto_trabalho_id, vinculo, escala, data_admissao, tem_filhos, estado_civil, pis, nome_mae, nome_pai, num_calcado, num_calca, num_camisa, exame_admissional, uniforme_entregue, observacoes, created_at, updated_at, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)');
            st.run(
-             (cBody.nome || null), (cBody.rg || null), (cBody.cpf || null), (cBody.data_nascimento || null), (cBody.endereco || null), (cBody.bairro || null), (cBody.cidade || null), (cBody.estado || null), (cBody.cep || null), (cBody.telefone || null), (cBody.email || null), (cBody.cargo_id || null), (cBody.salario_base || null), (cBody.periculosidade_insalubridade || null), (cBody.vt_valor || null), (cBody.va_vr_valor || null), (cBody.vale_transporte || null), (cBody.vale_refeicao || null), (cBody.cliente_id || null), (cBody.posto_trabalho_id || null), (cBody.vinculo || null), (cBody.escala || null), (cBody.data_admissao || null), (cBody.tem_filhos || null), (cBody.estado_civil || null), (cBody.pis || null), (cBody.nome_mae || null), (cBody.nome_pai || null), (cBody.num_calcado || null), (cBody.num_calca || null), (cBody.num_camisa || null), (cBody.exame_admissional || null), (cBody.uniforme_entregue || null), (cBody.observacoes || null)
+             (cBody.nome || null), (cBody.matricula || null), (cBody.rg || null), (cBody.cpf || null), (cBody.data_nascimento || null), (cBody.endereco || null), (cBody.bairro || null), (cBody.cidade || null), (cBody.estado || null), (cBody.cep || null), (cBody.telefone || null), (cBody.email || null), (cBody.cargo_id || null), (cBody.salario_base || null), (cBody.periculosidade_insalubridade || null), (cBody.vt_valor || null), (cBody.va_vr_valor || null), (cBody.vale_transporte || null), (cBody.vale_refeicao || null), (cBody.cliente_id || null), (cBody.posto_trabalho_id || null), (cBody.vinculo || null), (cBody.escala || null), (cBody.data_admissao || null), (cBody.tem_filhos || null), (cBody.estado_civil || null), (cBody.pis || null), (cBody.nome_mae || null), (cBody.nome_pai || null), (cBody.num_calcado || null), (cBody.num_calca || null), (cBody.num_camisa || null), (cBody.exame_admissional || null), (cBody.uniforme_entregue || null), (cBody.observacoes || null)
            );
            
            // POST MURAL
@@ -2556,7 +2556,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname.match(/^\/api\/admissoes\/\d+\/mensagens$/) && method === 'POST') {
         const id = parseInt(pathname.split('/')[3], 10);
         const body = await parseRequestBody(req);
-        db.prepare('INSERT INTO admissao_mensagens (solicitacao_id, usuario_nome, mensagem) VALUES (?, ?, ?)').run(id, body.usuario_nome, body.mensagem);
+        db.prepare('INSERT INTO admissao_mensagens (solicitacao_id, autor_nome, usuario_nome, mensagem) VALUES (?, ?, ?, ?)').run(id, body.usuario_nome, body.usuario_nome, body.mensagem);
         // Change status to show interaction
         db.prepare("UPDATE solicitacoes_admissao SET status = 'Pendente (Respondido)' WHERE id = ? AND status != 'Autorizado' AND status != 'Reprovado / Cancelado'").run(id);
         return jsonResponse(res, { success: true });
@@ -2742,11 +2742,11 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
         const stmt = db.prepare(`
           INSERT INTO colaboradores (
-            nome, cpf, cargo_id, cliente_id, unidade_id, posto_trabalho_id, escala,
+            nome, matricula, cpf, cargo_id, cliente_id, unidade_id, posto_trabalho_id, escala,
             data_admissao, telefone, email, linhas_onibus, quantidade_passagens_dia,
             valor_passagem_unitaria, valor_diario_va, linhas_transporte_json, total_diario_vt,
             modelo_os_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const result = stmt.run(
@@ -5394,10 +5394,10 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
           } else {
             const resIns = db.prepare(`
               INSERT INTO colaboradores (
-                nome, cpf, cargo_id, cliente_id, posto_trabalho_id, escala, data_admissao,
+                nome, matricula, cpf, cargo_id, cliente_id, posto_trabalho_id, escala, data_admissao,
                 telefone, linhas_onibus, quantidade_passagens_dia, valor_passagem_unitaria, valor_diario_va,
                 total_diario_vt, linhas_transporte_json, status_colaborador, ativo
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo', 1)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo', 1)
             `).run(
               col.nome.trim(),
               cpfVal,

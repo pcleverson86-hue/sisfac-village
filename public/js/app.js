@@ -1608,7 +1608,7 @@ function renderizarLinhasColaboradores() {
         </td>
         <td class="px-4 py-3">
           <div class="font-bold text-slate-900">${c.nome}</div>
-          <div class="text-xs text-slate-400 font-mono">${c.cpf || 'Sem CPF'}</div>
+          <div class="text-xs text-slate-500 font-mono">CPF: ${c.cpf || 'Sem CPF'} <span class="text-indigo-400 ml-1">| MAT: ${c.matricula || 'N/A'}</span></div>
         </td>
         <td class="px-4 py-3">
           <span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-medium">${c.nome_cargo}</span>
@@ -5832,7 +5832,8 @@ async function processarImportacaoPlanilha() {
 
       if (state.tipoImportacaoAtual === 'colaboradores') {
         const payload = rows.map(r => ({
-          id: extrairCampoPlanilha(r, ['id_colaborador', 'idcolaborador', 'colaborador_id', 'id', 'id_funcionario', 'matricula', 'matricula_id'], null),
+          id: extrairCampoPlanilha(r, ['id_colaborador', 'idcolaborador', 'colaborador_id', 'id', 'id_funcionario'], null),
+          matricula: extrairCampoPlanilha(r, ['matricula', 'registro', 'mat']),
           nome: extrairCampoPlanilha(r, ['nome', 'colaborador', 'funcionario', 'nomedofuncionario', 'nomedocolaborador', 'nomecompleto']),
           cpf: extrairCampoPlanilha(r, ['cpf', 'cpfdocolaborador', 'documento', 'cpfcolaborador']),
           cargo_id: extrairCampoPlanilha(r, ['cargo_id', 'cargoid', 'idcargo', 'id_cargo', 'cargo', 'funcao', 'funcaocargo', 'nomedafuncao', 'nomecargo', 'ocupacao'], 1),
@@ -21655,17 +21656,18 @@ async function abrirInteracaoAdmissao(admObj) {
   const user = state.usuarioLogado;
   const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
   
+  const btnImprimir = `<button onclick="imprimirDossieAdmissao()" class="bg-slate-600 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2" title="Imprimir Dossiê em PDF"><i class="fa-solid fa-print"></i> Dossiê PDF</button>`;
   if (!admObj.status.includes('Autorizado') && !admObj.status.includes('Reprovado')) {
     if (isAutorizador) {
       botoes.innerHTML = `
         <button onclick="aprovarAdmissao(${admObj.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-check"></i> Aprovar Admissão</button>
-        <button onclick="reprovarAdmissao(${admObj.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-ban"></i> Reprovar</button>
-      `;
+        <button onclick="reprovarAdmissao(${admObj.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2"><i class="fa-solid fa-ban"></i> Reprovar</button>
+      ` + btnImprimir;
     } else {
-      botoes.innerHTML = `<span class="text-xs text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando Autorização da Gerência</span>`;
+      botoes.innerHTML = `<span class="text-xs text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando Autorização da Gerência</span>` + btnImprimir;
     }
   } else {
-    botoes.innerHTML = `<span class="text-xs font-bold px-2 py-1 rounded ${admObj.status === 'Autorizado' ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'}">${admObj.status}</span>`;
+    botoes.innerHTML = `<span class="text-xs font-bold px-2 py-1 rounded ${admObj.status === 'Autorizado' ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'}">${admObj.status}</span>` + btnImprimir;
   }
   
   document.getElementById('modalInteracaoAdmissao').classList.remove('hidden');
@@ -21839,3 +21841,110 @@ window.iniciarAplicacaoAutenticada = function() {
   if (intervaloAlertaAdmissoes) clearInterval(intervaloAlertaAdmissoes);
   intervaloAlertaAdmissoes = setInterval(verificarAdmissoesPendentesGlobal, 30000); // 30 segundos
 }
+
+
+window.imprimirDossieAdmissao = function() {
+  if (!currentAdmissaoData) return;
+  const a = currentAdmissaoData;
+  const cBody = a.dados_completos_json ? JSON.parse(a.dados_completos_json) : {};
+  
+  const w = window.open('', '_blank');
+  w.document.write(`
+    <html><head><title>Dossiê de Admissão - ${a.nome}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+      h1 { font-size: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+      h2 { font-size: 14px; background: #eee; padding: 5px 10px; margin-top: 20px; }
+      table { w-full; border-collapse: collapse; margin-bottom: 20px; width: 100%; font-size: 12px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      th { background: #f9f9f9; width: 30%; }
+      .footer { margin-top: 50px; text-align: center; font-size: 12px; border-top: 1px solid #ccc; padding-top: 20px; }
+      .signature { margin-top: 60px; display: flex; justify-content: space-around; }
+      .sig-line { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px; font-weight: bold; }
+    </style></head>
+    <body>
+       <h1>Dossiê de Solicitação e Aprovação de Admissão</h1>
+       
+       <h2>1. Dados Gerais da Solicitação</h2>
+       <table>
+         <tr><th>Protocolo / ID</th><td>#${a.id}</td></tr>
+         <tr><th>Data da Solicitação</th><td>${new Date(a.created_at).toLocaleString('pt-BR')}</td></tr>
+         <tr><th>Status Atual</th><td><strong>${a.status}</strong></td></tr>
+         <tr><th>Solicitante (Operacional)</th><td>${a.solicitante_nome || 'N/A'}</td></tr>
+         ${a.gerencia_aprovado_por ? `<tr><th>Aprovado Por (Gerência)</th><td>${a.gerencia_aprovado_por} em ${new Date(a.gerencia_aprovado_em).toLocaleString('pt-BR')}</td></tr>` : ''}
+       </table>
+
+       <h2>2. Dados Pessoais do Colaborador</h2>
+       <table>
+         <tr><th>Nome Completo</th><td>${cBody.nome || a.nome}</td></tr>
+         <tr><th>CPF</th><td>${cBody.cpf || a.cpf || '-'}</td></tr>
+         <tr><th>RG</th><td>${cBody.rg || '-'}</td></tr>
+         <tr><th>Matrícula (Se aplicável)</th><td>${cBody.matricula || '-'}</td></tr>
+         <tr><th>Data de Nascimento</th><td>${cBody.data_nascimento ? new Date(cBody.data_nascimento).toLocaleDateString('pt-BR') : '-'}</td></tr>
+         <tr><th>PIS / NIS</th><td>${cBody.pis || '-'}</td></tr>
+         <tr><th>Estado Civil</th><td>${cBody.estado_civil || '-'}</td></tr>
+         <tr><th>Filhos Menores?</th><td>${cBody.tem_filhos === 'Sim' ? 'Sim' : 'Não'}</td></tr>
+       </table>
+       
+       <h2>3. Dados Operacionais (Vaga)</h2>
+       <table>
+         <tr><th>Cliente / Posto</th><td>${a.cliente_nome || '-'} / ${a.posto_nome || '-'}</td></tr>
+         <tr><th>Função / Cargo</th><td>${a.cargo_nome || '-'}</td></tr>
+         <tr><th>Escala de Trabalho</th><td>${cBody.escala || a.escala || '-'}</td></tr>
+         <tr><th>Salário Base Proposto</th><td>R$ ${Number(cBody.salario_base||0).toFixed(2)}</td></tr>
+         <tr><th>Adicionais (Insalubridade/Periculosidade)</th><td>R$ ${Number(cBody.periculosidade_insalubridade||0).toFixed(2)}</td></tr>
+         <tr><th>Valor Vale Transporte (Diário)</th><td>R$ ${Number(cBody.vt_valor||0).toFixed(2)}</td></tr>
+         <tr><th>Valor Vale Alimentação (Diário)</th><td>R$ ${Number(cBody.va_vr_valor||0).toFixed(2)}</td></tr>
+       </table>
+       
+       <div class="signature">
+         <div class="sig-line">${a.solicitante_nome || 'Operacional RH'}<br><span style="font-size:10px;font-weight:normal">Assinatura do Solicitante</span></div>
+         <div class="sig-line">${a.gerencia_aprovado_por || 'Gerência / Auditoria'}<br><span style="font-size:10px;font-weight:normal">Assinatura da Aprovação</span></div>
+       </div>
+       
+       <div class="footer">Gerado por SISFAC 2.0 em ${new Date().toLocaleString('pt-BR')}</div>
+       
+       <script>
+         setTimeout(() => { window.print(); }, 800);
+       </script>
+    </body></html>
+  `);
+  w.document.close();
+};
+
+
+window.factoryResetSistema = async function() {
+  if (!state.usuarioLogado || state.usuarioLogado.login !== 'admin') {
+     return alert('Apenas o Administrador Master tem permissão para realizar esta ação.');
+  }
+  
+  const code = prompt('ATENÇÃO EXTREMA: Esta ação irá APAGAR TODOS os colaboradores, admissões, comunicados e dados financeiros.\n\nConfigurações como Usuários, Cargos, Clientes, Postos e Regras de Uniforme serão MANTIDAS.\n\nPara confirmar, digite o código de segurança: ZerarSistema2026');
+  
+  if (code !== 'ZerarSistema2026') {
+     if (code !== null) alert('Código inválido. Operação cancelada.');
+     return;
+  }
+  
+  if (!confirm('Você tem CERTEZA ABSOLUTA? Esta ação NÃO pode ser desfeita e todos os dados operacionais desaparecerão imediatamente.')) return;
+  
+  try {
+     const res = await fetch('/api/factory-reset', {
+        method: 'POST',
+        headers: {
+           'Content-Type': 'application/json',
+           'x-usuario-login': state.usuarioLogado.login
+        },
+        body: JSON.stringify({ confirmacao: code })
+     });
+     
+     const j = await res.json();
+     if (res.ok && j.success) {
+        alert('SUCESSO: ' + j.message + '\n\nO sistema recarregará agora.');
+        window.location.reload();
+     } else {
+        alert('ERRO: ' + (j.message || 'Falha ao processar'));
+     }
+  } catch(e) {
+     alert('Erro crítico: ' + e.message);
+  }
+};
