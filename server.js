@@ -2483,7 +2483,7 @@ const server = http.createServer(async (req, res) => {
           LEFT JOIN clientes c ON col.cliente_id = c.id
           LEFT JOIN unidades u ON col.unidade_id = u.id
           LEFT JOIN postos_trabalho pt ON col.posto_trabalho_id = pt.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
         if (query.status === 'demitidos') {
@@ -3532,7 +3532,7 @@ const server = http.createServer(async (req, res) => {
           JOIN clientes c ON cf.cliente_id = c.id
           JOIN postos_trabalho pt ON cf.posto_trabalho_id = pt.id
           JOIN freelancers free ON cf.freelancer_id = free.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
         if (mes) {
@@ -3616,7 +3616,7 @@ const server = http.createServer(async (req, res) => {
           LEFT JOIN freelancers free ON hf.freelancer_id = free.id
           LEFT JOIN colaboradores sub ON hf.colaborador_substituto_id = sub.id
           LEFT JOIN cargos sub_cg ON sub.cargo_id = sub_cg.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
 
@@ -4672,7 +4672,7 @@ const server = http.createServer(async (req, res) => {
           FROM pedidos_orcamentos_compras po
           LEFT JOIN fornecedores f ON po.fornecedor_id = f.id
           LEFT JOIN clientes c ON po.cliente_id = c.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
         if (mes && mes !== 'todos') {
@@ -4870,7 +4870,7 @@ const server = http.createServer(async (req, res) => {
           FROM contas_pagar cp
           LEFT JOIN pedidos_orcamentos_compras po ON cp.origem_id = po.id
           LEFT JOIN fornecedores f ON cp.fornecedor_id = f.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
 
@@ -5182,7 +5182,7 @@ const server = http.createServer(async (req, res) => {
               SELECT pt.id, pt.cargo_id, pt.quantidade_vagas_limite,
                      (SELECT COUNT(*) FROM colaboradores c WHERE c.posto_trabalho_id = pt.id AND c.ativo = 1) as ocupados
               FROM postos_trabalho pt
-              WHERE pt.cliente_id = ? AND pt.ativo = 1
+              WHERE pt.cliente_id = ? AND pt.ativo = 1 AND col.nome != '[SISTEMA] SERVIÇO EXTRA'
               ORDER BY pt.id ASC
             `).all(clienteId);
 
@@ -5356,7 +5356,7 @@ const server = http.createServer(async (req, res) => {
             FROM postos_trabalho pt
             JOIN cargos cg ON pt.cargo_id = cg.id
             LEFT JOIN unidades u ON pt.unidade_id = u.id
-            WHERE pt.cliente_id = ? AND pt.ativo = 1
+            WHERE pt.cliente_id = ? AND pt.ativo = 1 AND col.nome != '[SISTEMA] SERVIÇO EXTRA'
             ORDER BY pt.nome_posto ASC
           `).all(c.id);
 
@@ -5501,7 +5501,7 @@ const server = http.createServer(async (req, res) => {
                  (SELECT pus.token_acesso FROM pedido_unidade_status pus WHERE pus.unidade_id = u.id ORDER BY pus.id DESC LIMIT 1) as ultimo_token_acesso
           FROM unidades u
           JOIN clientes c ON u.cliente_id = c.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
         if (query.cliente_id) {
@@ -6794,7 +6794,7 @@ const server = http.createServer(async (req, res) => {
           JOIN colaboradores col ON fc.colaborador_id = col.id
           LEFT JOIN colaboradores cobertor ON fc.cobertor_colaborador_id = cobertor.id
           LEFT JOIN freelancers free ON fc.freelancer_id = free.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
         if (supervisorId) {
@@ -7161,7 +7161,7 @@ const server = http.createServer(async (req, res) => {
           LEFT JOIN cargos cg ON col.cargo_id = cg.id
           LEFT JOIN clientes c ON col.cliente_id = c.id
           LEFT JOIN postos_trabalho pt ON col.posto_trabalho_id = pt.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
 
@@ -8789,7 +8789,7 @@ const server = http.createServer(async (req, res) => {
           LEFT JOIN clientes cli ON c.cliente_id = cli.id
           LEFT JOIN postos_trabalho pt ON c.posto_trabalho_id = pt.id
           LEFT JOIN setor_arquivos_documentos arq ON d.arquivo_registro_id = arq.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
 
@@ -9088,7 +9088,7 @@ const server = http.createServer(async (req, res) => {
           LEFT JOIN clientes cli ON c.cliente_id = cli.id
           LEFT JOIN postos_trabalho pt ON c.posto_trabalho_id = pt.id
           LEFT JOIN sst_documentos_colaborador doc ON a.documento_sst_id = doc.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
 
@@ -9264,7 +9264,7 @@ const server = http.createServer(async (req, res) => {
           LEFT JOIN clientes cli ON af.cliente_id = cli.id
           LEFT JOIN postos_trabalho pt ON af.posto_origem_id = pt.id
           LEFT JOIN unidades un ON af.unidade_origem_id = un.id
-          WHERE 1=1
+          WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA'
         `;
         const params = [];
         if (query.status && query.status !== 'todos') {
@@ -10039,7 +10039,7 @@ const server = http.createServer(async (req, res) => {
 
       // LISTAR DENÃšNCIAS (INTERNO - COORDENAÃ‡ÃƒO OPERACIONAL E MASTER)
       if (pathname === '/api/denuncias' && method === 'GET') {
-        let sql = ' SELECT * FROM denuncias WHERE 1=1 ';
+        let sql = ' SELECT * FROM denuncias WHERE col.nome != '[SISTEMA] SERVIÇO EXTRA' ';
         const params = [];
 
         if (query.status && query.status !== 'todos') {
@@ -10192,6 +10192,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   iniciarOuVerificarTunnel();
 });
+
 
 
 

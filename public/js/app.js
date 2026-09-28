@@ -20798,3 +20798,55 @@ function filtrarSelectLista(inputId, selectId) {
   }
 }
 window.filtrarSelectLista = filtrarSelectLista;
+
+function abrirModalServicoExtra() {
+  document.getElementById('extraData').value = new Date().toISOString().split('T')[0];
+  document.getElementById('extraMotivo').value = 'Serviço Extra / Avulso';
+  
+  const selCliente = document.getElementById('extraClienteId');
+  selCliente.innerHTML = '<option value="">Selecione...</option>' + state.clientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`).join('');
+  
+  const selFree = document.getElementById('extraFreelancerId');
+  selFree.innerHTML = '<option value="">Selecione...</option>' + state.freelancers.map(f => `<option value="${f.id}">${f.nome} (PIX: ${f.chave_pix || 'S/N'})</option>`).join('');
+  
+  document.getElementById('modalServicoExtra').classList.remove('hidden');
+}
+
+async function salvarServicoExtra(e) {
+  e.preventDefault();
+  const payload = {
+    data_falta: document.getElementById('extraData').value,
+    cliente_id: parseInt(document.getElementById('extraClienteId').value, 10),
+    unidade_id: null,
+    colaborador_id: 180, // [SISTEMA] SERVIÇO EXTRA
+    motivo_falta: document.getElementById('extraMotivo').value,
+    dias_afastamento: 1,
+    houve_cobertura: 1,
+    tipo_cobertura: 'freelancer',
+    freelancer_id: parseInt(document.getElementById('extraFreelancerId').value, 10),
+    valor_pago_freelance: parseFloat(document.getElementById('extraValor').value) || 0,
+    observacoes_operacao: 'Lançamento de Serviço Extra Avulso via Aba Freelancers'
+  };
+
+  try {
+    const res = await fetch('/api/operacional/faltas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+    if (res.ok) {
+      alert('Serviço Extra registrado com sucesso!');
+      document.getElementById('modalServicoExtra').classList.add('hidden');
+      await carregarDadosBase();
+      carregarDashboardFreelancers();
+    } else {
+      alert(result.error || 'Erro ao registrar.');
+    }
+  } catch (err) {
+    alert('Erro de conexão.');
+  }
+}
+window.abrirModalServicoExtra = abrirModalServicoExtra;
+window.salvarServicoExtra = salvarServicoExtra;
+
