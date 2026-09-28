@@ -2484,12 +2484,22 @@ const server = http.createServer(async (req, res) => {
         const body = await parseRequestBody(req);
         const st = db.prepare('INSERT INTO solicitacoes_admissao (nome, cpf, cargo_id, cliente_id, posto_trabalho_id, escala, solicitante_nome, dados_completos_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
         const r = st.run(
-           body.nome, body.cpf, body.cargo_id, body.cliente_id, body.posto_trabalho_id, body.escala, body.solicitante_nome, JSON.stringify(body), 'Pendente Autorização'
+           (body.nome || null), (body.cpf || null), (body.cargo_id || null), (body.cliente_id || null), (body.posto_trabalho_id || null), (body.escala || null), (body.solicitante_nome || null), JSON.stringify(body), 'Pendente Autorização'
         );
+        
+        // POST MURAL
+        try {
+           const titulo = "🚨 Ação Necessária: Admissão Pendente";
+           const msg = "O usuário **" + (body.solicitante_nome || 'Operacional') + "** enviou uma solicitação de admissão para **" + (body.nome || 'Desconhecido') + "**. \nAguardando autorização da Gerência/Auditoria na aba de Colaboradores.";
+           db.prepare('INSERT INTO comunicados (titulo, mensagem, categoria, autor_nome, prioridade) VALUES (?, ?, ?, ?, ?)').run(
+             titulo, msg, 'urgente', 'Sistema (Avisos)', 'alta'
+           );
+        } catch(e) { console.error("Erro mural admissao: ", e); }
+        
         return jsonResponse(res, { success: true, id: r.lastInsertRowid });
       }
 
-      if (pathname.match(/^/api/admissoes/d+/aprovar$/) && method === 'POST') {
+      if (pathname.match(/^\/api\/admissoes\/\d+\/aprovar$/) && method === 'POST') {
         const id = parseInt(pathname.split('/')[3], 10);
         const body = await parseRequestBody(req); // who approved it
         
@@ -2497,30 +2507,52 @@ const server = http.createServer(async (req, res) => {
         db.prepare("UPDATE solicitacoes_admissao SET status = 'Autorizado', gerencia_aprovado_por = ?, gerencia_aprovado_em = CURRENT_TIMESTAMP WHERE id = ?").run(body.aprovador, id);
         
         // Insert into colaboradores
-        const adm = db.prepare("SELECT dados_completos_json FROM solicitacoes_admissao WHERE id = ?").get(id);
+        const adm = db.prepare("SELECT dados_completos_json, solicitante_nome FROM solicitacoes_admissao WHERE id = ?").get(id);
         if (adm && adm.dados_completos_json) {
            const cBody = JSON.parse(adm.dados_completos_json);
            const st = db.prepare('INSERT INTO colaboradores (nome, rg, cpf, data_nascimento, endereco, bairro, cidade, estado, cep, telefone, email, cargo_id, salario_base, periculosidade_insalubridade, vt_valor, va_vr_valor, vale_transporte, vale_refeicao, cliente_id, posto_trabalho_id, vinculo, escala, data_admissao, tem_filhos, estado_civil, pis, nome_mae, nome_pai, num_calcado, num_calca, num_camisa, exame_admissional, uniforme_entregue, observacoes, created_at, updated_at, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)');
            st.run(
-             cBody.nome, cBody.rg, cBody.cpf, cBody.data_nascimento, cBody.endereco, cBody.bairro, cBody.cidade, cBody.estado, cBody.cep, cBody.telefone, cBody.email, cBody.cargo_id, cBody.salario_base, cBody.periculosidade_insalubridade, cBody.vt_valor, cBody.va_vr_valor, cBody.vale_transporte, cBody.vale_refeicao, cBody.cliente_id, cBody.posto_trabalho_id, cBody.vinculo, cBody.escala, cBody.data_admissao, cBody.tem_filhos, cBody.estado_civil, cBody.pis, cBody.nome_mae, cBody.nome_pai, cBody.num_calcado, cBody.num_calca, cBody.num_camisa, cBody.exame_admissional, cBody.uniforme_entregue, cBody.observacoes
+             (cBody.nome || null), (cBody.rg || null), (cBody.cpf || null), (cBody.data_nascimento || null), (cBody.endereco || null), (cBody.bairro || null), (cBody.cidade || null), (cBody.estado || null), (cBody.cep || null), (cBody.telefone || null), (cBody.email || null), (cBody.cargo_id || null), (cBody.salario_base || null), (cBody.periculosidade_insalubridade || null), (cBody.vt_valor || null), (cBody.va_vr_valor || null), (cBody.vale_transporte || null), (cBody.vale_refeicao || null), (cBody.cliente_id || null), (cBody.posto_trabalho_id || null), (cBody.vinculo || null), (cBody.escala || null), (cBody.data_admissao || null), (cBody.tem_filhos || null), (cBody.estado_civil || null), (cBody.pis || null), (cBody.nome_mae || null), (cBody.nome_pai || null), (cBody.num_calcado || null), (cBody.num_calca || null), (cBody.num_camisa || null), (cBody.exame_admissional || null), (cBody.uniforme_entregue || null), (cBody.observacoes || null)
            );
+           
+           // POST MURAL
+           try {
+              const titulo = "✅ Admissão Aprovada: " + (cBody.nome || 'Desconhecido');
+              const msg = "A admissão de **" + (cBody.nome || 'Desconhecido') + "** solicitada por **" + (adm.solicitante_nome || 'Operacional') + "** foi AUTORIZADA por **" + (body.aprovador || 'Gerência') + "**.\nO RH/DP já pode prosseguir com o processo, o colaborador já foi incluído no sistema.";
+              db.prepare('INSERT INTO comunicados (titulo, mensagem, categoria, autor_nome, prioridade) VALUES (?, ?, ?, ?, ?)').run(
+                titulo, msg, 'aviso', 'Sistema (Avisos)', 'alta'
+              );
+           } catch(e) { console.error("Erro mural admissao aprovada: ", e); }
         }
         return jsonResponse(res, { success: true });
       }
 
-      if (pathname.match(/^/api/admissoes/d+/reprovar$/) && method === 'POST') {
+      if (pathname.match(/^\/api\/admissoes\/\d+\/reprovar$/) && method === 'POST') {
         const id = parseInt(pathname.split('/')[3], 10);
         db.prepare("UPDATE solicitacoes_admissao SET status = 'Reprovado / Cancelado' WHERE id = ?").run(id);
+        
+        // POST MURAL
+        try {
+           const adm = db.prepare("SELECT nome, solicitante_nome FROM solicitacoes_admissao WHERE id = ?").get(id);
+           if (adm) {
+              const titulo = "🚫 Admissão Cancelada/Reprovada: " + (adm.nome || 'Desconhecido');
+              const msg = "A admissão de **" + (adm.nome || 'Desconhecido') + "** que havia sido solicitada por **" + (adm.solicitante_nome || 'Operacional') + "** foi CANCELADA/REPROVADA pela Gerência.";
+              db.prepare('INSERT INTO comunicados (titulo, mensagem, categoria, autor_nome, prioridade) VALUES (?, ?, ?, ?, ?)').run(
+                titulo, msg, 'aviso', 'Sistema (Avisos)', 'normal'
+              );
+           }
+        } catch(e) { console.error("Erro mural admissao reprovada: ", e); }
+        
         return jsonResponse(res, { success: true });
       }
 
-      if (pathname.match(/^/api/admissoes/d+/mensagens$/) && method === 'GET') {
+      if (pathname.match(/^\/api\/admissoes\/\d+\/mensagens$/) && method === 'GET') {
         const id = parseInt(pathname.split('/')[3], 10);
         const msgs = db.prepare('SELECT * FROM admissao_mensagens WHERE solicitacao_id = ? ORDER BY id ASC').all(id);
         return jsonResponse(res, msgs);
       }
 
-      if (pathname.match(/^/api/admissoes/d+/mensagens$/) && method === 'POST') {
+      if (pathname.match(/^\/api\/admissoes\/\d+\/mensagens$/) && method === 'POST') {
         const id = parseInt(pathname.split('/')[3], 10);
         const body = await parseRequestBody(req);
         db.prepare('INSERT INTO admissao_mensagens (solicitacao_id, usuario_nome, mensagem) VALUES (?, ?, ?)').run(id, body.usuario_nome, body.mensagem);

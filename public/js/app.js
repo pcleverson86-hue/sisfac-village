@@ -21773,7 +21773,26 @@ let intervaloAlertaAdmissoes = null;
 
 async function verificarAdmissoesPendentesGlobal() {
   const user = state.usuarioLogado;
-  const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
+  // Fallback to check API if user state is stale
+  let isAutorizador = false;
+  if (user) {
+    if (user.pode_autorizar_admissao === 1 || user.login === 'admin') {
+       isAutorizador = true;
+    } else {
+       try {
+         // Silently fetch self to see if permissions updated
+         const res = await fetch('/api/usuarios');
+         if (res.ok) {
+           const users = await res.json();
+           const me = users.find(x => x.id === user.id);
+           if (me && (me.pode_autorizar_admissao === 1 || me.login === 'admin')) {
+              isAutorizador = true;
+              user.pode_autorizar_admissao = me.pode_autorizar_admissao; // update local state
+           }
+         }
+       } catch(e) {}
+    }
+  }
   
   if (!isAutorizador) {
     const banner = document.getElementById('bannerAlertaAdmissoes');
