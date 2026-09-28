@@ -589,12 +589,13 @@ function popularSelectsGlobais() {
 
   popularSelectSupervisoresFiltro();
 
-  // Cargos
-  ['postoCargoId', 'cadColabCargoId', 'cadFreeCargoId', 'editColabCargoId', 'inlinePostoCargoId', 'inlinePostoCargoIdEdicao'].forEach(id => {
+  // Cargos & Funções / Setores
+  ['postoCargoId', 'cadColabCargoId', 'cadFreeCargoId', 'editColabCargoId', 'inlinePostoCargoId', 'inlinePostoCargoIdEdicao', 'filtroColabCargo'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const valAtual = el.value;
-    el.innerHTML = '<option value="">Selecione a Função / Cargo...</option>';
+    const isFiltro = id.startsWith('filtro');
+    el.innerHTML = isFiltro ? '<option value="">Todas as Funções / Setores</option>' : '<option value="">Selecione a Função / Cargo...</option>';
     state.cargos.forEach(c => {
       el.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome_cargo}</option>`;
     });
@@ -656,6 +657,15 @@ function popularSelectsGlobais() {
     elColabTitular.innerHTML = '<option value="">Selecione o Colaborador Titular...</option>';
     state.colaboradores.forEach(col => {
       elColabTitular.innerHTML += `<option value="${col.id}">${col.nome} (${col.cliente_nome || 'Geral'} - ${col.nome_posto || 'Posto Padrão'})</option>`;
+    });
+  }
+
+  // Colaborador Efetivo que Cobriu (Dobra / Efetivo) no Modal de Falta
+  const elCobertorEfetivo = document.getElementById('faltaCobertorEfetivoId');
+  if (elCobertorEfetivo) {
+    elCobertorEfetivo.innerHTML = '<option value="">Selecione o Colaborador que Cobriu (Dobra)...</option>';
+    (state.colaboradores || []).filter(c => c.ativo === 1).forEach(col => {
+      elCobertorEfetivo.innerHTML += `<option value="${col.id}">${escapeHtml(col.nome)} (${escapeHtml(col.nome_cargo || 'Geral')}) - ${escapeHtml(col.cliente_nome || 'Reserva')}</option>`;
     });
   }
 }
@@ -1436,7 +1446,12 @@ function renderizarLinhasColaboradores() {
   const termoLimpo = termoInput.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const termoDigitos = termoInput.replace(/\D/g, '');
 
+  const cargoFiltroId = document.getElementById('filtroColabCargo')?.value || '';
+
   const filtrados = (state.colaboradores || []).filter(c => {
+    // Filtro por Cargo / Setor
+    if (cargoFiltroId && c.cargo_id != cargoFiltroId) return false;
+
     if (!termoLimpo) return true;
     const nome = (c.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const cpf = (c.cpf || '').toLowerCase();
@@ -1518,13 +1533,30 @@ function renderizarLinhasColaboradores() {
         <div class="text-xs text-purple-700 font-semibold">📍 Posto: AFASTADOS</div>
       `;
     } else {
-      clientePostoHtml = `
-        <div class="font-bold text-slate-800">
-          ${c.cliente_nome || 'Reserva Técnica'}
-          ${c.cliente_id ? `<span class="text-violet-700 font-mono font-bold text-[10px] bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded ml-1" title="Código ID do Cliente"><i class="fa-solid fa-id-badge mr-0.5"></i>ID: #${c.cliente_id}</span>` : ''}
-        </div>
-        <div class="text-xs text-rose-700 font-semibold">${c.nome_posto ? '📍 ' + c.nome_posto : 'Sem posto fixo'}</div>
-      `;
+      const isMulti = c.is_multi_cliente === 1 || c.escala === 'Multi-Cliente';
+      if (isMulti && state.roteirosMultiCliente) {
+        const rot = state.roteirosMultiCliente.find(r => r.colaborador_id === c.id);
+        if (rot && Array.isArray(rot.clientes_compartilhados) && rot.clientes_compartilhados.length > 0) {
+          const cliNomes = rot.clientes_compartilhados.map(cc => cc.nome_fantasia || `Cli #${cc.cliente_id}`).join(', ');
+          clientePostoHtml = `
+            <div class="font-bold text-blue-700"><i class="fa-solid fa-layer-group text-xs mr-1"></i>Multi-Clientes</div>
+            <div class="text-[10px] text-slate-600 mt-0.5" style="line-height:1.2;">${cliNomes}</div>
+          `;
+        } else {
+          clientePostoHtml = `
+            <div class="font-bold text-blue-700"><i class="fa-solid fa-layer-group text-xs mr-1"></i>Multi-Clientes</div>
+            <div class="text-[11px] text-slate-600">Sem clientes no roteiro</div>
+          `;
+        }
+      } else {
+        clientePostoHtml = `
+          <div class="font-bold text-slate-800">
+            ${c.cliente_nome || 'Reserva Técnica'}
+            ${c.cliente_id ? `<span class="text-violet-700 font-mono font-bold text-[10px] bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded ml-1" title="Código ID do Cliente"><i class="fa-solid fa-id-badge mr-0.5"></i>ID: #${c.cliente_id}</span>` : ''}
+          </div>
+          <div class="text-xs text-rose-700 font-semibold">${c.nome_posto ? '📍 ' + c.nome_posto : 'Sem posto fixo'}</div>
+        `;
+      }
     }
 
     let btnDemissao = '';
@@ -8242,81 +8274,109 @@ async function carregarFaltas() {
     if (document.getElementById('kpiFaltasCobertas')) document.getElementById('kpiFaltasCobertas').textContent = totalCobertas;
     if (document.getElementById('kpiFaltasDescobertas')) document.getElementById('kpiFaltasDescobertas').textContent = totalDescobertas;
 
-    if (faltas.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrência encontrada com os filtros selecionados.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = '';
-    faltas.forEach(f => {
-      let badgeCob = '';
-      let quemHtml = '';
-
-      if (f.houve_cobertura === 1) {
-        if (f.tipo_cobertura === 'freelancer') {
-          badgeCob = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">Freelancer</span>`;
-          quemHtml = `<div class="font-bold text-slate-800">${f.freelancer_nome || 'Diarista'}</div><div class="text-xs text-blue-700 font-bold">${formatarMoeda(f.valor_pago_freelance)}</div>`;
-        } else {
-          badgeCob = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">Efetivo</span>`;
-          quemHtml = `<div class="font-bold text-slate-800">${f.cobertor_efetivo_nome || 'Reserva / Dobra'}</div>`;
-        }
-      } else {
-        badgeCob = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">DESCOBERTO</span>`;
-        quemHtml = `<span class="text-red-600 font-bold text-xs">Posto Vago</span>`;
-        if (f.motivo_nao_cobertura) {
-          quemHtml += `<div class="text-[11px] text-rose-700 italic font-medium mt-0.5" title="${f.motivo_nao_cobertura}"><i class="fa-solid fa-circle-exclamation mr-0.5"></i>${f.motivo_nao_cobertura}</div>`;
-        }
-      }
-
-      // Badge de Origem e Supervisor
-      let badgeOrigem = '';
-      if (f.origem_lancamento === 'mobile_supervisor') {
-        const nomeSup = f.supervisor_exibicao || f.supervisor_nome || 'Supervisor';
-        badgeOrigem = `
-          <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-900 border border-indigo-200">
-            <i class="fa-solid fa-mobile-screen-button text-indigo-600"></i>
-            <span class="truncate max-w-[130px]" title="${nomeSup}">${nomeSup}</span>
-          </div>
-        `;
-      } else {
-        badgeOrigem = `<span class="text-xs text-slate-400 font-medium">💻 Sistema Web</span>`;
-      }
-
-      let badgeFat = f.houve_cobertura === 0
-        ? `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">${f.status_faturamento}</span>`
-        : `<span class="text-slate-300">-</span>`;
-
-      tbody.innerHTML += `
-        <tr class="hover:bg-slate-50 transition">
-          <td class="px-3 py-3 text-center">
-            <input type="checkbox" class="chk-falta" value="${f.id}" onchange="aoAlternarChkFalta(this)">
-          </td>
-          <td class="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">${formatarData(f.data_falta)}</td>
-          <td class="px-4 py-3">
-            <div class="font-bold text-slate-900">${f.cliente_nome}</div>
-            <div class="text-xs text-slate-500">${f.nome_unidade}</div>
-          </td>
-          <td class="px-4 py-3">
-            <div class="font-bold text-slate-800">${f.colaborador_nome}</div>
-            <div class="text-xs text-slate-400">${f.nome_cargo || ''}</div>
-          </td>
-          <td class="px-4 py-3 text-xs">
-            <div class="font-medium text-slate-800">${f.motivo_falta}</div>
-            ${f.turno ? `<div class="text-[10px] text-slate-400 mt-0.5">${f.turno}</div>` : ''}
-          </td>
-          <td class="px-4 py-3">${badgeCob}</td>
-          <td class="px-4 py-3">${quemHtml}</td>
-          <td class="px-4 py-3">${badgeOrigem}</td>
-          <td class="px-4 py-3 text-center">${badgeFat}</td>
-          <td class="px-4 py-3 text-right">
-            <button onclick="excluirItem('faltas', ${f.id})" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
-          </td>
-        </tr>
-      `;
-    });
+    state.faltasCarregadas = faltas;
+    filtrarTabelaFaltasLocalmente();
   } catch (err) {
     console.error('Erro ao carregar faltas:', err);
   }
+}
+
+function filtrarTabelaFaltasLocalmente() {
+  const termoColab = (document.getElementById('filtroFaltasBuscaColab')?.value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const termoSetor = (document.getElementById('filtroFaltasBuscaSetor')?.value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const lista = state.faltasCarregadas || [];
+  const filtradas = lista.filter(f => {
+    const nomeColab = (f.colaborador_nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cpfColab = (f.colaborador_cpf || '').replace(/\D/g, '');
+    const cobNome = (f.cobertor_efetivo_nome || f.freelancer_nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cargo = (f.nome_cargo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const posto = (f.nome_posto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const matchColab = !termoColab || nomeColab.includes(termoColab) || cpfColab.includes(termoColab) || cobNome.includes(termoColab);
+    const matchSetor = !termoSetor || cargo.includes(termoSetor) || posto.includes(termoSetor);
+
+    return matchColab && matchSetor;
+  });
+
+  renderizarTabelaFaltasFiltradas(filtradas);
+}
+
+function renderizarTabelaFaltasFiltradas(faltas) {
+  const tbody = document.getElementById('tabelaFaltasBody');
+  if (!tbody) return;
+
+  if (faltas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrência encontrada para esta busca.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  faltas.forEach(f => {
+    let badgeCob = '';
+    let quemHtml = '';
+
+    if (f.houve_cobertura === 1) {
+      if (f.tipo_cobertura === 'freelancer') {
+        badgeCob = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full">Freelancer</span>`;
+        quemHtml = `<div class="font-bold text-slate-800">${f.freelancer_nome || 'Diarista'}</div><div class="text-xs text-blue-700 font-bold">${formatarMoeda(f.valor_pago_freelance)}</div>`;
+      } else {
+        badgeCob = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">Efetivo</span>`;
+        quemHtml = `<div class="font-bold text-slate-800">${f.cobertor_efetivo_nome || 'Reserva / Dobra'}</div>`;
+      }
+    } else {
+      badgeCob = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">DESCOBERTO</span>`;
+      quemHtml = `<span class="text-red-600 font-bold text-xs">Posto Vago</span>`;
+      if (f.motivo_nao_cobertura) {
+        quemHtml += `<div class="text-[11px] text-rose-700 italic font-medium mt-0.5" title="${f.motivo_nao_cobertura}"><i class="fa-solid fa-circle-exclamation mr-0.5"></i>${f.motivo_nao_cobertura}</div>`;
+      }
+    }
+
+    let badgeOrigem = '';
+    if (f.origem_lancamento === 'mobile_supervisor') {
+      const nomeSup = f.supervisor_exibicao || f.supervisor_nome || 'Supervisor';
+      badgeOrigem = `
+        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-900 border border-indigo-200">
+          <i class="fa-solid fa-mobile-screen-button text-indigo-600"></i>
+          <span class="truncate max-w-[130px]" title="${nomeSup}">${nomeSup}</span>
+        </div>
+      `;
+    } else {
+      badgeOrigem = `<span class="text-xs text-slate-400 font-medium">💻 Sistema Web</span>`;
+    }
+
+    let badgeFat = f.houve_cobertura === 0
+      ? `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">${f.status_faturamento}</span>`
+      : `<span class="text-slate-300">-</span>`;
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="px-3 py-3 text-center">
+          <input type="checkbox" class="chk-falta" value="${f.id}" onchange="aoAlternarChkFalta(this)">
+        </td>
+        <td class="px-4 py-3 font-semibold text-slate-800 whitespace-nowrap">${formatarData(f.data_falta)}</td>
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-900">${f.cliente_nome}</div>
+          <div class="text-xs text-slate-500">${f.nome_unidade || 'Unidade Principal'}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-800">${f.colaborador_nome}</div>
+          <div class="text-xs text-slate-400">${f.nome_cargo || ''}</div>
+        </td>
+        <td class="px-4 py-3 text-xs">
+          <div class="font-medium text-slate-800">${f.motivo_falta}</div>
+          ${f.turno ? `<div class="text-[10px] text-slate-400 mt-0.5">${f.turno}</div>` : ''}
+        </td>
+        <td class="px-4 py-3">${badgeCob}</td>
+        <td class="px-4 py-3">${quemHtml}</td>
+        <td class="px-4 py-3">${badgeOrigem}</td>
+        <td class="px-4 py-3 text-center">${badgeFat}</td>
+        <td class="px-4 py-3 text-right">
+          <button onclick="excluirItem('faltas', ${f.id})" class="text-slate-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
+      </tr>
+    `;
+  });
 }
 
 function aoAlternarChkFalta(chk) {
@@ -8778,6 +8838,71 @@ async function abrirModalNovaFalta() {
   try {
     await carregarRoteirosMultiCliente();
   } catch(e) {}
+}
+
+async function lancarFaltaDiretoColaborador(colabId) {
+  const colab = (state.colaboradores || []).find(c => c.id == colabId);
+  if (!colab) {
+    alert('Colaborador não encontrado.');
+    return;
+  }
+
+  // 1. Abre o modal e inicializa dados
+  await abrirModalNovaFalta();
+
+  // 2. Data da ocorrência (hoje)
+  const campoData = document.getElementById('faltaData');
+  if (campoData && !campoData.value) {
+    campoData.value = new Date().toISOString().split('T')[0];
+  }
+
+  // 3. Determina o cliente prioritário
+  let clienteIdParaSelecionar = colab.cliente_id;
+
+  // Se o colaborador for Multi-Cliente ou estiver na Reserva Técnica (sem cliente_id direto)
+  if (!clienteIdParaSelecionar) {
+    if (state.roteirosMultiCliente && state.roteirosMultiCliente.length > 0) {
+      const rot = state.roteirosMultiCliente.find(r => r.colaborador_id === colab.id);
+      if (rot) {
+        if (Array.isArray(rot.clientes_compartilhados) && rot.clientes_compartilhados.length > 0) {
+          clienteIdParaSelecionar = rot.clientes_compartilhados[0].cliente_id;
+        } else if (Array.isArray(rot.clientes_ids) && rot.clientes_ids.length > 0) {
+          clienteIdParaSelecionar = rot.clientes_ids[0];
+        }
+      }
+    }
+  }
+
+  // 4. Seleciona o cliente e carrega os colaboradores daquele posto
+  if (clienteIdParaSelecionar) {
+    const selCli = document.getElementById('faltaClienteId');
+    if (selCli) {
+      selCli.value = clienteIdParaSelecionar;
+      await aoSelecionarClienteFalta();
+    }
+  }
+
+  // 5. Garante que o colaborador esteja selecionado no campo de Colaborador Ausente
+  const selColab = document.getElementById('faltaColaboradorId');
+  if (selColab) {
+    let optExiste = Array.from(selColab.options).find(o => o.value == colab.id);
+    if (!optExiste) {
+      const opt = document.createElement('option');
+      opt.value = colab.id;
+      const tagMulti = colab.escala === 'Multi-Cliente' || colab.is_multi_cliente ? ' ⭐ [Multi-Cliente]' : '';
+      opt.textContent = `${colab.nome} (${colab.nome_cargo || 'Geral'})${tagMulti} - SELECIONADO`;
+      selColab.insertBefore(opt, selColab.firstChild);
+    }
+    selColab.value = colab.id;
+  }
+
+  // 6. Foco no campo do motivo da falta
+  const selMotivo = document.getElementById('faltaMotivo');
+  if (selMotivo) selMotivo.focus();
+
+  if (typeof mostrarNotificacaoSucesso === 'function') {
+    mostrarNotificacaoSucesso(`Lançando falta para: ${colab.nome}`);
+  }
 }
 
 function filtrarClientesModalFalta(termo = '') {
@@ -9244,57 +9369,8 @@ async function carregarFechamentoFreelancers() {
   try {
     const res = await fetch(`/api/freelancers/fechamento?mes=${state.mesAtual}`);
     const fechamento = await res.json();
-    container.innerHTML = '';
-
-    if (fechamento.length === 0) {
-      container.innerHTML = `<div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-400 font-medium">Nenhum freelancer cadastrado ou ativo.</div>`;
-      return;
-    }
-
-    fechamento.forEach(f => {
-      container.innerHTML += `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div class="flex items-center gap-3">
-            <input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="${f.freelancer_id}" onchange="aoAlternarChkFree(this)">
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-bold text-slate-900">${f.nome}</h3>
-                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">${f.total_diarias_mes} plantões no mês</span>
-                <span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Diária: ${formatarMoeda(f.valor_diaria_padrao || 140)}</span>
-              </div>
-              <div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (${f.tipo_chave_pix || 'Chave'}):</b> ${f.chave_pix || 'Não cadastrado'}</span>
-                ${f.telefone ? `<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>${f.telefone}</span>` : ''}
-                ${f.banco ? `<span class="text-slate-600 font-sans"><i class="fa-solid fa-building-columns mr-1 text-slate-400"></i>${f.banco}</span>` : ''}
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center justify-end gap-3">
-            <!-- Ações do Freelancer -->
-            <div class="inline-flex items-center gap-1.5 border-r border-slate-200 pr-3 mr-1">
-              <button onclick="abrirDossieFreelancer(${f.freelancer_id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition" title="Ver histórico completo de serviços e auditoria">
-                <i class="fa-solid fa-id-card-clip text-indigo-600"></i> Dossiê
-              </button>
-              <button onclick="abrirModalEditarFreelancer(${f.freelancer_id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition" title="Editar telefone, valor diária, PIX e banco">
-                <i class="fa-solid fa-user-pen"></i> Editar
-              </button>
-            </div>
-
-            <div class="text-right">
-              <p class="text-xs text-slate-400">Total Acumulado:</p>
-              <h4 class="text-lg font-black text-indigo-900">${formatarMoeda(f.valor_total_mes)}</h4>
-            </div>
-            ${f.valor_pendente > 0 ? `
-              <button onclick="pagarFreelancerMes(${f.freelancer_id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm">
-                Dar Baixa (Pago)
-              </button>
-            ` : (f.total_diarias_mes > 0 ? `<span class="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded border border-emerald-200">Quitado</span>` : `<span class="bg-slate-100 text-slate-500 text-xs font-medium px-3 py-1.5 rounded">Sem plantões</span>`)}
-          </div>
-        </div>
-      `;
-    });
-
-    carregarLixeiraGlobalFreelancers();
+    state.freelancersCarregados = fechamento;
+    filtrarFreelancersLocalmente();
   } catch (err) {
     console.error('Erro ao carregar freelancers:', err);
   }
@@ -20408,3 +20484,42 @@ window.filtrarClientesMultiModal = filtrarClientesMultiModal;
 
 window.filtrarClientesModalFalta = filtrarClientesModalFalta;
 window.filtrarColaboradoresModalFalta = filtrarColaboradoresModalFalta;
+
+window.filtrarTabelaFaltasLocalmente = filtrarTabelaFaltasLocalmente;
+window.lancarFaltaDiretoColaborador = lancarFaltaDiretoColaborador;
+
+function filtrarFreelancersLocalmente() {
+  const termo = document.getElementById('filtroFreelancers')?.value.trim().toLowerCase() || '';
+  const container = document.getElementById('cardsFreelancersContainer');
+  if (!state.freelancersCarregados) return;
+  container.innerHTML = '';
+  const filtrados = state.freelancersCarregados.filter(f => (f.nome || '').toLowerCase().includes(termo));
+  if (filtrados.length === 0) {
+    container.innerHTML = '<div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-400 font-medium">Nenhum freelancer encontrado.</div>';
+    return;
+  }
+  let html = '';
+  filtrados.forEach(f => {
+    html += '<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">';
+    html += '<div class="flex items-center gap-3"><input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="' + f.freelancer_id + '" onchange="aoAlternarChkFree(this)">';
+    html += '<div><div class="flex items-center gap-2"><h3 class="font-bold text-slate-900">' + f.nome + '</h3>';
+    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plant�es</span>';
+    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Di�ria: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
+    html += '<div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">';
+    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'N�o cadastrado') + '</span>';
+    if(f.telefone) html += '<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>' + f.telefone + '</span>';
+    html += '</div></div></div>';
+    html += '<div class="flex flex-wrap items-center justify-end gap-3">';
+    html += '<div class="text-right"><p class="text-xs text-slate-400">Total Acumulado:</p><h4 class="text-lg font-black text-indigo-900">' + formatarMoeda(f.valor_total_mes) + '</h4></div>';
+    
+    if (f.valor_pendente > 0) {
+      html += '<div class="text-right bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg"><p class="text-[10px] font-bold text-amber-700 uppercase">A Pagar:</p><h4 class="text-sm font-black text-amber-600">' + formatarMoeda(f.valor_pendente) + '</h4></div>';
+      html += '<button onclick="abrirModalRegistrarPagamento(' + f.freelancer_id + ', \'' + escapeJsString(f.nome) + '\', ' + f.valor_pendente + ')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-sm transition"><i class="fa-solid fa-money-check-dollar"></i> Baixar PGTO</button>';
+    } else {
+      html += '<div class="text-right bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg ml-2"><p class="text-[10px] font-bold text-emerald-700 uppercase">Status:</p><h4 class="text-sm font-black text-emerald-600"><i class="fa-solid fa-check-double mr-1"></i>Pago</h4></div>';
+    }
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+window.filtrarFreelancersLocalmente = filtrarFreelancersLocalmente;

@@ -1210,6 +1210,35 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS solicitacoes_admissao (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    cpf TEXT,
+    cargo_id INTEGER,
+    cliente_id INTEGER,
+    escala TEXT,
+    status TEXT DEFAULT 'Pendente Gerente', -- 'Rascunho', 'Pendente Gerente', 'Pendente Auditoria', 'Autorizado', 'Efetivado', 'Rejeitado'
+    solicitante_nome TEXT,
+    posto_trabalho_id INTEGER,
+    motivo_vaga TEXT, -- 'Substituicao', 'Reserva Tecnica', 'Aumento Quadro'
+    colaborador_substituido_id INTEGER,
+    gerencia_aprovado_por TEXT,
+    gerencia_aprovado_em DATETIME,
+    auditoria_aprovado_por TEXT,
+    auditoria_aprovado_em DATETIME,
+    dados_completos_json TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS admissao_mensagens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    solicitacao_id INTEGER NOT NULL,
+    autor_nome TEXT NOT NULL,
+    mensagem TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 
@@ -10147,3 +10176,4 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   iniciarOuVerificarTunnel();
 });
+
