@@ -21715,7 +21715,7 @@ async function enviarMensagemAdmissao() {
     });
     document.getElementById('textoMensagemAdmissao').value = '';
     carregarMensagensAdmissao(currentAdmissaoId);
-    carregarAdmissoesPendentes(); // update status
+    carregarAdmissoesPendentes(); verificarAdmissoesPendentesGlobal(); // update status
   } catch(e) { console.error(e); alert('Erro ao enviar.'); }
 }
 
@@ -21736,6 +21736,7 @@ async function aprovarAdmissao(id) {
       fecharModal('modalInteracaoAdmissao');
       carregarAdmissoesPendentes();
       if(state.abaAtiva === 'colaboradores') carregarColaboradores();
+      verificarAdmissoesPendentesGlobal();
     } else {
       alert('Erro: ' + j.message);
     }
@@ -21749,7 +21750,7 @@ async function reprovarAdmissao(id) {
     await fetch(`/api/admissoes/${id}/reprovar`, { method: 'POST' });
     alert('Admissão reprovada/cancelada com sucesso.');
     fecharModal('modalInteracaoAdmissao');
-    carregarAdmissoesPendentes();
+    carregarAdmissoesPendentes(); verificarAdmissoesPendentesGlobal();
   } catch(e) { console.error(e); }
 }
 
@@ -21764,4 +21765,57 @@ const oldCarregarColaboradores = carregarColaboradores;
 window.carregarColaboradores = async function() {
    await oldCarregarColaboradores();
    carregarAdmissoesPendentes(); // update badge
+}
+
+
+// GLOBAL ADMISSION CHECK
+let intervaloAlertaAdmissoes = null;
+
+async function verificarAdmissoesPendentesGlobal() {
+  const user = state.usuarioLogado;
+  const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
+  
+  if (!isAutorizador) {
+    const banner = document.getElementById('bannerAlertaAdmissoes');
+    if(banner) banner.classList.add('hidden');
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/admissoes');
+    if (!res.ok) return;
+    const adms = await res.json();
+    
+    const pendentesCount = adms.filter(a => !a.status.includes('Autorizado') && !a.status.includes('Reprovado')).length;
+    
+    // Atualiza o banner global
+    const banner = document.getElementById('bannerAlertaAdmissoes');
+    const bannerTexto = document.getElementById('bannerAlertaAdmissoesTexto');
+    if (banner && bannerTexto) {
+      if (pendentesCount > 0) {
+        bannerTexto.innerHTML = `Você possui <b>${pendentesCount} solicitações</b> de admissão aguardando aprovação ou com mensagens novas!`;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+    
+    // Atualiza o badge no botão da aba de colaboradores (se a aba estiver aberta)
+    const badge = document.getElementById('badgeAdmissoesPendentes');
+    if (badge) {
+       if(pendentesCount > 0) { badge.textContent = pendentesCount; badge.classList.remove('hidden'); }
+       else { badge.classList.add('hidden'); }
+    }
+  } catch(e) {
+    console.error('Erro ao verificar alertas globais:', e);
+  }
+}
+
+// Injetar a chamada na inicialização autenticada e a cada 30 segundos
+const originalIniciarAplicacaoAutenticada = iniciarAplicacaoAutenticada;
+window.iniciarAplicacaoAutenticada = function() {
+  originalIniciarAplicacaoAutenticada();
+  verificarAdmissoesPendentesGlobal();
+  if (intervaloAlertaAdmissoes) clearInterval(intervaloAlertaAdmissoes);
+  intervaloAlertaAdmissoes = setInterval(verificarAdmissoesPendentesGlobal, 30000); // 30 segundos
 }
