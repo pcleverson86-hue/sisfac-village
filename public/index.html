@@ -673,6 +673,13 @@
           </div>
 
           <div class="flex flex-wrap gap-2">
+            <!-- BOTÃO APROVAÇÕES DE ADMISSÃO -->
+            <button onclick="abrirModalAdmissoesPendentes()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-300 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 transition" title="Gerenciar autorizações de admissão">
+              <i class="fa-solid fa-user-clock text-indigo-600"></i>
+              <span>Aprovações Pendentes</span>
+              <span id="badgeAdmissoesPendentes" class="hidden bg-red-600 text-white font-bold text-[10px] px-1.5 py-0.5 rounded-full ml-0.5 animate-pulse">0</span>
+            </button>
+
             <button onclick="abrirModalControleAfastados()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 transition" title="Gerenciar todos os colaboradores afastados e seus retornos">
               <i class="fa-solid fa-hospital-user text-amber-600"></i>
               <span>Gestão de Afastados</span>
@@ -11025,6 +11032,8 @@
     </div>
 </body>
 </html>
+
+
 
 
 
