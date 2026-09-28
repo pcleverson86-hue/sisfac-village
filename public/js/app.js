@@ -21365,3 +21365,186 @@ window.carregarCatalogoUniformes = carregarCatalogoUniformes;
 window.salvarItemCatalogo = salvarItemCatalogo;
 window.mostrarBtnCat = mostrarBtnCat;
 window.gerarNecessidadesUniformes = gerarNecessidadesUniformes;
+
+
+async function gerarOrcamentoViaCsv() {
+  const fileInput = document.getElementById('arquivoCsvOrcamento');
+  if (!fileInput.files.length) return;
+  const file = fileInput.files[0];
+  
+  const container = document.getElementById('resultadoOrcamentoUniformes');
+  container.classList.remove('hidden');
+  container.innerHTML = '<div class="text-center py-8 text-indigo-600"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Lendo planilha e calculando orçamentos externos...</div>';
+  
+  try {
+    // Buscar regras e catalogo do sistema
+    const resRegras = await fetch('/api/uniformes/regras');
+    const regras = await resRegras.json();
+    
+    const resCat = await fetch('/api/uniformes/catalogo');
+    const catalogo = await resCat.json();
+    
+    const text = await file.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    
+    let necessidades = [];
+    
+    // Ler CSV
+    for (let i = 1; i < lines.length; i++) { // Ignora cabecalho
+      const line = lines[i];
+      let cols = [];
+      let current = '';
+      let inQuotes = false;
+      for (let c of line) {
+        if (c === '"') inQuotes = !inQuotes;
+        else if (c === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
+        else current += c;
+      }
+      cols.push(current.trim());
+      
+      if (cols.length < 5) continue;
+      
+      const nome = cols[0];
+      const sexo = cols[1] ? cols[1].toUpperCase() : '';
+      const funcao = cols[2] ? cols[2].toUpperCase() : '';
+      const tCamisa = cols[4] || '';
+      const tCalca = cols[5] || '';
+      const tSapato = cols[6] || '';
+      const tJaqueta = cols[7] || '';
+      const tBlazer = cols[8] || '';
+      
+      // Encontrar regras aplicaveis para a funcao da planilha
+      const regrasAplicaveis = regras.filter(r => r.funcao === 'TODOS' || funcao.includes(r.funcao.toUpperCase()));
+      
+      for (const r of regrasAplicaveis) {
+        // Verifica restrição de sexo
+        if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS') {
+          if (!sexo.includes(r.sexo_aplicavel.toUpperCase())) continue;
+        }
+        
+        // Define o tamanho com base na peca
+        let tam = '';
+        const itemUpper = r.item.toUpperCase();
+        if (itemUpper.includes('CAMISA') || itemUpper.includes('JALECO') || itemUpper.includes('POLO')) tam = tCamisa;
+        else if (itemUpper.includes('CALÇA') || itemUpper.includes('CALCA')) tam = tCalca;
+        else if (itemUpper.includes('SAPATO') || itemUpper.includes('BOTA') || itemUpper.includes('BOTINA')) tam = tSapato;
+        else if (itemUpper.includes('JAQUETA')) tam = tJaqueta;
+        else if (itemUpper.includes('BLAZER') || itemUpper.includes('COLETE')) tam = tBlazer;
+        
+        if (!tam && r.tamanhos_disponiveis) tam = 'SEM MEDIDA PLANILHA';
+        
+        // Busca preco e fornecedor no catalogo
+        const catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase());
+        
+        necessidades.push({
+          item: r.item,
+          quantidade: r.quantidade,
+          tamanho: tam || 'N/A',
+          fornecedor_nome: catInfo && catInfo.fornecedor_nome ? catInfo.fornecedor_nome : 'Sem Fornecedor Definido',
+          valor_unitario: catInfo ? catInfo.valor_unitario : 0
+        });
+      }
+    }
+    
+    // Group by Fornecedor (Reaproveitando a mesma logica visual)
+    const porFornecedor = {};
+    necessidades.forEach(n => {
+      const fName = n.fornecedor_nome;
+      if(!porFornecedor[fName]) porFornecedor[fName] = { itens: {}, total_fornecedor: 0 };
+      
+      const key = `${n.item} - Tam: ${n.tamanho}`;
+      if(!porFornecedor[fName].itens[key]) {
+        porFornecedor[fName].itens[key] = { item: n.item, tamanho: n.tamanho, quantidade: 0, valor_unitario: n.valor_unitario, valor_total: 0 };
+      }
+      porFornecedor[fName].itens[key].quantidade += n.quantidade;
+      const subtotal = n.quantidade * n.valor_unitario;
+      porFornecedor[fName].itens[key].valor_total += subtotal;
+      porFornecedor[fName].total_fornecedor += subtotal;
+    });
+    
+    renderizarResultadoOrcamentoUniformes(porFornecedor, "Orçamento de Planilha Externa");
+    fileInput.value = ''; // Limpa
+    
+  } catch(e) {
+    console.error(e);
+    container.innerHTML = `<div class="text-center py-8 text-red-500">Erro ao processar a planilha: ${e.message}</div>`;
+  }
+}
+
+// Extrai a funcao de renderizacao para ser reaproveitada pelo gerar do banco e pelo gerar da planilha
+function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
+  const container = document.getElementById('resultadoOrcamentoUniformes');
+  let html = '';
+  let totalGeral = 0;
+  
+  if (tituloAviso) {
+    html += `<div class="bg-indigo-100 text-indigo-800 p-3 rounded-lg font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> ${tituloAviso} gerado com sucesso!</div>`;
+  }
+  
+  for (const [forn, dados] of Object.entries(porFornecedor)) {
+    totalGeral += dados.total_fornecedor;
+    html += `
+      <div class="border border-slate-200 rounded-lg overflow-hidden mb-6">
+        <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+          <h4 class="font-bold"><i class="fa-solid fa-building mr-2"></i> ${forn}</h4>
+          <span class="font-black text-emerald-400">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
+        </div>
+        <table class="w-full text-left text-sm whitespace-nowrap">
+          <thead class="bg-slate-100 text-slate-600">
+            <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            ${Object.values(dados.itens).map(i => `
+              <tr>
+                <td class="px-4 py-2 font-medium">${i.item}</td>
+                <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
+                <td class="px-4 py-2 text-center font-bold">${i.quantidade}</td>
+                <td class="px-4 py-2 text-right">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
+                <td class="px-4 py-2 text-right font-bold text-slate-700">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  
+  if(Object.keys(porFornecedor).length === 0) {
+    container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessário cruzado com esta base.</div>';
+  } else {
+    container.innerHTML = html + `
+      <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex justify-between items-center mt-6">
+        <div class="text-emerald-800 uppercase font-bold tracking-wider">Custo Total de Uniformes</div>
+        <div class="text-3xl font-black text-emerald-700">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
+      </div>
+    `;
+  }
+}
+
+// Atualizar o gerarNecessidadesUniformes original para usar o renderizador extraido
+async function gerarNecessidadesUniformes() {
+  const container = document.getElementById('resultadoOrcamentoUniformes');
+  container.classList.remove('hidden');
+  container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Calculando necessidades e orçamentos da Base...</div>';
+  
+  try {
+    const res = await fetch('/api/uniformes/gerar-necessidades');
+    const necessidades = await res.json();
+    const porFornecedor = {};
+    necessidades.forEach(n => {
+      const fName = n.fornecedor_nome;
+      if(!porFornecedor[fName]) porFornecedor[fName] = { itens: {}, total_fornecedor: 0 };
+      const key = `${n.item} - Tam: ${n.tamanho}`;
+      if(!porFornecedor[fName].itens[key]) {
+        porFornecedor[fName].itens[key] = { item: n.item, tamanho: n.tamanho, quantidade: 0, valor_unitario: n.valor_unitario, valor_total: 0 };
+      }
+      porFornecedor[fName].itens[key].quantidade += n.quantidade;
+      const subtotal = n.quantidade * n.valor_unitario;
+      porFornecedor[fName].itens[key].valor_total += subtotal;
+      porFornecedor[fName].total_fornecedor += subtotal;
+    });
+    renderizarResultadoOrcamentoUniformes(porFornecedor, null);
+  } catch(e) { console.error(e); }
+}
+
+window.gerarOrcamentoViaCsv = gerarOrcamentoViaCsv;

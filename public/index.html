@@ -1880,17 +1880,32 @@
 
           <!-- ORÇAMENTO -->
           <div id="aba-uniformes-orcamento" class="space-y-4 hidden">
-            <div class="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-200">
-               <div>
-                 <h3 class="font-bold text-slate-700">Orçamento Inteligente</h3>
-                 <p class="text-xs text-slate-500">O sistema calculará exatamente o que comprar com base nas regras, colaboradores ativos e tamanhos de cada um.</p>
-               </div>
-               <button onclick="gerarNecessidadesUniformes()" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm flex items-center gap-2">
-                 <i class="fa-solid fa-wand-magic-sparkles"></i> Processar Orçamento
-               </button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Gerar da Base do Sistema -->
+              <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 flex flex-col justify-between">
+                 <div>
+                   <h3 class="font-bold text-slate-800"><i class="fa-solid fa-database text-teal-600 mr-2"></i>Orçamento da Base de Dados</h3>
+                   <p class="text-xs text-slate-500 mt-2 mb-4">Calcula automaticamente baseado nos colaboradores ativos no sistema e suas respectivas numerações cadastradas.</p>
+                 </div>
+                 <button onclick="gerarNecessidadesUniformes()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm shadow-sm flex items-center justify-center gap-2">
+                   <i class="fa-solid fa-wand-magic-sparkles"></i> Processar Base do Sistema
+                 </button>
+              </div>
+
+              <!-- Gerar de Planilha Externa -->
+              <div class="bg-indigo-50 p-5 rounded-lg border border-indigo-200 flex flex-col justify-between">
+                 <div>
+                   <h3 class="font-bold text-indigo-900"><i class="fa-solid fa-file-csv text-indigo-600 mr-2"></i>Orçamento via Planilha (CSV)</h3>
+                   <p class="text-xs text-indigo-700 mt-2 mb-4">Cruza as regras com uma planilha externa, útil para funcionários de outras empresas ou filiais. <br><b>Colunas:</b> Nome, Sexo, Função, Supervisor, Camisa, Calça, Sapato, Jaqueta, Blazer.</p>
+                 </div>
+                 <input type="file" id="arquivoCsvOrcamento" accept=".csv" class="hidden" onchange="gerarOrcamentoViaCsv()">
+                 <button onclick="document.getElementById('arquivoCsvOrcamento').click()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm shadow-sm flex items-center justify-center gap-2">
+                   <i class="fa-solid fa-file-import"></i> Enviar Planilha e Processar
+                 </button>
+              </div>
             </div>
             
-            <div id="resultadoOrcamentoUniformes" class="hidden space-y-6 mt-4">
+            <div id="resultadoOrcamentoUniformes" class="hidden space-y-6 mt-6 pt-6 border-t border-slate-200">
               <!-- Rendered by JS -->
             </div>
           </div>
@@ -10990,6 +11005,8 @@
     </div>
 </body>
 </html>
+
+
 
 
 
