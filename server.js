@@ -2751,7 +2751,8 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
         const result = stmt.run(
           body.nome,
-          body.cpf || '',
+          body.matricula || null,
+          body.cpf || null,
           parseInt(body.cargo_id, 10),
           body.cliente_id ? parseInt(body.cliente_id, 10) : null,
           body.unidade_id ? parseInt(body.unidade_id, 10) : null,
@@ -2889,7 +2890,7 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
         db.prepare(`
           UPDATE colaboradores SET
-            nome = ?, cpf = ?, cargo_id = ?, cliente_id = ?, unidade_id = ?,
+            nome = ?, matricula = ?, cpf = ?, cargo_id = ?, cliente_id = ?, unidade_id = ?,
             posto_trabalho_id = ?, escala = ?, data_admissao = ?, telefone = ?,
             email = ?, linhas_onibus = ?, quantidade_passagens_dia = ?,
             valor_passagem_unitaria = ?, valor_diario_va = ?, ativo = ?,
