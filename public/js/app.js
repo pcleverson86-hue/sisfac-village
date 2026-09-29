@@ -17110,6 +17110,67 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
               <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
             </div>
           </div>
+
+        <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="page-break-before: always; min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+          <div class="text-center mb-6 pb-2 border-b border-slate-300">
+             <h1 class="text-sm font-black uppercase tracking-wider text-slate-900 leading-tight">
+               PORTARIA 3214 DE 8 DE JUNHO DE 1978 <br> NORMA REGULAMENTADORA NÚMERO 1 (NR 1) DISPOSIÇÕES GERAIS
+             </h1>
+          </div>
+          
+          <div class="text-[11px] leading-relaxed text-justify space-y-3 text-slate-800">
+              <p><b>1.7. CABE AO EMPREGADOR:</b><br>
+              a) Cumprir e fazer cumprir as disposições legais e regulamentares sobre segurança e medicina do trabalho;<br>
+              b) Elaborar ordens de serviço sobre segurança e medicina do trabalho, dando ciência aos empregados, com os seguintes objetivos:<br>
+              &bull; Prevenir atos inseguros no desempenho do trabalho;<br>
+              &bull; Divulgar as obrigações e proibições que os empregados devam conhecer e cumprir;<br>
+              &bull; Dar conhecimento aos empregados de que serão passíveis de punição, pelo descumprimento das ordens de serviço expedidas;<br>
+              &bull; Determinar os procedimentos que deverão ser adotados em caso de acidente do trabalho e doenças profissionais ou do trabalho;<br>
+              &bull; Adotar medidas determinadas pelo MTB;<br>
+              &bull; Adotar medidas para eliminar ou neutralizar a insalubridade e as condições inseguras de trabalho.<br>
+              c) Informar aos trabalhadores:<br>
+              &bull; Os riscos profissionais que possam originar-se nos locais de trabalho;<br>
+              &bull; Os meios para prevenir e limitar tais riscos e as medidas adotadas pela empresa;<br>
+              &bull; Os resultados dos exames médicos e de exames complementares de diagnóstico aos quais os próprios trabalhadores forem submetidos;<br>
+              &bull; Os resultados das avaliações ambientais realizadas nos locais de trabalho.<br>
+              d) Permitir que representantes dos trabalhadores acompanharem a fiscalização dos preceitos legais e regulamentares sobre segurança e medicina do trabalho.</p>
+
+              <p><b>1.8. CABE AO EMPREGADO:</b><br>
+              a) Cumprir as disposições legais e regulamentares sobre segurança e medicina do trabalho, inclusive as ordens de serviço expedidas pela empresa;<br>
+              b) Usar corretamente o EPI fornecido pelo empregador quando necessário e solicitar a substituição do mesmo quando estiver danificado ou em mal condição de uso.<br>
+              c) Submeter-se aos exames médicos previstos nas Normas Regulamentadoras - NR;<br>
+              d) Colaborar com a empresa na aplicação das Normas Regulamentadoras - NR.<br>
+              e) Planejar todas as atividades antes da execução, avaliando os riscos e adotando medidas de controle para bloqueio dos mesmos, evitando acidentes, caso necessite, solicite a presença do supervisor e ou encarregado ou até mesmo o técnico de segurança do trabalho.<br>
+              f) Informar ao seu superior imediato e / ou técnico de segurança do trabalho, toda condição que coloque em risco a sua integridade física e a de seus colegas de trabalho. Todo trabalho eventual (fora de rotina), deve ser comunicado ao responsável imediato para avaliação e análise de risco, ANTES da rotina ser executada.<br>
+              g) Comunicar de imediato todo e qualquer acidente de trabalho, inclusive de outro colaborador, ao setor de Segurança do Trabalho.<br>
+              h) Colaborar com a empresa na aplicação das Normas Regulamentadoras de Segurança e Medicina do Trabalho.<br>
+              i) Participar de treinamentos periódicos sobre prevenção de acidentes, quando convocado.<br>
+              j) Utilizar meios de transporte seguro para ir e vir do trabalho, obedecendo o estipulado no ato da admissão e não gerando desvio da rota estipulada.</p>
+              
+              <p><b>1.8.1.</b> Constitui ato faltoso, a recusa injustificada do empregado ao cumprimento do disposto no item anterior.</p>
+          </div>
+
+          <div class="mt-12 pt-4 grid grid-cols-2 gap-8 text-center text-xs">
+            <div>
+              <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
+                ${statusAssin === 'ASSINADO' ? `<span class="text-emerald-700 font-bold font-mono text-[11px]"><i class="fa-solid fa-signature mr-1"></i>ASSINADO EM ${formatarData(d.data_assinatura)}</span>` : ''}
+              </div>
+              <div class="font-bold text-slate-900 uppercase">${escapeHtml(d.colaborador_nome)}</div>
+              <div class="text-[11px] text-slate-500">Assinatura do Trabalhador</div>
+              <div class="text-[10px] text-slate-400 font-mono">CPF: ${escapeHtml(d.colaborador_cpf || '---')}</div>
+            </div>
+
+            <div>
+              <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
+                <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
+              </div>
+              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="text-[11px] text-slate-500">SESMT / Segurança do Trabalho</div>
+              <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
+            </div>
+          </div>
+        </div>
+
         </div>
       `;
     }
