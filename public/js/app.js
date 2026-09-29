@@ -21531,10 +21531,16 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
     totalGeral += dados.total_fornecedor;
     html += `
       <div class="border border-slate-200 rounded-lg overflow-hidden mb-6">
-        <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+        
+        <div class="bg-slate-800 text-white px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3" data-fornecedor="${forn}">
           <h4 class="font-bold"><i class="fa-solid fa-building mr-2"></i> ${forn}</h4>
-          <span class="font-black text-emerald-400">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
+          <div class="flex items-center gap-2">
+             <span class="font-black text-emerald-400 mr-2">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
+             <button onclick="imprimirOrcamentoUniformesPDF('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-xs font-bold transition shadow-sm"><i class="fa-solid fa-file-pdf text-red-400 mr-1"></i> PDF</button>
+             <button onclick="exportarOrcamentoUniformesExcel('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-xs font-bold transition shadow-sm"><i class="fa-solid fa-file-excel text-emerald-400 mr-1"></i> Excel</button>
+          </div>
         </div>
+
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-100 text-slate-600">
             <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
@@ -21560,13 +21566,18 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
   } else {
     container.innerHTML = html + `
       
+      
       <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
         <div>
            <div class="text-emerald-800 uppercase font-bold tracking-wider">Custo Total Previsto</div>
            <div class="text-3xl font-black text-emerald-700">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
         </div>
-        <button onclick="imprimirOrcamentoUniformesPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg shadow font-bold flex items-center gap-2"><i class="fa-solid fa-print"></i> Imprimir Orçamento em PDF</button>
+        <div class="flex gap-2">
+           <button onclick="exportarOrcamentoUniformesExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-lg shadow font-bold flex items-center gap-2"><i class="fa-solid fa-file-excel"></i> Gerar Excel (Todos)</button>
+           <button onclick="imprimirOrcamentoUniformesPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-bold flex items-center gap-2"><i class="fa-solid fa-file-pdf"></i> Gerar PDF (Todos)</button>
+        </div>
       </div>
+
 
     `;
   }
@@ -22050,37 +22061,84 @@ window.processarImportacaoMatrizUniformes = function() {
 };
 
 
-window.imprimirOrcamentoUniformesPDF = function() {
+
+window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
   const container = document.getElementById('resultadoOrcamentoUniformes');
   if (!container || container.innerHTML.includes('Nenhum item')) return;
   
   const clone = container.cloneNode(true);
   
-  // Remove the print button from the clone
+  // Remove the print buttons
   const btns = clone.querySelectorAll('button');
   btns.forEach(b => b.remove());
+  
+  // If we only want a specific supplier, hide all other supplier blocks
+  if (fornecedorUnico) {
+    const blocos = clone.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-6');
+    blocos.forEach(bloco => {
+       const header = bloco.querySelector('.bg-slate-800');
+       if (header && header.getAttribute('data-fornecedor') !== fornecedorUnico) {
+          bloco.style.display = 'none';
+       }
+    });
+    // Hide the global total at the bottom
+    const totalGeralBox = clone.querySelector('.bg-emerald-50');
+    if(totalGeralBox) totalGeralBox.style.display = 'none';
+  }
 
+  const nomeUsuario = state.usuarioLogado ? state.usuarioLogado.nome : 'Usuário Desconhecido';
+  const logoUrl = window.location.origin + '/img/logo_village.jpg';
+  
   const w = window.open('', '_blank');
   w.document.write(`
-    <html><head><title>Orçamento de Uniformes</title>
+    <html><head><title>Orçamento de Uniformes ${fornecedorUnico ? '- '+fornecedorUnico : ''}</title>
     <style>
-      body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
-      h1 { font-size: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; }
-      h4 { font-size: 16px; background: #eee; padding: 8px 10px; margin-top: 20px; border: 1px solid #ccc; border-bottom: none; margin-bottom: 0; display: flex; justify-content: space-between; }
-      table { w-full; border-collapse: collapse; margin-bottom: 20px; width: 100%; font-size: 12px; }
-      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-      th { background: #f9f9f9; }
-      .bg-emerald-50 { background-color: #d1fae5; border: 1px solid #10b981; padding: 15px; margin-top: 30px; font-size: 18px; font-weight: bold; text-align: right; }
-      .text-emerald-800 { color: #065f46; display: block; font-size: 12px; }
-      .footer { margin-top: 50px; text-align: center; font-size: 10px; border-top: 1px solid #ccc; padding-top: 20px; color: #666; }
+      body { font-family: Arial, sans-serif; padding: 40px; color: #333; margin: 0; }
+      .header-doc { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #004d40; padding-bottom: 20px; margin-bottom: 30px; }
+      .header-doc img { max-height: 70px; }
+      .header-text { text-align: right; }
+      .header-text h1 { font-size: 22px; margin: 0; color: #004d40; text-transform: uppercase; }
+      .header-text p { font-size: 14px; margin: 5px 0 0 0; color: #555; }
+      
+      h4 { font-size: 16px; background: #e2e8f0; padding: 10px 15px; margin-top: 25px; border: 1px solid #cbd5e1; border-bottom: none; margin-bottom: 0; display: flex; justify-content: space-between; font-weight: bold; }
+      table { border-collapse: collapse; margin-bottom: 25px; width: 100%; font-size: 13px; }
+      th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
+      th { background: #f1f5f9; font-weight: bold; }
+      
+      .bg-emerald-50 { background-color: #ecfdf5; border: 1px solid #10b981; padding: 20px; margin-top: 30px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; }
+      .text-emerald-800 { color: #065f46; font-size: 14px; font-weight: bold; text-transform: uppercase; }
+      .text-emerald-700 { color: #047857; font-size: 24px; font-weight: 900; }
+      
+      .footer-doc { margin-top: 60px; text-align: center; font-size: 12px; border-top: 1px solid #cbd5e1; padding-top: 20px; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+      .sisfac-logo { font-weight: 900; font-size: 18px; color: #0f172a; letter-spacing: -0.5px; }
+      .sisfac-logo span { color: #3b82f6; }
+      
       .text-right { text-align: right; }
       .text-center { text-align: center; }
       .bg-indigo-100 { display: none; } /* Hide avisos */
+      
+      @media print {
+        body { padding: 0; }
+        .border, table, th, td, h4 { border-color: #ccc !important; }
+      }
     </style></head>
     <body>
-       <h1>Relatório Consolidado - Orçamento de Uniformes</h1>
+       <div class="header-doc">
+          <img src="${logoUrl}" alt="Village Logo">
+          <div class="header-text">
+             <h1>VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</h1>
+             <p>Levantamento e Orçamento de Uniformes</p>
+             <p><strong>Cotação realizada por:</strong> ${nomeUsuario}</p>
+             <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+       </div>
+       
        ${clone.innerHTML}
-       <div class="footer">Gerado por SISFAC 2.0 em ${new Date().toLocaleString('pt-BR')}</div>
+       
+       <div class="footer-doc">
+          <div class="sisfac-logo">SISFAC <span>2.0</span></div>
+          <div>Gerado por SISFAC</div>
+       </div>
        <script>
          setTimeout(() => { window.print(); }, 800);
        </script>
@@ -22088,3 +22146,45 @@ window.imprimirOrcamentoUniformesPDF = function() {
   `);
   w.document.close();
 };
+
+window.exportarOrcamentoUniformesExcel = function(fornecedorUnico = null) {
+  const container = document.getElementById('resultadoOrcamentoUniformes');
+  if (!container || container.innerHTML.includes('Nenhum item')) return;
+  
+  const blocos = container.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-6');
+  
+  const dadosExcel = [];
+  
+  blocos.forEach(bloco => {
+     const header = bloco.querySelector('.bg-slate-800');
+     if (!header) return;
+     const fornecedor = header.getAttribute('data-fornecedor');
+     
+     if (fornecedorUnico && fornecedor !== fornecedorUnico) return;
+     
+     const rows = bloco.querySelectorAll('tbody tr');
+     rows.forEach(r => {
+        const cols = r.querySelectorAll('td');
+        if (cols.length < 5) return;
+        
+        dadosExcel.push({
+           'Fornecedor': fornecedor,
+           'Peça': cols[0].innerText.trim(),
+           'Tamanho': cols[1].innerText.trim(),
+           'Quantidade': parseInt(cols[2].innerText.trim(), 10),
+           'Valor Unitário': parseFloat(cols[3].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+           'Subtotal': parseFloat(cols[4].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim())
+        });
+     });
+  });
+  
+  if (dadosExcel.length === 0) return alert('Nenhum dado encontrado para gerar a planilha.');
+  
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(dadosExcel);
+  XLSX.utils.book_append_sheet(wb, ws, "Levantamento");
+  
+  const fileName = fornecedorUnico ? `Levantamento_${fornecedorUnico.replace(/\s+/g, '_')}.xlsx` : 'Levantamento_Uniformes.xlsx';
+  XLSX.writeFile(wb, fileName);
+};
+
