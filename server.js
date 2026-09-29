@@ -10263,21 +10263,91 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
         }
 
         
-        if (pathname === '/api/uniformes/catalogo' && method === 'GET') {
+        
+      // IMPORTAR MATRIZ DE UNIFORMES (REGRAS E CATALOGO CONJUNTO)
+      if (pathname === '/api/uniformes/importar' && method === 'POST') {
+        const { matriz } = await parseRequestBody(req);
+        if (!Array.isArray(matriz) || matriz.length === 0) return errorResponse(res, 'Matriz vazia', 400);
+
+        try {
+          db.exec("BEGIN TRANSACTION;");
+          let countRegras = 0;
+          let countCat = 0;
+
+          // Clear previous rules if requested? The user said "implantar tudo do zero" or "importacao". 
+          // Let's just UPSERT/INSERT. Since it's a matrix, they might want to clear old ones. 
+          // Let's not clear them, just add/update. But wait, if they import, they probably want the DB to match the spreadsheet.
+          // The prompt says "Criar a funcionalidade de cadastro e lançamento de dados tanto diretamente pelas telas do sistema quanto por meio de importação via planilha"
+          
+          for (const row of matriz) {
+            const funcao = row.funcao ? String(row.funcao).toUpperCase().trim() : 'TODOS';
+            let genero = row.genero ? String(row.genero).toUpperCase().trim() : 'U';
+            if (genero.startsWith('M')) genero = 'M';
+            else if (genero.startsWith('F')) genero = 'F';
+            else genero = 'U'; // Unissex
+            
+            const sexo_aplicavel = genero === 'M' ? 'Masculino' : (genero === 'F' ? 'Feminino' : 'TODOS');
+            const peca = row.peca ? String(row.peca).toUpperCase().trim() : '';
+            if (!peca) continue;
+            
+            const quantidade = parseInt(row.quantidade) || 1;
+            const preco = parseFloat(row.preco) || 0;
+            const fornecedor_nome = row.fornecedor ? String(row.fornecedor).toUpperCase().trim() : '';
+            
+            let fornecedor_id = null;
+            if (fornecedor_nome) {
+              let f = db.prepare('SELECT id FROM fornecedores WHERE nome_empresa = ?').get(fornecedor_nome);
+              if (!f) {
+                const ri = db.prepare('INSERT INTO fornecedores (nome_empresa, tipo_fornecedor) VALUES (?, ?)').run(fornecedor_nome, 'Uniformes / EPIs');
+                fornecedor_id = ri.lastInsertRowid;
+              } else {
+                fornecedor_id = f.id;
+              }
+            }
+            
+            // Upsert Catalogo
+            let cat = db.prepare('SELECT id FROM uniformes_catalogo WHERE item_nome = ? AND genero = ?').get(peca, genero);
+            if (!cat) {
+              db.prepare('INSERT INTO uniformes_catalogo (item_nome, fornecedor_id, valor_unitario, genero) VALUES (?, ?, ?, ?)').run(peca, fornecedor_id, preco, genero);
+              countCat++;
+            } else {
+              db.prepare('UPDATE uniformes_catalogo SET fornecedor_id = ?, valor_unitario = ? WHERE id = ?').run(fornecedor_id, preco, cat.id);
+            }
+            
+            // Upsert Regras
+            let regra = db.prepare('SELECT id FROM uniformes_regras WHERE funcao = ? AND item = ? AND sexo_aplicavel = ?').get(funcao, peca, sexo_aplicavel);
+            if (!regra) {
+              db.prepare('INSERT INTO uniformes_regras (funcao, quantidade, item, sexo_aplicavel) VALUES (?, ?, ?, ?)').run(funcao, quantidade, peca, sexo_aplicavel);
+              countRegras++;
+            } else {
+              db.prepare('UPDATE uniformes_regras SET quantidade = ? WHERE id = ?').run(quantidade, regra.id);
+            }
+          }
+
+          db.exec("COMMIT;");
+          return jsonResponse(res, { success: true, message: `Importação concluída: ${countRegras} novas regras e ${countCat} novos itens de catálogo adicionados/atualizados.` });
+        } catch(e) {
+          db.exec("ROLLBACK;");
+          console.error(e);
+          return errorResponse(res, 'Erro ao importar matriz: ' + e.message, 500);
+        }
+      }
+
+      if (pathname === '/api/uniformes/catalogo' && method === 'GET') {
           const catalogo = db.prepare('SELECT c.*, f.nome_empresa as fornecedor_nome FROM uniformes_catalogo c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id WHERE c.ativo = 1 ORDER BY c.item_nome ASC').all();
           return jsonResponse(res, catalogo);
         }
         
         if (pathname === '/api/uniformes/catalogo' && method === 'POST') {
           const body = await parseRequestBody(req);
-          db.prepare('INSERT INTO uniformes_catalogo (item_nome, fornecedor_id, valor_unitario) VALUES (?, ?, ?)').run(body.item_nome.toUpperCase(), body.fornecedor_id || null, body.valor_unitario || 0);
+          db.prepare('INSERT INTO uniformes_catalogo (item_nome, fornecedor_id, valor_unitario, genero) VALUES (?, ?, ?, ?)').run(body.item_nome.toUpperCase(), body.fornecedor_id || null, body.valor_unitario || 0, body.genero || 'U');
           return jsonResponse(res, {success:true});
         }
         
         if (pathname.startsWith('/api/uniformes/catalogo/') && method === 'PUT') {
           const id = parseInt(pathname.split('/').pop(), 10);
           const body = await parseRequestBody(req);
-          db.prepare('UPDATE uniformes_catalogo SET item_nome = ?, fornecedor_id = ?, valor_unitario = ? WHERE id = ?').run(body.item_nome.toUpperCase(), body.fornecedor_id || null, body.valor_unitario || 0, id);
+          db.prepare('UPDATE uniformes_catalogo SET item_nome = ?, fornecedor_id = ?, valor_unitario = ?, genero = ? WHERE id = ?').run(body.item_nome.toUpperCase(), body.fornecedor_id || null, body.valor_unitario || 0, body.genero || 'U', id);
           return jsonResponse(res, {success:true});
         }
 
@@ -10308,8 +10378,9 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
 
         if (pathname === '/api/uniformes/gerar-necessidades' && method === 'GET') {
-          const colabs = db.prepare("SELECT c.id, c.nome, cg.nome_cargo, uc.sexo, uc.tamanho_camisa, uc.tamanho_calca, uc.tamanho_sapato, uc.tamanho_jaqueta, uc.tamanho_blazer FROM colaboradores c LEFT JOIN cargos cg ON c.cargo_id = cg.id LEFT JOIN uniformes_colaboradores uc ON c.id = uc.colaborador_id WHERE c.ativo = 1 AND c.nome != ''[SISTEMA] SERVIÇO EXTRA''").all();
-          const regras = db.prepare("SELECT r.*, c.fornecedor_id, c.valor_unitario, f.nome_empresa as fornecedor_nome FROM uniformes_regras r LEFT JOIN uniformes_catalogo c ON r.item = c.item_nome LEFT JOIN fornecedores f ON c.fornecedor_id = f.id WHERE r.ativo = 1").all();
+          const colabs = db.prepare("SELECT c.id, c.nome, cg.nome_cargo, uc.sexo, uc.tamanho_camisa, uc.tamanho_calca, uc.tamanho_sapato, uc.tamanho_jaqueta, uc.tamanho_blazer FROM colaboradores c LEFT JOIN cargos cg ON c.cargo_id = cg.id LEFT JOIN uniformes_colaboradores uc ON c.id = uc.colaborador_id WHERE c.ativo = 1 AND c.nome != '[SISTEMA] SERVIÇO EXTRA'").all();
+          const regras = db.prepare("SELECT * FROM uniformes_regras WHERE ativo = 1").all();
+          const catalogo = db.prepare("SELECT c.*, f.nome_empresa as fornecedor_nome FROM uniformes_catalogo c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id").all();
           
           let necessidades = [];
 
@@ -10331,17 +10402,25 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
               else if (itemUpper.includes('BLAZER') || itemUpper.includes('COLETE')) tam = c.tamanho_blazer;
 
               if (!tam && r.tamanhos_disponiveis) tam = 'SEM MEDIDA'; 
+              
+              let generoBusca = 'U';
+              if (r.sexo_aplicavel === 'Masculino' || c.sexo === 'Masculino' || c.sexo === 'M') generoBusca = 'M';
+              if (r.sexo_aplicavel === 'Feminino' || c.sexo === 'Feminino' || c.sexo === 'F') generoBusca = 'F';
+
+              let catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && cat.genero === generoBusca);
+              if (!catInfo) catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && cat.genero === 'U');
+              if (!catInfo) catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase()); 
 
               necessidades.push({
                 colaborador_id: c.id,
                 colaborador_nome: c.nome,
                 cargo: c.nome_cargo,
-                item: r.item,
+                item: r.item.trim().toUpperCase(),
                 quantidade: r.quantidade,
                 tamanho: tam || 'N/A',
-                fornecedor_id: r.fornecedor_id,
-                fornecedor_nome: r.fornecedor_nome || 'Sem Fornecedor Definido',
-                valor_unitario: r.valor_unitario || 0
+                fornecedor_id: catInfo ? catInfo.fornecedor_id : null,
+                fornecedor_nome: catInfo && catInfo.fornecedor_nome ? catInfo.fornecedor_nome : 'Sem Fornecedor Definido',
+                valor_unitario: catInfo ? catInfo.valor_unitario : 0
               });
             }
           }

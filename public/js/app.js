@@ -21238,6 +21238,33 @@ async function deletarRegraUniforme(id) {
 
 let fornecedoresListaUniformes = [];
 
+
+window.adicionarNovoItemCatalogo = async function() {
+  const nome = document.getElementById('novoCatNome').value.trim().toUpperCase();
+  const genero = document.getElementById('novoCatGenero').value;
+  const fornecedor = document.getElementById('novoCatFornecedor').value;
+  const valor = document.getElementById('novoCatValor').value;
+
+  if (!nome) return alert('Digite o nome da peça.');
+
+  try {
+    const res = await fetch('/api/uniformes/catalogo', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({item_nome: nome, genero: genero, fornecedor_id: fornecedor || null, valor_unitario: valor || 0})
+    });
+    const j = await res.json();
+    if (j.success) {
+      document.getElementById('novoCatNome').value = '';
+      document.getElementById('novoCatValor').value = '0.00';
+      document.getElementById('formNovoItemCatalogo').classList.add('hidden');
+      carregarCatalogoUniformes();
+    } else {
+      alert('Erro: ' + (j.error || 'Falha ao adicionar.'));
+    }
+  } catch(e) { console.error(e); }
+};
+
 async function carregarCatalogoUniformes() {
   const tbody = document.getElementById('tabelaCatalogoUniformes');
   tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-500">Carregando catálogo...</td></tr>';
@@ -21251,6 +21278,7 @@ async function carregarCatalogoUniformes() {
     const cat = await res.json();
     
     const options = fornecedoresListaUniformes.map(f => `<option value="${f.id}">${f.nome_empresa}</option>`).join('');
+    if(document.getElementById('novoCatFornecedor')) document.getElementById('novoCatFornecedor').innerHTML = '<option value="">- Sem Fornecedor -</option>' + options;
     
     tbody.innerHTML = cat.map(c => `
       <tr class="hover:bg-slate-50">
@@ -21348,7 +21376,7 @@ async function gerarNecessidadesUniformes() {
               <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              ${Object.values(dados.itens).map(i => `
+              ${Object.values(dados.itens).sort((a,b) => a.item.localeCompare(b.item)).map(i => `
                 <tr>
                   <td class="px-4 py-2 font-medium">${i.item}</td>
                   <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
@@ -21451,9 +21479,9 @@ window.gerarOrcamentoViaPlanilha = async function() {
             if (r.sexo_aplicavel === 'Masculino' || sexo === 'MASCULINO' || sexo === 'M') generoBusca = 'M';
             if (r.sexo_aplicavel === 'Feminino' || sexo === 'FEMININO' || sexo === 'F') generoBusca = 'F';
 
-            let catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === generoBusca);
-            if (!catInfo) catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === 'U');
-            if (!catInfo) catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase()); 
+            let catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && c.genero === generoBusca);
+            if (!catInfo) catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && c.genero === 'U');
+            if (!catInfo) catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase()); 
 
             necessidades.push({
               item: r.item,
