@@ -10365,6 +10365,16 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
           return jsonResponse(res, {success:true});
         }
 
+
+        if (pathname.startsWith('/api/uniformes/regras/') && method === 'PUT') {
+          const id = parseInt(pathname.split('/').pop(), 10);
+          const body = await parseRequestBody(req);
+          db.prepare('UPDATE uniformes_regras SET funcao = ?, item = ?, quantidade = ?, tamanhos_disponiveis = ?, sexo_aplicavel = ? WHERE id = ?').run(
+            body.funcao.toUpperCase(), body.item.toUpperCase(), body.quantidade || 1, body.tamanhos_disponiveis || '', body.sexo_aplicavel || 'TODOS', id
+          );
+          return jsonResponse(res, {success:true});
+        }
+
         if (pathname.startsWith('/api/uniformes/regras/') && method === 'DELETE') {
           const id = parseInt(pathname.split('/').pop(), 10);
           db.prepare('DELETE FROM uniformes_regras WHERE id = ?').run(id);

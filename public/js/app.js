@@ -154,7 +154,7 @@ async function efetuarLogin(e) {
 
   try {
     const res = await fetch('/api/auth/login', {
-      method: 'POST',
+
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ login, senha })
     });
@@ -21204,7 +21204,7 @@ async function carregarRegrasUniformes() {
         <td class="px-3 py-2 font-medium">${r.item}</td>
         <td class="px-3 py-2 text-center bg-slate-100 font-bold">${r.quantidade}</td>
         <td class="px-3 py-2 text-xs text-slate-500">${r.sexo_aplicavel}</td>
-        <td class="px-3 py-2 text-center"><button onclick="deletarRegraUniforme(${r.id})" class="text-red-500 hover:text-red-700" title="Remover"><i class="fa-solid fa-trash"></i></button></td>
+        <td class="px-3 py-2 text-center"><button onclick="editarRegraUniforme(${r.id}, '${r.funcao}', '${r.item}', ${r.quantidade}, '${r.sexo_aplicavel}', '${r.tamanhos_disponiveis}')" class="text-blue-500 hover:text-blue-700 mr-3" title="Editar"><i class="fa-solid fa-edit"></i></button><button onclick="deletarRegraUniforme(${r.id})" class="text-red-500 hover:text-red-700" title="Remover"><i class="fa-solid fa-trash"></i></button></td>
       </tr>
     `).join('');
   } catch(e) { console.error(e); }
@@ -21217,7 +21217,12 @@ async function salvarNovaRegraUniforme() {
   const s = document.getElementById('novaRegraSexo').value;
   const t = document.getElementById('novaRegraTamanhos').value.trim();
   
+  
   if(!f || !i) return alert('Cargo e Peça são obrigatórios!');
+  
+  const url = window.editingRegraId ? `/api/uniformes/regras/${window.editingRegraId}` : '/api/uniformes/regras';
+  const method = window.editingRegraId ? 'PUT' : 'POST';
+
   
   await fetch('/api/uniformes/regras', {
     method: 'POST',
@@ -22189,3 +22194,43 @@ window.exportarOrcamentoUniformesExcel = function(fornecedorUnico = null) {
   XLSX.writeFile(wb, fileName);
 };
 
+
+
+window.editingRegraId = null;
+
+window.editarRegraUniforme = function(id, funcao, item, qtd, sexo, tamanhos) {
+  window.editingRegraId = id;
+  
+  document.getElementById('novaRegraFuncao').value = funcao;
+  document.getElementById('novaRegraItem').value = item;
+  document.getElementById('novaRegraQtd').value = qtd;
+  document.getElementById('novaRegraSexo').value = sexo || 'TODOS';
+  document.getElementById('novaRegraTamanhos').value = tamanhos || '';
+  
+  const btnSalvar = document.getElementById('btnSalvarRegra');
+  btnSalvar.innerText = 'Salvar Alteração';
+  btnSalvar.classList.remove('bg-teal-600', 'hover:bg-teal-700');
+  btnSalvar.classList.add('bg-orange-500', 'hover:bg-orange-600');
+  
+  document.getElementById('btnCancelarEdicaoRegra').classList.remove('hidden');
+  
+  // Scroll to top
+  document.getElementById('novaRegraFuncao').scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+window.cancelarEdicaoRegra = function() {
+  window.editingRegraId = null;
+  
+  document.getElementById('novaRegraFuncao').value = '';
+  document.getElementById('novaRegraItem').value = '';
+  document.getElementById('novaRegraQtd').value = '1';
+  document.getElementById('novaRegraSexo').value = 'TODOS';
+  document.getElementById('novaRegraTamanhos').value = '';
+  
+  const btnSalvar = document.getElementById('btnSalvarRegra');
+  btnSalvar.innerText = 'Adicionar Regra';
+  btnSalvar.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+  btnSalvar.classList.add('bg-teal-600', 'hover:bg-teal-700');
+  
+  document.getElementById('btnCancelarEdicaoRegra').classList.add('hidden');
+};
