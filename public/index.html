@@ -512,7 +512,7 @@
           <div class="flex flex-wrap items-center gap-2">
             <button onclick="abrirModalSupervisoresMobile()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition text-sm">
               <i class="fa-solid fa-mobile-screen-button text-indigo-200"></i>
-              <span>ðŸ“± Supervisores Mobile</span>
+              <span>📱 Supervisores Mobile</span>
             </button>
             <button onclick="abrirModalNovaFalta()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition text-sm">
               <i class="fa-solid fa-plus-circle"></i>
@@ -609,7 +609,7 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1">Origem:</label>
             <select id="filtroFaltasOrigem" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none font-medium" onchange="carregarFaltas()">
               <option value="">Todas as Origens</option>
-              <option value="mobile_supervisor">ðŸ“± Celular (Supervisores)</option>
+              <option value="mobile_supervisor">📱 Celular (Supervisores)</option>
               <option value="web">ðŸ’» Lançamento Manual Web</option>
             </select>
           </div>
@@ -628,9 +628,17 @@
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="px-5 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
           <h2 class="font-bold text-slate-800 text-sm">Ocorrências do Período</h2>
-          <button onclick="exportarFaltasExcel()" class="text-xs text-emerald-700 font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded border border-emerald-200 flex items-center gap-1">
-            <i class="fa-solid fa-file-excel"></i> Exportar Excel
-          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="gerarRelatorioConsolidadoFreelancers('pdf')" class="text-xs text-red-700 font-semibold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded border border-red-200 flex items-center gap-1" title="Relatório Consolidado de Freelancers em PDF">
+              <i class="fa-solid fa-file-pdf"></i> Freelas (PDF)
+            </button>
+            <button onclick="gerarRelatorioConsolidadoFreelancers('excel')" class="text-xs text-emerald-700 font-semibold bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded border border-emerald-200 flex items-center gap-1" title="Relatório Consolidado de Freelancers em Excel">
+              <i class="fa-solid fa-file-excel"></i> Freelas (Excel)
+            </button>
+            <button onclick="exportarFaltasExcel()" class="text-xs text-indigo-700 font-semibold bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded border border-indigo-200 flex items-center gap-1" title="Exportar tabela atual de Faltas">
+              <i class="fa-solid fa-table"></i> Exportar Tabela
+            </button>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
@@ -2244,6 +2252,12 @@
             <p class="text-sm text-slate-500 mt-0.5">Valores acumulados por diarista e dados bancários/PIX para pagamento.</p>
           </div>
           <div class="flex flex-wrap gap-2">
+            <button onclick="gerarRelatorioConsolidadoFreelancers('pdf')" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 transition" title="PDF Consolidado de Freelancers">
+              <i class="fa-solid fa-file-pdf"></i> PDF Consolidado
+            </button>
+            <button onclick="gerarRelatorioConsolidadoFreelancers('excel')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 transition" title="Excel Consolidado de Freelancers">
+              <i class="fa-solid fa-file-excel"></i> Excel Consolidado
+            </button>
             <button onclick="abrirRelatorio('freelancers')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-semibold px-3 py-2 rounded-lg text-xs flex items-center gap-1.5 transition" title="Ver Demonstrativo de Freelancers e Diárias">
               <i class="fa-solid fa-file-lines"></i>
               <span>Relatório de Freelancers</span>
@@ -3808,11 +3822,11 @@
           <div class="grid grid-cols-2 gap-2 text-xs">
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="faltas" checked class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“‹ <b>Faltas & Coberturas</b></span>
+              <span>📋‹ <b>Faltas & Coberturas</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="postos" checked class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“ <b>Postos de Trabalho</b></span>
+              <span>📋 <b>Postos de Trabalho</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="colaboradores" checked class="w-4 h-4 text-blue-600 rounded">
@@ -3836,11 +3850,11 @@
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="compras" class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“¦ <b>Compras & Suprimentos</b></span>
+              <span>📋¦ <b>Compras & Suprimentos</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="diretoria" class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“Š <b>Painel Diretoria</b></span>
+              <span>📋Š <b>Painel Diretoria</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="clientes" class="w-4 h-4 text-blue-600 rounded">
@@ -3848,11 +3862,11 @@
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="dashboard" class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“ˆ <b>Dashboard Geral</b></span>
+              <span>📋ˆ <b>Dashboard Geral</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="relatorios" class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“‘ <b>Central de Relatórios</b></span>
+              <span>📋‘ <b>Central de Relatórios</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="comercial" class="w-4 h-4 text-blue-600 rounded">
@@ -3860,7 +3874,7 @@
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="comunicados" checked class="w-4 h-4 text-blue-600 rounded">
-              <span>ðŸ“¢ <b>Mural de Comunicados</b></span>
+              <span>📋¢ <b>Mural de Comunicados</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-50">
               <input type="checkbox" name="permModulo" value="sst" checked class="w-4 h-4 text-amber-600 rounded">
@@ -3868,7 +3882,7 @@
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-teal-200 rounded-lg cursor-pointer hover:bg-teal-50">
               <input type="checkbox" name="permModulo" value="arquivo" checked class="w-4 h-4 text-teal-600 rounded">
-              <span>ðŸ“ <b>Setor de Arquivo</b></span>
+              <span>📋 <b>Setor de Arquivo</b></span>
             </label>
             <label class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-blue-50">
               <input type="checkbox" name="permModulo" value="financeiro" class="w-4 h-4 text-amber-600 rounded">
@@ -7712,7 +7726,7 @@
 
         <!-- Card Resumo do Posto de Destino -->
         <div class="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1.5">
-          <span class="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">ðŸ“ Dados do Posto de Destino:</span>
+          <span class="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">📋 Dados do Posto de Destino:</span>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div>
               <span class="text-slate-500 block">Cliente Contratante:</span>
@@ -8359,7 +8373,7 @@
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">Tipo de Evento:</label>
                 <select id="novaAnotacaoTipo" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none">
-                  <option value="ANOTACAO">ðŸ“ Anotação Geral</option>
+                  <option value="ANOTACAO">📋 Anotação Geral</option>
                   <option value="TRANSFERENCIA">ðŸ”„ Mudança de Posto / Setor</option>
                   <option value="ALTERACAO_BENEFICIO">ðŸšŒ Ajuste de Benefício / VT / VA</option>
                   <option value="ELOGIO">â­ Elogio / Reconhecimento</option>
@@ -9026,12 +9040,12 @@
               <div>
                 <label class="block font-semibold text-slate-700 mb-0.5">Tipo de Contato *</label>
                 <select id="leadInteracaoTipo" required class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none">
-                  <option value="Ligação Telefônica">ðŸ“ž Ligação Telefônica</option>
+                  <option value="Ligação Telefônica">📋ž Ligação Telefônica</option>
                   <option value="WhatsApp">ðŸ’¬ WhatsApp</option>
                   <option value="Visita Técnica">ðŸ¢ Visita Técnica / Levantamento</option>
                   <option value="Reunião Presencial">ðŸ¤ Reunião Presencial</option>
                   <option value="Videoconferência">ðŸ’» Videoconferência (Meet/Teams)</option>
-                  <option value="Envio de Proposta">ðŸ“„ Envio de Proposta Comercial</option>
+                  <option value="Envio de Proposta">📋„ Envio de Proposta Comercial</option>
                   <option value="E-mail">âœ‰ï¸ E-mail</option>
                   <option value="Outro">Outro</option>
                 </select>
@@ -9280,7 +9294,7 @@
   <!-- ================================================================= -->
   <div id="toastNovoComunicado" class="fixed top-20 right-5 z-[9999] hidden max-w-sm">
     <div class="bg-white rounded-2xl shadow-2xl border-l-4 border-orange-500 p-4 flex items-start gap-3 animate-fade-in">
-      <div class="text-2xl">ðŸ“¢</div>
+      <div class="text-2xl">📋¢</div>
       <div class="flex-1 min-w-0">
         <div class="font-black text-slate-900 text-sm">Novo Comunicado!</div>
         <div id="toastNovoComunicadoTitulo" class="text-xs text-slate-600 mt-0.5 truncate">Um novo aviso chegou no mural corporativo.</div>
@@ -9318,12 +9332,12 @@
           <div>
             <label class="block font-semibold text-slate-700 mb-1">Categoria *</label>
             <select id="comunicadoCategoria" required class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none bg-white">
-              <option value="Geral">ðŸ“¢ Geral / Institucional</option>
+              <option value="Geral">📋¢ Geral / Institucional</option>
               <option value="Novos Contratos & Implantação">ðŸ¢ Novos Contratos & Implantação</option>
               <option value="RH & Gestão de Pessoas">ðŸ‘¥ RH & Gestão de Pessoas</option>
               <option value="Operacional & Postos">ðŸ›¡ï¸ Operacional & Postos</option>
               <option value="Benefícios">ðŸšŒ Benefícios (VT/VA)</option>
-              <option value="Compras & Suprimentos">ðŸ“¦ Compras & Materiais</option>
+              <option value="Compras & Suprimentos">📋¦ Compras & Materiais</option>
               <option value="Faturamento">ðŸ’° Faturamento</option>
             </select>
           </div>
@@ -9339,14 +9353,14 @@
             <label class="block font-semibold text-slate-700 mb-1">Direcionar Público Alvo *</label>
             <select id="comunicadoSetorAlvo" onchange="atualizarOpcoesAudienteComunicado(this.value)" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs focus:outline-none bg-white font-semibold">
               <option value="todos">ðŸŒ Toda a Empresa (Geral)</option>
-              <option value="arquivo">ðŸ“ Setor de Arquivo & Documentação</option>
+              <option value="arquivo">📋 Setor de Arquivo & Documentação</option>
               <option value="rh">ðŸ‘¥ Recursos Humanos & Operações</option>
               <option value="beneficios">ðŸšŒ Setor de Benefícios (VT/VA)</option>
-              <option value="compras">ðŸ“¦ Suprimentos & Compras</option>
+              <option value="compras">📋¦ Suprimentos & Compras</option>
               <option value="faturamento">ðŸ’° Faturamento & Glosas</option>
               <option value="comercial">ðŸ’¼ Setor Comercial</option>
               <option value="financeiro">ðŸ’µ Financeiro & Contas a Pagar</option>
-              <option value="diretoria">ðŸ“Š Diretoria Executiva</option>
+              <option value="diretoria">📋Š Diretoria Executiva</option>
               <option value="usuarios_especificos">ðŸ‘¤ Usuários Específicos...</option>
             </select>
           </div>
@@ -11184,6 +11198,7 @@
 </body>
 
 </html>
+
 
 
 

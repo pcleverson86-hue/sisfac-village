@@ -22234,3 +22234,134 @@ window.cancelarEdicaoRegra = function() {
   
   document.getElementById('btnCancelarEdicaoRegra').classList.add('hidden');
 };
+
+
+window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
+  const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
+  const clienteId = document.getElementById('filtroFaltasCliente')?.value || '';
+  
+  let url = `/api/faltas?mes=${mes}`;
+  if (clienteId) url += `&cliente_id=${clienteId}`;
+  url += `&houve_cobertura=1`;
+  
+  try {
+    const res = await fetch(url);
+    const faltas = await res.json();
+    
+    const porFree = {};
+    faltas.forEach(f => {
+       if(!f.quem_cobriu || f.quem_cobriu.trim() === '') return;
+       const nome = f.quem_cobriu.trim().toUpperCase();
+       if(!porFree[nome]) porFree[nome] = { nome: nome, total_valor: 0, items: [] };
+       
+       porFree[nome].items.push({
+          data: f.data_falta,
+          ausente: f.colaborador_nome || 'N/A',
+          valor: parseFloat(f.valor_cobertura) || 0,
+          posto: (f.cliente_nome || '') + (f.nome_unidade ? ' - ' + f.nome_unidade : '')
+       });
+       porFree[nome].total_valor += (parseFloat(f.valor_cobertura) || 0);
+    });
+    
+    const frees = Object.values(porFree).sort((a,b) => a.nome.localeCompare(b.nome));
+    
+    if(frees.length === 0) return alert('Nenhuma cobertura (Freelancer) encontrada no período/filtros selecionados.');
+    
+    frees.forEach(f => {
+       f.items.sort((a,b) => a.data.localeCompare(b.data));
+    });
+    
+    const nomeUsuario = state.usuarioLogado ? state.usuarioLogado.nome : 'Usuário Desconhecido';
+    const dataHoraStr = new Date().toLocaleString('pt-BR');
+    
+    if (formato === 'pdf') {
+      const logoUrl = window.location.origin + '/img/logo_village.jpg';
+      let htmlPrint = `<div class="header-doc">
+        <img src="${logoUrl}" alt="Village Logo">
+        <div class="header-text">
+           <h1>VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</h1>
+           <p>Relatório Consolidado de Coberturas / Freelancers</p>
+           <p><strong>Competência:</strong> ${mes}</p>
+           <p><strong>Gerado por:</strong> ${nomeUsuario}</p>
+           <p><strong>Emissão:</strong> ${dataHoraStr}</p>
+        </div>
+      </div>`;
+      
+      frees.forEach(fr => {
+        htmlPrint += `<div class="free-block">`;
+        htmlPrint += `<div class="free-header">FREELANCER: ${fr.nome} <span class="free-total">Total: R$ ${fr.total_valor.toFixed(2).replace('.', ',')}</span></div>`;
+        htmlPrint += `<table>
+          <thead><tr><th>Data</th><th>Posto / Cliente</th><th>Colaborador Ausente / Motivo</th><th style="text-align:right">Valor (R$)</th></tr></thead>
+          <tbody>`;
+        
+        fr.items.forEach(i => {
+           htmlPrint += `<tr>
+             <td style="width:100px">${formatarData(i.data)}</td>
+             <td>${i.posto}</td>
+             <td>${i.ausente}</td>
+             <td style="text-align:right; font-weight:bold;">R$ ${i.valor.toFixed(2).replace('.', ',')}</td>
+           </tr>`;
+        });
+        
+        htmlPrint += `</tbody></table></div>`;
+      });
+      
+      htmlPrint += `<div class="footer-doc">
+        <div class="sisfac-logo">SISFAC <span>2.0</span></div>
+        <div>Gerado por SISFAC</div>
+      </div>`;
+      
+      const w = window.open('', '_blank');
+      w.document.write(`<html><head><title>Relatório Freelancers</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #333; margin: 0; }
+          .header-doc { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #004d40; padding-bottom: 20px; margin-bottom: 30px; }
+          .header-doc img { max-height: 70px; }
+          .header-text { text-align: right; }
+          .header-text h1 { font-size: 20px; margin: 0; color: #004d40; text-transform: uppercase; }
+          .header-text p { font-size: 13px; margin: 5px 0 0 0; color: #555; }
+          
+          .free-block { margin-bottom: 35px; page-break-inside: avoid; }
+          .free-header { font-size: 14px; background: #e2e8f0; padding: 10px 15px; border: 1px solid #cbd5e1; border-bottom: none; display: flex; justify-content: space-between; font-weight: bold; text-transform: uppercase; }
+          .free-total { color: #047857; font-weight: 900; }
+          
+          table { border-collapse: collapse; width: 100%; font-size: 12px; margin-bottom: 0; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; }
+          th { background: #f8fafc; font-weight: bold; color: #475569; text-transform: uppercase; font-size: 11px; }
+          
+          .footer-doc { margin-top: 50px; text-align: center; font-size: 12px; border-top: 1px solid #cbd5e1; padding-top: 20px; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 8px; page-break-inside: avoid; }
+          .sisfac-logo { font-weight: 900; font-size: 18px; color: #0f172a; letter-spacing: -0.5px; }
+          .sisfac-logo span { color: #3b82f6; }
+          
+          @media print {
+            body { padding: 0; }
+            .free-header, table, th, td { border-color: #ccc !important; }
+            .header-doc { border-bottom-color: #ccc !important; }
+          }
+        </style></head><body>${htmlPrint}<script>setTimeout(()=>{window.print();},800);</script></body></html>`);
+      w.document.close();
+      
+    } else if (formato === 'excel') {
+      const dadosExcel = [];
+      frees.forEach(fr => {
+         fr.items.forEach(i => {
+            dadosExcel.push({
+               'Freelancer / Diarista': fr.nome,
+               'Data da Cobertura': formatarData(i.data),
+               'Posto / Cliente': i.posto,
+               'Colaborador Ausente': i.ausente,
+               'Valor (R$)': i.valor
+            });
+         });
+      });
+      
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(dadosExcel);
+      XLSX.utils.book_append_sheet(wb, ws, "Freelancers");
+      XLSX.writeFile(wb, `Consolidado_Freelancers_${mes}.xlsx`);
+    }
+    
+  } catch(e) {
+    alert('Erro ao gerar relatório: ' + e.message);
+  }
+};
