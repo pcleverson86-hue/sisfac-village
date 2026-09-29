@@ -77,7 +77,7 @@ function escapeJsString(str) {
 }
 
 // -------------------------------------------------------------
-// INICIALIZAÇÃO DA APLICAÇÃO & SESSÃO
+// INICIALIZAÇÁO DA APLICAÇÁO & SESSÁO
 // -------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', async () => {
   configurarDataPadrao();
@@ -122,7 +122,7 @@ function configurarDataPadrao() {
 }
 
 // -------------------------------------------------------------
-// 1. AUTENTICAÇÃO E PERMISSÕES (RBAC)
+// 1. AUTENTICAÇÁO E PERMISSÕES (RBAC)
 // -------------------------------------------------------------
 function verificarSessao() {
   const sessaoSalva = localStorage.getItem('sisfac_usuario');
@@ -353,7 +353,7 @@ function navegarParaPrimeiraAbaPermitida() {
 }
 
 // -------------------------------------------------------------
-// NAVEGAÇÃO ENTRE ABAS
+// NAVEGAÇÁO ENTRE ABAS
 // -------------------------------------------------------------
 function navegarPara(tabId) {
   if (tabId === 'postos') tabId = 'clientes';
@@ -1222,7 +1222,7 @@ async function salvarNovoPosto(e) {
 }
 
 // -------------------------------------------------------------
-// GESTÃO DE FUNÇÕES / CARGOS OPERACIONAIS
+// GESTÁO DE FUNÇÕES / CARGOS OPERACIONAIS
 // -------------------------------------------------------------
 function abrirModalNovaFuncao(origemSelectId = null) {
   state.cargoSelectOrigem = origemSelectId;
@@ -1358,7 +1358,7 @@ async function excluirFuncao(id, nome) {
 }
 
 // -------------------------------------------------------------
-// 3. COLABORADORES EFETIVOS & EXCLUSÃO MÚLTIPLA COM CHECKBOXES
+// 3. COLABORADORES EFETIVOS & EXCLUSÁO MÚLTIPLA COM CHECKBOXES
 // -------------------------------------------------------------
 function filtrarClientesAbaColab() {
   const input = document.getElementById('filtroColabBuscaCliente');
@@ -2152,7 +2152,7 @@ async function salvarNovoColaborador(e) {
   if (postoIdVal) {
     const p = (state.postos || []).find(x => x.id === postoIdVal);
     if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
-      alert(`⚠️ BLOQUEIO DE LOTAÇÃO: O setor "${p.nome_posto}" já atingiu a capacidade máxima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, vincule este colaborador a outro setor com vagas disponíveis ou crie um novo posto.`);
+      alert(`⚠️ BLOQUEIO DE LOTAÇÁO: O setor "${p.nome_posto}" já atingiu a capacidade máxima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, vincule este colaborador a outro setor com vagas disponíveis ou crie um novo posto.`);
       return;
     }
   }
@@ -2265,7 +2265,7 @@ async function confirmarDemissaoColaborador(e) {
 }
 
 // -------------------------------------------------------------
-// EDIÇÃO DE DADOS DO COLABORADOR
+// EDIÇÁO DE DADOS DO COLABORADOR
 // -------------------------------------------------------------
 async function abrirModalEditarColaborador(id) {
   try {
@@ -2559,7 +2559,7 @@ async function salvarEdicaoColaborador(e) {
       if (postoIdVal && (!colabAtual || colabAtual.posto_trabalho_id !== postoIdVal)) {
         const p = (state.postos || []).find(x => x.id === postoIdVal);
         if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
-          if (!confirm('BLOQUEIO DE LOTA��O: O setor "' + p.nome_posto + '" j� atingiu a capacidade m�xima. Deseja ignorar a lota��o e salvar?')) {
+          if (!confirm('BLOQUEIO DE LOTAÇÃO: O setor "' + p.nome_posto + '" já atingiu a capacidade máxima. Deseja ignorar a lotação e salvar?')) {
              return;
           }
         }
@@ -2613,17 +2613,17 @@ async function salvarEdicaoColaborador(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
-      alert('Informa��es do colaborador atualizadas com sucesso!');
+      alert('Informações do colaborador atualizadas com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao salvar edic�o: ' + err.message);
+    alert('Erro ao salvar edição: ' + err.message);
   }
 }
 
 // -------------------------------------------------------------
-// CONCESSÃO DE FÉRIAS AO COLABORADOR
+// CONCESSÁO DE FÉRIAS AO COLABORADOR
 // -------------------------------------------------------------
 async function abrirModalConcederFerias(id) {
   try {
@@ -4027,7 +4027,7 @@ function aplicarPeriodoAoCalendario() {
   // Ativa apenas os dias que:
   // 1. Estão dentro do intervalo [inicio, fim]
   // 2. São dias úteis de trabalho na escala do colaborador
-  // 3. NÃO são faltas registradas no RH
+  // 3. NÁO são faltas registradas no RH
   state.beneficioModal.dias.forEach(d => {
     const dentroPeriodo = (d.data >= inicio && d.data <= fim);
     d.ativo = (dentroPeriodo && d.eh_util_escala && !d.eh_falta);
@@ -4204,7 +4204,7 @@ function exportarBeneficiosExcel() {
 }
 
 // -------------------------------------------------------------
-// 6. COMPRAS: ORÇAMENTOS E APROVAÇÃO DA DIRETORIA
+// 6. COMPRAS: ORÇAMENTOS E APROVAÇÁO DA DIRETORIA
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 // 6. COMPRAS: ORÇAMENTOS, CONDIÇÕES DE PAGAMENTO & CALENDÁRIO
@@ -4956,7 +4956,7 @@ async function rejeitarOrcamento(id) {
 }
 
 // -------------------------------------------------------------
-// ESPELHO OFICIAL DO PEDIDO DE COMPRA (DOCUMENTO DE IMPRESSÃO)
+// ESPELHO OFICIAL DO PEDIDO DE COMPRA (DOCUMENTO DE IMPRESSÁO)
 // -------------------------------------------------------------
 async function abrirEspelhoPedido(id) {
   try {
@@ -5544,7 +5544,7 @@ function imprimirCronogramaFinanceiro() {
 }
 
 // -------------------------------------------------------------
-// 7. IMPORTAÇÃO EM MASSA POR PLANILHA (CLIENTES & COLABORADORES)
+// 7. IMPORTAÇÁO EM MASSA POR PLANILHA (CLIENTES & COLABORADORES)
 // -------------------------------------------------------------
 function abrirModalImportarColaboradores() {
   state.tipoImportacaoAtual = 'colaboradores';
@@ -5895,7 +5895,7 @@ async function processarImportacaoPlanilha() {
 }
 
 // -------------------------------------------------------------
-// CONFERÊNCIA, VALIDAÇÃO & CRIAÇÃO DE POSTOS ANTES DE IMPORTAR
+// CONFERÊNCIA, VALIDAÇÁO & CRIAÇÁO DE POSTOS ANTES DE IMPORTAR
 // -------------------------------------------------------------
 
 function normalizarTextoPrevia(s) {
@@ -6195,7 +6195,7 @@ function renderizarTabelaPreviaImportacao() {
         <td class="py-2.5 px-3">
           <div class="flex items-center gap-1.5 flex-wrap">
             <span class="font-bold text-slate-800 text-xs">${linha.nome}</span>
-            ${linha.id ? `<span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs" title="Atualizará colaborador existente ID #${linha.id} sem criar duplicidade"><i class="fa-solid fa-arrows-rotate text-[9px]"></i>#${linha.id} ATUALIZAÇÃO</span>` : ''}
+            ${linha.id ? `<span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs" title="Atualizará colaborador existente ID #${linha.id} sem criar duplicidade"><i class="fa-solid fa-arrows-rotate text-[9px]"></i>#${linha.id} ATUALIZAÇÁO</span>` : ''}
           </div>
           <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
             <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${linha.cpf || 'Sem CPF'}</span>
@@ -6697,7 +6697,7 @@ async function executarImportacaoConfirmada() {
 }
 
 // -------------------------------------------------------------
-// EDIÇÃO DE BENEFÍCIOS (VT E VA) NA PRÉVIA DA PLANILHA E PÓS-IMPORTAÇÃO
+// EDIÇÁO DE BENEFÍCIOS (VT E VA) NA PRÉVIA DA PLANILHA E PÓS-IMPORTAÇÁO
 // -------------------------------------------------------------
 
 function abrirModalEditarBeneficiosPrevia(realIdx) {
@@ -6899,7 +6899,7 @@ async function salvarEdicaoBeneficiosRapido(e) {
 }
 
 // -------------------------------------------------------------
-// 8. ADMIN: GESTÃO DE USUÁRIOS, SUPERVISORES DE CAMPO E SETORES
+// 8. ADMIN: GESTÁO DE USUÁRIOS, SUPERVISORES DE CAMPO E SETORES
 // -------------------------------------------------------------
 
 async function carregarPainelAdminMaster() {
@@ -6949,7 +6949,7 @@ function mudarSubAbaAdmin(subAba) {
 }
 
 // -------------------------------------------------------------
-// 8.1 GESTÃO DE USUÁRIOS OPERACIONAIS & PERMISSÕES
+// 8.1 GESTÁO DE USUÁRIOS OPERACIONAIS & PERMISSÕES
 // -------------------------------------------------------------
 async function carregarUsuarios() {
   const tbody = document.getElementById('tabelaUsuariosBody');
@@ -7218,7 +7218,7 @@ async function excluirUsuarioAdmin(id, nome) {
 }
 
 // -------------------------------------------------------------
-// 8.2 GESTÃO DE SUPERVISORES DE CAMPO (APP MÓVEL / EXTERNO)
+// 8.2 GESTÁO DE SUPERVISORES DE CAMPO (APP MÓVEL / EXTERNO)
 // -------------------------------------------------------------
 async function carregarSupervisoresAdmin() {
   const tbody = document.getElementById('tabelaSupervisoresAdminBody');
@@ -7459,7 +7459,7 @@ function copiarTexto(texto) {
 }
 
 // -------------------------------------------------------------
-// 8.3 GESTÃO DE SETORES DA EMPRESA
+// 8.3 GESTÁO DE SETORES DA EMPRESA
 // -------------------------------------------------------------
 async function carregarSetoresAdmin() {
   const tbody = document.getElementById('tabelaSetoresAdminBody');
@@ -7723,7 +7723,7 @@ function renderizarCardsClientesPostos() {
       badgeAlertaGeral = `
         <span class="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-full shadow animate-pulse flex items-center gap-1.5">
           <i class="fa-solid fa-triangle-exclamation"></i>
-          ${c.total_vagas_abertas} VAGA(S) EM ABERTO - REQUER CONTRATAÇÃO / REALOCAÇÃO
+          ${c.total_vagas_abertas} VAGA(S) EM ABERTO - REQUER CONTRATAÇÁO / REALOCAÇÁO
         </span>
       `;
     } else {
@@ -8295,7 +8295,7 @@ async function salvarEdicaoCliente(e) {
 }
 
 // -------------------------------------------------------------
-// 10. FALTAS (COM EXCLUSÃO MÚLTIPLA)
+// 10. FALTAS (COM EXCLUSÁO MÚLTIPLA)
 // -------------------------------------------------------------
 async function carregarFaltas() {
   const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
@@ -8482,7 +8482,7 @@ async function excluirFaltasSelecionadas() {
 }
 
 // -------------------------------------------------------------
-// GESTÃO DOS 5 SUPERVISORES DE CAMPO & APONTAMENTOS MOBILE
+// GESTÁO DOS 5 SUPERVISORES DE CAMPO & APONTAMENTOS MOBILE
 // -------------------------------------------------------------
 async function popularSelectSupervisoresFiltro() {
   const sel = document.getElementById('filtroFaltasSupervisor');
@@ -8845,7 +8845,7 @@ async function exportarFaltasExcel() {
       'Motivo da Falta': f.motivo_falta || '',
       'Dias Afastamento': f.dias_afastamento || 1,
       'CID Atestado': f.cid_atestado || '',
-      'Houve Cobertura?': f.houve_cobertura === 1 ? 'SIM' : 'NÃO',
+      'Houve Cobertura?': f.houve_cobertura === 1 ? 'SIM' : 'NÁO',
       'Tipo de Cobertura': f.houve_cobertura === 1 ? ((f.tipo_cobertura === 'freelancer' || f.tipo_cobertura === 'efetivo_dobra') ? 'Freelancer' : 'Efetivo / Reserva') : 'Posto Descoberto',
       'Quem Cobriu': f.cobertor_efetivo_nome || f.freelancer_nome || (f.houve_cobertura === 1 ? 'Sim' : 'Ninguém'),
       'Custo Freelance (R$)': f.valor_pago_freelance || 0,
@@ -9545,7 +9545,7 @@ async function salvarNovoFreelancer(e) {
 }
 
 // =========================================================================
-// GESTÃO DE FREELANCERS, DOSSIÊ COMPLETO E AUDITORIA DE EXCLUÍDOS
+// GESTÁO DE FREELANCERS, DOSSIÊ COMPLETO E AUDITORIA DE EXCLUÍDOS
 // =========================================================================
 
 // 1. EDITAR CADASTRO DO FREELANCER
@@ -9796,7 +9796,7 @@ async function carregarDossieFreelancer(freelancerId) {
   }
 }
 
-// 3. EDITAR DIÁRIA / PLANTÃO ESPECÍFICO (TUDO EDITÁVEL)
+// 3. EDITAR DIÁRIA / PLANTÁO ESPECÍFICO (TUDO EDITÁVEL)
 async function abrirModalEditarDiaria(diariaId, freelancerId = null) {
   state.diariaEdicaoAtualId = diariaId;
   state.dossieFreelancerAtualId = freelancerId || state.dossieFreelancerAtualId;
@@ -9983,7 +9983,7 @@ async function purgarDiariaDefinitivo(diariaId, freelancerId = null) {
     return;
   }
 
-  const confirmacao = prompt('ATENÇÃO: Esta ação é irreversível e apagará o registro do banco de dados permanentemente.\n\nDigite EXCLUIR para confirmar a exclusão definitiva:');
+  const confirmacao = prompt('ATENÇÁO: Esta ação é irreversível e apagará o registro do banco de dados permanentemente.\n\nDigite EXCLUIR para confirmar a exclusão definitiva:');
   if (confirmacao !== 'EXCLUIR') {
     alert('Operação cancelada.');
     return;
@@ -10108,7 +10108,7 @@ async function carregarPainelDiretoria() {
 }
 
 // =============================================================
-// GESTÃO DE COMPRAS MULTI-PRÉDIOS (~25 PRÉDIOS), LINKS EXTERNOS E CONSOLIDAÇÃO
+// GESTÁO DE COMPRAS MULTI-PRÉDIOS (~25 PRÉDIOS), LINKS EXTERNOS E CONSOLIDAÇÁO
 // =============================================================
 
 state.comprasMultiPredios = {
@@ -10629,7 +10629,7 @@ async function salvarModalEdicaoPredio() {
 }
 
 // -------------------------------------------------------------
-// EXPORTAÇÃO COMPLETA DO PEDIDO CONSOLIDADO PARA EXCEL (.xlsx)
+// EXPORTAÇÁO COMPLETA DO PEDIDO CONSOLIDADO PARA EXCEL (.xlsx)
 // -------------------------------------------------------------
 function exportarPedidoConsolidadoExcel() {
   if (!state.comprasMultiPredios.consolidado || !state.comprasMultiPredios.links) {
@@ -10890,7 +10890,7 @@ async function abrirModalRomaneios() {
 }
 
 // =============================================================
-// CADASTRO & GESTÃO DE PRÉDIOS E UNIDADES DE ENTREGA (ILIMITADOS)
+// CADASTRO & GESTÁO DE PRÉDIOS E UNIDADES DE ENTREGA (ILIMITADOS)
 // =============================================================
 
 state.gestaoPredios = {
@@ -12471,7 +12471,7 @@ async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clie
     console.error('Erro ao atualizar colaboradores:', e);
   }
 
-  // Filtrar colaboradores ativos que NÃO estão já alocados neste mesmo posto
+  // Filtrar colaboradores ativos que NÁO estão já alocados neste mesmo posto
   const listaBase = Array.isArray(state.colaboradores) ? state.colaboradores : [];
   state.colaboradoresParaVinculacao = listaBase.filter(c => 
     c.ativo === 1 && c.status_colaborador !== 'Demitido' && c.posto_trabalho_id !== postoId
@@ -13223,7 +13223,7 @@ function imprimirHistoricoColaborador() {
 
 
 // =============================================================
-// 10. CONCESSÃO COLETIVA DE BENEFÍCIOS EM LOTE (SETOR DE BENEFÍCIOS)
+// 10. CONCESSÁO COLETIVA DE BENEFÍCIOS EM LOTE (SETOR DE BENEFÍCIOS)
 // =============================================================
 function abrirModalConcessaoLoteBeneficios(idsPreSelecionados = []) {
   const modal = document.getElementById('modalConcessaoColetivaBeneficios');
@@ -13501,7 +13501,7 @@ async function salvarConcessaoLoteBeneficios(e) {
 }
 
 // =============================================================
-// EDIÇÃO DE POSTOS DE TRABALHO (EXCLUSIVO ADMINISTRADOR MASTER)
+// EDIÇÁO DE POSTOS DE TRABALHO (EXCLUSIVO ADMINISTRADOR MASTER)
 // =============================================================
 
 async function abrirModalEditarPosto(postoId) {
@@ -14387,7 +14387,7 @@ async function excluirLeadComercial(id, nome) {
 }
 
 // -------------------------------------------------------------
-// 10.2 EFETIVAÇÃO DE CONTRATO & ORDENS DE IMPLANTAÇÃO
+// 10.2 EFETIVAÇÁO DE CONTRATO & ORDENS DE IMPLANTAÇÁO
 // -------------------------------------------------------------
 
 function abrirModalEfetivarContrato(leadId) {
@@ -15509,7 +15509,7 @@ async function executarReajusteMassaVT(e) {
 }
 
 // =============================================================
-// GESTÃO DE FORNECEDORES & CARTELA DE PRODUTOS E PREÇOS
+// GESTÁO DE FORNECEDORES & CARTELA DE PRODUTOS E PREÇOS
 // =============================================================
 
 state.fornecedores = [];
@@ -15964,7 +15964,7 @@ async function salvarNovoProdutoCartela(e) {
 }
 
 // -------------------------------------------------------------
-// IMPORTAÇÃO DE PRODUTOS DA CARTELA POR PLANILHA (.XLSX, .CSV)
+// IMPORTAÇÁO DE PRODUTOS DA CARTELA POR PLANILHA (.XLSX, .CSV)
 // -------------------------------------------------------------
 function baixarModeloImportacaoProdutos() {
   const wb = XLSX.utils.book_new();
@@ -16569,7 +16569,7 @@ async function excluirProdutoCartela(id) {
 }
 
 // =============================================================
-// EXPORTAÇÃO COMPLETA DA BASE DE COLABORADORES & RE-IMPORTAÇÃO SEM DUPLICIDADE
+// EXPORTAÇÁO COMPLETA DA BASE DE COLABORADORES & RE-IMPORTAÇÁO SEM DUPLICIDADE
 // =============================================================
 
 async function exportarBaseCompletaColaboradoresExcel() {
@@ -16913,13 +16913,13 @@ async function visualizarDocumentoSST(id) {
                 <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
               </div>
               <div>
-                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
                 <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
                 <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
               </div>
             </div>
             <div class="text-right text-[11px] font-mono text-slate-600">
-              <div><b>DATA EMISSÃO:</b> ${dataEmissao}</div>
+              <div><b>DATA EMISSÁO:</b> ${dataEmissao}</div>
               <div><b>REGISTRO SST:</b> #${d.id.toString().padStart(5, '0')}</div>
               <div><b>STATUS:</b> <span>${statusAssin}</span></div>
             </div>
@@ -17007,13 +17007,13 @@ ${escapeHtml(cronogramaLinhas)}
                 <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
               </div>
               <div>
-                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
                 <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
                 <div class="text-[10px] text-slate-500">Ordem de Serviço de Segurança do Trabalho - NR-01 / Portaria MTP nº 4.219/2022</div>
               </div>
             </div>
             <div class="text-right text-[11px] font-mono text-slate-600">
-              <div><b>EMISSÃO:</b> ${dataEmissao}</div>
+              <div><b>EMISSÁO:</b> ${dataEmissao}</div>
               <div><b>ORDEM DE SERVIÇO:</b> #${d.id.toString().padStart(5, '0')}</div>
               <div><b>STATUS:</b> <span>${statusAssin}</span></div>
             </div>
@@ -17105,7 +17105,7 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
                 <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
               </div>
-              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
               <div class="text-[11px] text-slate-500">SESMT / Segurança do Trabalho</div>
               <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
             </div>
@@ -17164,7 +17164,7 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
                 <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
               </div>
-              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
               <div class="text-[11px] text-slate-500">SESMT / Segurança do Trabalho</div>
               <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
             </div>
@@ -17673,7 +17673,7 @@ async function gerarNovoDocumentoSSTManual(colaboradorId) {
 }
 
 // =============================================================
-// CRONOGRAMA PADRÃO DE TREINAMENTO (SST / NR-01 & NR-06)
+// CRONOGRAMA PADRÁO DE TREINAMENTO (SST / NR-01 & NR-06)
 // =============================================================
 
 async function carregarCronogramaPadraoSST() {
@@ -17692,7 +17692,7 @@ async function carregarCronogramaPadraoSST() {
     const local = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
 
     container.innerHTML = `
-      <!-- CABEÇALHO DO CRONOGRAMA PADRÃO -->
+      <!-- CABEÇALHO DO CRONOGRAMA PADRÁO -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div class="flex items-center gap-4">
@@ -17965,10 +17965,10 @@ function visualizarModeloCronogramaPadrao() {
     id: 0,
     tipo_documento: 'LISTA_TREINAMENTO',
     titulo: cronograma.titulo || 'LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST',
-    colaborador_nome: '[NOME DO COLABORADOR - ADMISSÃO]',
+    colaborador_nome: '[NOME DO COLABORADOR - ADMISSÁO]',
     colaborador_cpf: '000.000.000-00',
-    cargo_nome: '[CARGO / FUNÇÃO]',
-    cliente_nome: 'VILLAGE ADMINISTRAÇÃO E SERVIÇOS',
+    cargo_nome: '[CARGO / FUNÇÁO]',
+    cliente_nome: 'VILLAGE ADMINISTRAÇÁO E SERVIÇOS',
     nome_posto: 'Posto Operacional Designado',
     data_geracao: new Date().toISOString(),
     status_assinatura: 'Pendente',
@@ -18008,7 +18008,7 @@ function visualizarModeloCronogramaPadrao() {
               <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
             </div>
             <div>
-              <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
               <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
               <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
             </div>
@@ -18016,7 +18016,7 @@ function visualizarModeloCronogramaPadrao() {
           <div class="text-right text-[11px] font-mono text-slate-600">
             <div><b>MODELO OFICIAL</b></div>
             <div><b>SST / NR-01 & NR-06</b></div>
-            <div><b>STATUS:</b> <span class="text-amber-600 font-bold">PADRÃO ATIVO</span></div>
+            <div><b>STATUS:</b> <span class="text-amber-600 font-bold">PADRÁO ATIVO</span></div>
           </div>
         </div>
 
@@ -18034,9 +18034,9 @@ function visualizarModeloCronogramaPadrao() {
           <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
             <div><span class="text-slate-500">Nome Completo:</span> <b class="text-slate-900">[NOME COMPLETO DO COLABORADOR]</b></div>
             <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">000.000.000-00</b></div>
-            <div><span class="text-slate-500">Função / Cargo:</span> <b class="text-slate-900">[FUNÇÃO CONFORME ADMISSÃO]</b></div>
+            <div><span class="text-slate-500">Função / Cargo:</span> <b class="text-slate-900">[FUNÇÁO CONFORME ADMISSÁO]</b></div>
             <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${new Date().toLocaleDateString('pt-BR')}</b></div>
-            <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS</b></div>
+            <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS</b></div>
             <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">[POSTO / EDIFÍCIO ALOCADO]</b></div>
           </div>
         </div>
@@ -18544,7 +18544,7 @@ function formatarDataHora(dt) {
 }
 
 // =========================================================================
-// GESTÃO DE AFASTAMENTOS DE COLABORADORES & POSTO AFASTADOS
+// GESTÁO DE AFASTAMENTOS DE COLABORADORES & POSTO AFASTADOS
 // =========================================================================
 
 window.abrirModalAfastarColaborador = function(id, nome, origem) {
@@ -18841,7 +18841,7 @@ window.excluirAfastamento = async function(id) {
 
 
 // =========================================================================
-// GESTÃO DO CANAL DE DENÚNCIAS & COMPLIANCE (COORDENAÇÃO OPERACIONAL)
+// GESTÁO DO CANAL DE DENÚNCIAS & COMPLIANCE (COORDENAÇÁO OPERACIONAL)
 // =========================================================================
 
 state.denuncias = [];
@@ -20372,7 +20372,7 @@ window.salvarEdicaoComunicado = salvarEdicaoComunicado;
 
 
 // =============================================================
-// MÓDULO: FLUXO DE IMPLANTAÇÃO (VISÍVEL A TODOS OS USUÁRIOS)
+// MÓDULO: FLUXO DE IMPLANTAÇÁO (VISÍVEL A TODOS OS USUÁRIOS)
 // =============================================================
 
 async function carregarFluxoImplantacao() {
@@ -20427,18 +20427,18 @@ function renderizarFluxoImplantacao(ordens) {
     var tarefasHtml = tarefas.map(function(t) {
       var podeMudarStatus = ehAdmin || setorUsuario.indexOf((t.setor_responsavel || '').toLowerCase().substring(0,4)) !== -1;
       var sc = t.status === 'Concluída' ? 'bg-emerald-100 text-emerald-800' : t.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
-      var prazoFmt = t.prazo_limite ? new Date(t.prazo_limite + 'T00:00:00').toLocaleDateString('pt-BR') : 'â€”';
+      var prazoFmt = t.prazo_limite ? new Date(t.prazo_limite + 'T00:00:00').toLocaleDateString('pt-BR') : '””';
       var tarefaEscapada = JSON.stringify(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return '<div class="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0 group">'
         + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'Concluída' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
         + '<div class="flex-1 min-w-0">'
           + '<div class="flex items-start justify-between gap-2 flex-wrap">'
-            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'Concluída' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€”') + '</span>'
+            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'Concluída' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || '””') + '</span>'
             + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ' + sc + ' shrink-0">' + t.status + '</span>'
           + '</div>'
           + (t.descricao ? '<p class="text-[11px] text-slate-500 mt-0.5">' + t.descricao + '</p>' : '')
           + '<div class="flex items-center gap-3 mt-1 flex-wrap">'
-            + '<span class="text-[10px] text-slate-500"><i class="fa-solid fa-building text-slate-400 mr-1"></i>' + (setorLabels[t.setor_responsavel] || t.setor_responsavel || 'â€”') + '</span>'
+            + '<span class="text-[10px] text-slate-500"><i class="fa-solid fa-building text-slate-400 mr-1"></i>' + (setorLabels[t.setor_responsavel] || t.setor_responsavel || '””') + '</span>'
             + (t.responsavel_nome ? '<span class="text-[10px] text-slate-600 font-semibold"><i class="fa-solid fa-user text-slate-400 mr-1"></i>' + t.responsavel_nome + '</span>' : '')
             + (t.prazo_limite ? '<span class="text-[10px] text-slate-500"><i class="fa-regular fa-calendar text-slate-400 mr-1"></i>' + prazoFmt + '</span>' : '')
           + '</div>'
@@ -20474,7 +20474,7 @@ function renderizarFluxoImplantacao(ordens) {
       + '<div class="px-5 py-3 border-b border-slate-100">'
         + '<div class="flex items-center justify-between mb-1.5">'
           + '<span class="text-[11px] font-bold text-slate-600">Progresso da Implantação</span>'
-          + '<span class="text-[11px] font-black ' + (pct === 100 ? 'text-emerald-600' : 'text-slate-700') + '">' + concluidas + '/' + total + ' tarefas â€” ' + pct + '%</span>'
+          + '<span class="text-[11px] font-black ' + (pct === 100 ? 'text-emerald-600' : 'text-slate-700') + '">' + concluidas + '/' + total + ' tarefas ”” ' + pct + '%</span>'
         + '</div>'
         + '<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="' + corPct + ' h-full rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div>'
       + '</div>'
@@ -20630,10 +20630,10 @@ function filtrarFreelancersLocalmente() {
     html += '<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">';
     html += '<div class="flex items-center gap-3"><input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="' + f.freelancer_id + '" onchange="aoAlternarChkFree(this)">';
     html += '<div><div class="flex items-center gap-2"><h3 class="font-bold text-slate-900">' + f.nome + '</h3>';
-    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plant�es</span>';
-    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Di�ria: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
+    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plantões</span>';
+    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Diária: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
     html += '<div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">';
-    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'N�o cadastrado') + '</span>';
+    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'Não cadastrado') + '</span>';
     if(f.telefone) html += '<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>' + f.telefone + '</span>';
     html += '</div></div></div>';
     html += '<div class="flex flex-wrap items-center justify-end gap-3">';
@@ -20723,7 +20723,7 @@ function mudarAbaDashboard(painel) {
 }
 
 async function carregarDashboardSetorial(setor) {
-  // Placeholder para buscar m�tricas por setor
+  // Placeholder para buscar métricas por setor
   const mesInput = document.getElementById('dashboardMes');
   const mes = mesInput?.value || state.mesAtual;
   
@@ -20749,7 +20749,7 @@ window.mudarAbaDashboard = mudarAbaDashboard;
 
 function imprimirDossieComercial() {
   const lead = state.comercial.leadAtual;
-  if (!lead) return alert('Nenhum lead selecionado para impress�o.');
+  if (!lead) return alert('Nenhum lead selecionado para impressão.');
 
   const printWindow = window.open('', '_blank');
   
@@ -20767,7 +20767,7 @@ function imprimirDossieComercial() {
       `;
     }).join('');
   } else {
-    htmlInteracoes = '<p style="color: #666;">Nenhuma intera��o registrada.</p>';
+    htmlInteracoes = '<p style="color: #666;">Nenhuma interação registrada.</p>';
   }
 
   const dataCriacao = new Date(lead.created_at).toLocaleDateString('pt-BR');
@@ -20776,7 +20776,7 @@ function imprimirDossieComercial() {
   printWindow.document.write(`
     <html>
       <head>
-        <title>Dossi� Comercial - ${lead.razao_social}</title>
+        <title>Dossiê Comercial - ${lead.razao_social}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #222; }
           .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
@@ -20793,21 +20793,21 @@ function imprimirDossieComercial() {
       </head>
       <body>
         <div class="header">
-          <h1>DOSSI� COMERCIAL - RELAT�RIO DE PROSPEC��O</h1>
+          <h1>DOSSIÊ COMERCIAL - RELATÓRIO DE PROSPECÇÃO</h1>
           <p>Documento gerado em: ${new Date().toLocaleString('pt-BR')} pelo Sistema Integrado</p>
         </div>
         
         <div class="section">
           <h2>1. DADOS DO CLIENTE / PROSPECT</h2>
           <table>
-            <tr><th>Raz�o Social</th><td>${lead.razao_social || '-'}</td></tr>
+            <tr><th>Razão Social</th><td>${lead.razao_social || '-'}</td></tr>
             <tr><th>Nome Fantasia</th><td>${lead.nome_fantasia || '-'}</td></tr>
-            <tr><th>CNPJ</th><td>${lead.cnpj || 'N�o informado'}</td></tr>
+            <tr><th>CNPJ</th><td>${lead.cnpj || 'Não informado'}</td></tr>
             <tr><th>Segmento</th><td>${lead.segmento || 'Geral'}</td></tr>
-            <tr><th>Data de In�cio da Prospec��o</th><td>${dataCriacao}</td></tr>
+            <tr><th>Data de Início da Prospecção</th><td>${dataCriacao}</td></tr>
             <tr><th>Status Atual (Etapa)</th><td><b>${lead.etapa.toUpperCase()}</b> ${lead.cliente_id_convertido ? '(CONVERTIDO EM CLIENTE)' : ''}</td></tr>
-            <tr><th>Origem</th><td>${lead.origem || 'N�o informada'}</td></tr>
-            <tr><th>Endere�o</th><td>${lead.endereco || 'N�o informado'}</td></tr>
+            <tr><th>Origem</th><td>${lead.origem || 'Não informada'}</td></tr>
+            <tr><th>Endereço</th><td>${lead.endereco || 'Não informado'}</td></tr>
           </table>
         </div>
 
@@ -20815,7 +20815,7 @@ function imprimirDossieComercial() {
           <h2>2. CONTATO PRINCIPAL</h2>
           <table>
             <tr><th>Nome do Contato</th><td>${lead.contato_nome || '-'}</td></tr>
-            <tr><th>Cargo / Fun��o</th><td>${lead.contato_cargo || '-'}</td></tr>
+            <tr><th>Cargo / Função</th><td>${lead.contato_cargo || '-'}</td></tr>
             <tr><th>Telefone</th><td>${lead.contato_telefone || '-'}</td></tr>
             <tr><th>E-mail</th><td>${lead.contato_email || '-'}</td></tr>
           </table>
@@ -20826,18 +20826,18 @@ function imprimirDossieComercial() {
           <table>
             <tr><th>Quantidade de Postos / Vagas</th><td>${lead.vagas_estimadas || '0'}</td></tr>
             <tr><th>Valor Mensal Estimado / Fechado</th><td>${valorFmt}</td></tr>
-            <tr><th>Observa��es Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
+            <tr><th>Observações Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
           </table>
         </div>
 
         <div class="section" style="page-break-inside: avoid;">
-          <h2>4. HIST�RICO DE INTERA��ES E NEGOCIA��O</h2>
+          <h2>4. HISTÓRICO DE INTERAÇÕES E NEGOCIAÇÃO</h2>
           <div style="background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
             ${htmlInteracoes}
           </div>
         </div>
 
-        <button class="print-btn" onclick="window.print()">??? IMPRIMIR DOSSI�</button>
+        <button class="print-btn" onclick="window.print()">IMPRIMIR DOSSIÊ</button>
       </body>
     </html>
   `);
@@ -20853,7 +20853,7 @@ function filtrarSelectLista(inputId, selectId) {
   const select = document.getElementById(selectId);
   const options = select.options;
   
-  // Guardar options originais em um atributo se n�o existir
+  // Guardar options originais em um atributo se não existir
   if (!select.hasAttribute('data-original-options')) {
     const originalHtml = select.innerHTML;
     select.setAttribute('data-original-options', originalHtml);
@@ -20878,7 +20878,7 @@ window.filtrarSelectLista = filtrarSelectLista;
 
 function abrirModalServicoExtra() {
   document.getElementById('extraData').value = new Date().toISOString().split('T')[0];
-  document.getElementById('extraMotivo').value = 'Servi�o Extra / Avulso';
+  document.getElementById('extraMotivo').value = 'Serviço Extra / Avulso';
   
   const selCliente = document.getElementById('extraClienteId');
   selCliente.innerHTML = '<option value="">Selecione o Cliente / Base...</option>' + state.clientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`).join('');
@@ -20896,7 +20896,7 @@ function abrirModalServicoExtra() {
   
   selFree.innerHTML = html;
   
-  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> Lan�ar Pagamento Avulso / Dobra Extra';
+  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> Lançar Pagamento Avulso / Dobra Extra';
   document.getElementById('modalServicoExtra').classList.remove('hidden');
 }
 
@@ -20913,7 +20913,7 @@ async function salvarServicoExtra(e) {
     data_falta: document.getElementById('extraData').value,
     cliente_id: parseInt(document.getElementById('extraClienteId').value, 10),
     unidade_id: null,
-    colaborador_id: 180, // [SISTEMA] SERVI�O EXTRA
+    colaborador_id: 180, // [SISTEMA] SERVIÇO EXTRA
     motivo_falta: document.getElementById('extraMotivo').value,
     dias_afastamento: 1,
     houve_cobertura: 1,
@@ -20921,7 +20921,7 @@ async function salvarServicoExtra(e) {
     freelancer_id: isFree ? profId : null,
     cobertor_colaborador_id: !isFree ? profId : null,
     valor_pago_freelance: parseFloat(document.getElementById('extraValor').value) || 0,
-    observacoes_operacao: 'Lan�amento de Pagamento Avulso / Dobra'
+    observacoes_operacao: 'Lançamento de Pagamento Avulso / Dobra'
   };
 
   try {
@@ -20940,7 +20940,7 @@ async function salvarServicoExtra(e) {
       alert(result.message || 'Erro ao registrar.');
     }
   } catch (err) {
-    alert('Erro de conex�o.');
+    alert('Erro de conexão.');
   }
 }
 window.abrirModalServicoExtra = abrirModalServicoExtra;
@@ -21682,8 +21682,8 @@ async function gerarNecessidadesUniformes() {
 window.baixarModeloCsvUniformes = function() {
   const wb = XLSX.utils.book_new();
   const dados = [
-    { 'NOME DO COLABORADOR': 'EXEMPLO DA SILVA', 'SEXO': 'MASCULINO', 'FUNÇÃO': 'PORTEIRO', 'SUPERVISOR RESPONSAVEL': 'JOÃO DIAS', 'TAMANHO CAMISA': 'M', 'TAMANHO CALÇA': '42', 'TAMANHO SAPATO': '40', 'TAMANHO JAQUETA': 'M', 'TAMANHO BLAZER': '44' },
-    { 'NOME DO COLABORADOR': 'MARIA EXEMPLO', 'SEXO': 'FEMININO', 'FUNÇÃO': 'RECEPCIONISTA', 'SUPERVISOR RESPONSAVEL': 'MARIA GOMES', 'TAMANHO CAMISA': 'P', 'TAMANHO CALÇA': '38', 'TAMANHO SAPATO': '36', 'TAMANHO JAQUETA': 'P', 'TAMANHO BLAZER': '38' }
+    { 'NOME DO COLABORADOR': 'EXEMPLO DA SILVA', 'SEXO': 'MASCULINO', 'FUNÇÁO': 'PORTEIRO', 'SUPERVISOR RESPONSAVEL': 'JOÁO DIAS', 'TAMANHO CAMISA': 'M', 'TAMANHO CALÇA': '42', 'TAMANHO SAPATO': '40', 'TAMANHO JAQUETA': 'M', 'TAMANHO BLAZER': '44' },
+    { 'NOME DO COLABORADOR': 'MARIA EXEMPLO', 'SEXO': 'FEMININO', 'FUNÇÁO': 'RECEPCIONISTA', 'SUPERVISOR RESPONSAVEL': 'MARIA GOMES', 'TAMANHO CAMISA': 'P', 'TAMANHO CALÇA': '38', 'TAMANHO SAPATO': '36', 'TAMANHO JAQUETA': 'P', 'TAMANHO BLAZER': '38' }
   ];
   const ws = XLSX.utils.json_to_sheet(dados);
   XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
@@ -21693,7 +21693,7 @@ window.baixarModeloCsvUniformes = function() {
 
 
 // =====================================
-// ADMISSÕES (FLUXO DE APROVAÇÃO)
+// ADMISSÕES (FLUXO DE APROVAÇÁO)
 // =====================================
 
 let currentAdmissaoId = null;
@@ -22030,14 +22030,14 @@ window.factoryResetSistema = async function() {
      return alert('Apenas o Administrador Master tem permissão para realizar esta ação.');
   }
   
-  const code = prompt('ATENÇÃO EXTREMA: Esta ação irá APAGAR TODOS os colaboradores, admissões, comunicados e dados financeiros.\n\nConfigurações como Usuários, Cargos, Clientes, Postos e Regras de Uniforme serão MANTIDAS.\n\nPara confirmar, digite o código de segurança: ZerarSistema2026');
+  const code = prompt('ATENÇÁO EXTREMA: Esta ação irá APAGAR TODOS os colaboradores, admissões, comunicados e dados financeiros.\n\nConfigurações como Usuários, Cargos, Clientes, Postos e Regras de Uniforme serão MANTIDAS.\n\nPara confirmar, digite o código de segurança: ZerarSistema2026');
   
   if (code !== 'ZerarSistema2026') {
      if (code !== null) alert('Código inválido. Operação cancelada.');
      return;
   }
   
-  if (!confirm('Você tem CERTEZA ABSOLUTA? Esta ação NÃO pode ser desfeita e todos os dados operacionais desaparecerão imediatamente.')) return;
+  if (!confirm('Você tem CERTEZA ABSOLUTA? Esta ação NÁO pode ser desfeita e todos os dados operacionais desaparecerão imediatamente.')) return;
   
   try {
      const res = await fetch('/api/factory-reset', {
@@ -22193,7 +22193,7 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
        <div class="header-doc">
           <img src="${logoUrl}" alt="Village Logo">
           <div class="header-text">
-             <h1>VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</h1>
+             <h1>VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</h1>
              <p>Levantamento e Orçamento de Uniformes</p>
              <p><strong>Cotação realizada por:</strong> ${nomeUsuario}</p>
              <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
@@ -22340,7 +22340,7 @@ window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
       let htmlPrint = `<div class="header-doc">
         <img src="${logoUrl}" alt="Village Logo">
         <div class="header-text">
-           <h1>VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</h1>
+           <h1>VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</h1>
            <p>Relatório Consolidado de Coberturas / Freelancers</p>
            <p><strong>Competência:</strong> ${mes}</p>
            <p><strong>Gerado por:</strong> ${nomeUsuario}</p>
