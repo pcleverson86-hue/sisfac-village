@@ -21551,7 +21551,7 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
             <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            ${Object.values(dados.itens).map(i => `
+            ${Object.values(dados.itens).sort((a, b) => a.item.localeCompare(b.item) || String(a.tamanho).localeCompare(String(b.tamanho))).map(i => `
               <tr>
                 <td class="px-4 py-2 font-medium">${i.item}</td>
                 <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
