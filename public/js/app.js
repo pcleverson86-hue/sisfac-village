@@ -21587,21 +21587,21 @@ async function gerarNecessidadesUniformes() {
   } catch(e) { console.error(e); }
 }
 
-window.gerarOrcamentoViaCsv = gerarOrcamentoViaCsv;
 
 
-function baixarModeloCsvUniformes() {
-  const csvContent = "NOME DO COLABORADOR,SEXO,FUNÇÃO,SUPERVISOR RESPONSAVEL,TAMANHO CAMISA,TAMANHO CALÇA,TAMANHO SAPATO,TAMANHO JAQUETA,TAMANHO BLAZER\nEXEMPLO DA SILVA,MASCULINO,PORTEIRO,JOÃO DIAS,M,42,40,M,44\nMARIA EXEMPLO,FEMININO,RECEPCIONISTA,MARIA GOMES,P,38,36,P,38\n";
-  const blob = new Blob(["\uFEFF"+csvContent], { type: 'text/csv;charset=utf-8;' }); // \uFEFF is BOM for Excel to open UTF-8 correctly
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", "modelo_orcamento_uniformes.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-window.baixarModeloCsvUniformes = baixarModeloCsvUniformes;
+
+
+window.baixarModeloCsvUniformes = function() {
+  const wb = XLSX.utils.book_new();
+  const dados = [
+    { 'NOME DO COLABORADOR': 'EXEMPLO DA SILVA', 'SEXO': 'MASCULINO', 'FUNÇÃO': 'PORTEIRO', 'SUPERVISOR RESPONSAVEL': 'JOÃO DIAS', 'TAMANHO CAMISA': 'M', 'TAMANHO CALÇA': '42', 'TAMANHO SAPATO': '40', 'TAMANHO JAQUETA': 'M', 'TAMANHO BLAZER': '44' },
+    { 'NOME DO COLABORADOR': 'MARIA EXEMPLO', 'SEXO': 'FEMININO', 'FUNÇÃO': 'RECEPCIONISTA', 'SUPERVISOR RESPONSAVEL': 'MARIA GOMES', 'TAMANHO CAMISA': 'P', 'TAMANHO CALÇA': '38', 'TAMANHO SAPATO': '36', 'TAMANHO JAQUETA': 'P', 'TAMANHO BLAZER': '38' }
+  ];
+  const ws = XLSX.utils.json_to_sheet(dados);
+  XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
+  XLSX.writeFile(wb, "modelo_orcamento_funcionarios.xlsx");
+};
+
 
 
 // =====================================
