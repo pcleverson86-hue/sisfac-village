@@ -21254,7 +21254,14 @@ async function carregarCatalogoUniformes() {
     
     tbody.innerHTML = cat.map(c => `
       <tr class="hover:bg-slate-50">
-        <td class="px-3 py-3 font-bold text-slate-700">${c.item_nome}</td>
+        
+        <td class="px-3 py-3 font-bold text-slate-700">
+           ${c.item_nome}
+           ${c.genero === 'M' ? '<span class="ml-2 text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Masc</span>' : ''}
+           ${c.genero === 'F' ? '<span class="ml-2 text-[10px] bg-pink-100 text-pink-800 px-1.5 py-0.5 rounded">Fem</span>' : ''}
+           ${c.genero === 'U' ? '<span class="ml-2 text-[10px] bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">Unissex</span>' : ''}
+        </td>
+
         <td class="px-3 py-3">
           <select id="cat-fornecedor-${c.id}" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-white" onchange="mostrarBtnCat(${c.id})">
             <option value="">- Selecione um Fornecedor -</option>
@@ -21450,7 +21457,19 @@ async function gerarOrcamentoViaCsv() {
         if (!tam && r.tamanhos_disponiveis) tam = 'SEM MEDIDA PLANILHA';
         
         // Busca preco e fornecedor no catalogo
-        const catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase());
+        
+        let generoBusca = 'U';
+        if (r.sexo_aplicavel === 'Masculino') generoBusca = 'M';
+        if (r.sexo_aplicavel === 'Feminino') generoBusca = 'F';
+
+        let catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === generoBusca);
+        if (!catInfo) {
+           catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === 'U');
+        }
+        if (!catInfo) {
+           catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase()); // absolute fallback
+        }
+
         
         necessidades.push({
           item: r.item,
@@ -21529,10 +21548,15 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
     container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessário cruzado com esta base.</div>';
   } else {
     container.innerHTML = html + `
-      <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex justify-between items-center mt-6">
-        <div class="text-emerald-800 uppercase font-bold tracking-wider">Custo Total de Uniformes</div>
-        <div class="text-3xl font-black text-emerald-700">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
+      
+      <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
+        <div>
+           <div class="text-emerald-800 uppercase font-bold tracking-wider">Custo Total Previsto</div>
+           <div class="text-3xl font-black text-emerald-700">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
+        </div>
+        <button onclick="imprimirOrcamentoUniformesPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg shadow font-bold flex items-center gap-2"><i class="fa-solid fa-print"></i> Imprimir Orçamento em PDF</button>
       </div>
+
     `;
   }
 }
@@ -21947,4 +21971,109 @@ window.factoryResetSistema = async function() {
   } catch(e) {
      alert('Erro crítico: ' + e.message);
   }
+};
+
+
+window.abrirModalImportarUniformes = function() {
+  document.getElementById('inputMatrizUniformes').value = '';
+  document.getElementById('lblArquivoUni').textContent = 'Clique para selecionar a Planilha';
+  document.getElementById('modalImportarUniformes').classList.remove('hidden');
+};
+
+window.baixarModeloMatrizUniformes = function() {
+  const wb = XLSX.utils.book_new();
+  const dados = [
+    { 'FUNCAO': 'PORTEIRO', 'GENERO': 'MASCULINO', 'PECA': 'CAMISA POLO MASCULINA', 'QUANTIDADE': 2, 'PRECO': 45.90, 'FORNECEDOR': 'UNIFORMES LTDA' },
+    { 'FUNCAO': 'PORTEIRO', 'GENERO': 'MASCULINO', 'PECA': 'CALÇA SOCIAL', 'QUANTIDADE': 2, 'PRECO': 55.00, 'FORNECEDOR': 'UNIFORMES LTDA' },
+    { 'FUNCAO': 'RECEPCIONISTA', 'GENERO': 'FEMININO', 'PECA': 'CAMISA POLO FEMININA', 'QUANTIDADE': 2, 'PRECO': 42.50, 'FORNECEDOR': 'UNIFORMES LTDA' },
+    { 'FUNCAO': 'ASG INSALUBRE 40%', 'GENERO': 'UNISSEX', 'PECA': 'BOTA DE SEGURANÇA', 'QUANTIDADE': 1, 'PRECO': 89.90, 'FORNECEDOR': 'EPI STORE' },
+    { 'FUNCAO': 'SUPERVISOR', 'GENERO': 'TODOS', 'PECA': 'JAQUETA IMPERMEÁVEL', 'QUANTIDADE': 1, 'PRECO': 120.00, 'FORNECEDOR': 'UNIFORMES LTDA' }
+  ];
+  const ws = XLSX.utils.json_to_sheet(dados);
+  XLSX.utils.book_append_sheet(wb, ws, "Matriz_Uniformes");
+  XLSX.writeFile(wb, "Modelo_Importacao_Matriz_Uniformes.xlsx");
+};
+
+window.processarImportacaoMatrizUniformes = function() {
+  const fileInput = document.getElementById('inputMatrizUniformes');
+  if (!fileInput.files.length) return alert('Selecione um arquivo.');
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
+      
+      const payload = rows.map(r => ({
+        funcao: extrairCampoPlanilha(r, ['funcao', 'cargo', 'função']),
+        genero: extrairCampoPlanilha(r, ['genero', 'sexo', 'gênero', 'sexo_aplicavel']),
+        peca: extrairCampoPlanilha(r, ['peca', 'peça', 'item']),
+        quantidade: extrairCampoPlanilha(r, ['quantidade', 'qtd']),
+        preco: extrairCampoPlanilha(r, ['preco', 'preço', 'valor', 'valor_unitario', 'custo']),
+        fornecedor: extrairCampoPlanilha(r, ['fornecedor', 'empresa'])
+      })).filter(x => x.funcao && x.peca);
+      
+      if (!payload.length) return alert('Nenhum dado válido encontrado.');
+      
+      const res = await fetch('/api/uniformes/importar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matriz: payload })
+      });
+      const j = await res.json();
+      if(j.success) {
+        alert(j.message);
+        fecharModal('modalImportarUniformes');
+        carregarRegrasUniformes();
+        carregarCatalogoUniformes();
+      } else {
+        alert(j.error);
+      }
+    } catch(err) {
+      alert('Erro: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(fileInput.files[0]);
+};
+
+
+window.imprimirOrcamentoUniformesPDF = function() {
+  const container = document.getElementById('resultadoOrcamentoUniformes');
+  if (!container || container.innerHTML.includes('Nenhum item')) return;
+  
+  const clone = container.cloneNode(true);
+  
+  // Remove the print button from the clone
+  const btns = clone.querySelectorAll('button');
+  btns.forEach(b => b.remove());
+
+  const w = window.open('', '_blank');
+  w.document.write(`
+    <html><head><title>Orçamento de Uniformes</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+      h1 { font-size: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase; }
+      h4 { font-size: 16px; background: #eee; padding: 8px 10px; margin-top: 20px; border: 1px solid #ccc; border-bottom: none; margin-bottom: 0; display: flex; justify-content: space-between; }
+      table { w-full; border-collapse: collapse; margin-bottom: 20px; width: 100%; font-size: 12px; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+      th { background: #f9f9f9; }
+      .bg-emerald-50 { background-color: #d1fae5; border: 1px solid #10b981; padding: 15px; margin-top: 30px; font-size: 18px; font-weight: bold; text-align: right; }
+      .text-emerald-800 { color: #065f46; display: block; font-size: 12px; }
+      .footer { margin-top: 50px; text-align: center; font-size: 10px; border-top: 1px solid #ccc; padding-top: 20px; color: #666; }
+      .text-right { text-align: right; }
+      .text-center { text-align: center; }
+      .bg-indigo-100 { display: none; } /* Hide avisos */
+    </style></head>
+    <body>
+       <h1>Relatório Consolidado - Orçamento de Uniformes</h1>
+       ${clone.innerHTML}
+       <div class="footer">Gerado por SISFAC 2.0 em ${new Date().toLocaleString('pt-BR')}</div>
+       <script>
+         setTimeout(() => { window.print(); }, 800);
+       </script>
+    </body></html>
+  `);
+  w.document.close();
 };
