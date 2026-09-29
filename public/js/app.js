@@ -16906,15 +16906,15 @@ async function visualizarDocumentoSST(id) {
       }
 
       area.innerHTML = `
-        <div class="sst-documento-a4 p-5 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
-          <div class="border-b-2 border-slate-900 pb-2 mb-5 flex justify-between items-start">
+        <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+          <div class="border-b-2 border-slate-900 pb-4 mb-5 flex justify-between items-start">
             <div class="flex items-center gap-3">
               <div class="w-14 h-14 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
                 <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
               </div>
               <div>
-                <div class="font-extrabold text-sm tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
-                <div class="text-[10px] font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
                 <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
               </div>
             </div>
@@ -16926,13 +16926,13 @@ async function visualizarDocumentoSST(id) {
           </div>
 
           <div class="text-center my-4 pb-2 border-b border-slate-300">
-            <h1 class="text-sm font-black uppercase tracking-wider text-slate-900">
+            <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
               LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST
             </h1>
-            <p class="text-[10px] text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
+            <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
           </div>
 
-          <div class="mb-2 bg-slate-50 border border-slate-300 rounded-lg p-3 text-[10px] leading-relaxed">
+          <div class="mb-4 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
             <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-id-card"></i> 1. Dados Cadastrais do Colaborador
             </div>
@@ -16946,7 +16946,7 @@ async function visualizarDocumentoSST(id) {
             </div>
           </div>
 
-          <div class="mb-2 border border-slate-300 rounded-lg p-3 text-[10px] leading-relaxed">
+          <div class="mb-4 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
             <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center justify-between">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & Conteúdo Programático</span>
               <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga Horária: ${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '06 Horas')}</span>
@@ -16955,16 +16955,16 @@ async function visualizarDocumentoSST(id) {
               <div><b>Instrutor:</b> ${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'SESMT / Técnico de Segurança')}</div>
               <div><b>Local:</b> ${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Base Operacional / Posto de Serviço')}</div>
             </div>
-            <div class="text-[10px] text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
+            <div class="text-xs text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
 ${escapeHtml(cronogramaLinhas)}
             </div>
           </div>
 
-          <div class="mb-3 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
+          <div class="mb-6 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
             <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento Introdutório de Segurança e Saúde no Trabalho acima especificado, compreendendo os riscos inerentes à minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteção e procedimentos estabelecidos.</p>
           </div>
 
-          <div class="mt-6 pt-6 grid grid-cols-2 gap-8 text-center text-[10px]">
+          <div class="mt-12 pt-6 grid grid-cols-2 gap-8 text-center text-xs">
             <div>
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 48px;">
                 ${statusAssin === 'ASSINADO' ? `<span class="text-emerald-700 font-bold font-mono text-[11px]"><i class="fa-solid fa-signature mr-1"></i>ASSINADO EM ${formatarData(d.data_assinatura)}</span>` : ''}
@@ -17000,15 +17000,15 @@ ${escapeHtml(cronogramaLinhas)}
       }).join('') : '<div class="text-slate-500 text-[11px] italic p-2 bg-slate-50 rounded">EPIs definidos conforme a função e riscos do cliente.</div>';
 
       area.innerHTML = `
-        <div class="sst-documento-a4 p-5 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
-          <div class="border-b-2 border-slate-900 pb-2 mb-2 flex justify-between items-start">
+        <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+          <div class="border-b-2 border-slate-900 pb-4 mb-4 flex justify-between items-start">
             <div class="flex items-center gap-3">
               <div class="w-14 h-14 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
                 <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
               </div>
               <div>
-                <div class="font-extrabold text-sm tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
-                <div class="text-[10px] font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
                 <div class="text-[10px] text-slate-500">Ordem de Serviço de Segurança do Trabalho - NR-01 / Portaria MTP nº 4.219/2022</div>
               </div>
             </div>
@@ -17019,14 +17019,14 @@ ${escapeHtml(cronogramaLinhas)}
             </div>
           </div>
 
-          <div class="text-center my-1.5 pb-2 border-b border-slate-300">
-            <h1 class="text-sm font-black uppercase tracking-wider text-slate-900">
+          <div class="text-center my-3 pb-2 border-b border-slate-300">
+            <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
               ORDEM DE SERVIÇO SOBRE SEGURANÇA E SAÚDE NO TRABALHO (OS - NR-01)
             </h1>
-            <p class="text-[10px] text-slate-600 mt-0.5">Em cumprimento ao subitem 1.4.1 da NR-01 e aos Artigos 157 e 158 da CLT</p>
+            <p class="text-xs text-slate-600 mt-0.5">Em cumprimento ao subitem 1.4.1 da NR-01 e aos Artigos 157 e 158 da CLT</p>
           </div>
 
-          <div class="mb-1.5 bg-slate-50 border border-slate-300 rounded-lg p-1.5 text-[10px] leading-relaxed">
+          <div class="mb-3 bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs leading-relaxed">
             <div class="font-bold text-slate-800 uppercase mb-1.5 border-b border-slate-200 pb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-user-check"></i> 1. Identificação do Trabalhador e da Função
             </div>
@@ -17041,16 +17041,16 @@ ${escapeHtml(cronogramaLinhas)}
             </div>
           </div>
 
-          <div class="mb-1.5 text-[10px]">
+          <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-briefcase"></i> 2. Descrição das Atividades Desenvolvidas
             </div>
-            <div class="text-slate-700 bg-slate-50/70 p-1.5 rounded border border-slate-200 whitespace-pre-line leading-relaxed">
+            <div class="text-slate-700 bg-slate-50/70 p-2.5 rounded border border-slate-200 whitespace-pre-line leading-relaxed">
 ${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução das atividades operacionais específicas da função, garantindo os padrões técnicos, de asseio, conservação e vigilância do posto de trabalho.')}
             </div>
           </div>
 
-          <div class="mb-1.5 text-[10px]">
+          <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> 3. Riscos Ocupacionais Identificados (PGR / GRO)
             </div>
@@ -17059,7 +17059,7 @@ ${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução
             </div>
           </div>
 
-          <div class="mb-1.5 text-[10px]">
+          <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-vest"></i> 4. Equipamentos de Proteção Individual (EPI) de Uso Obrigatório
             </div>
@@ -17068,30 +17068,30 @@ ${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução
             </div>
           </div>
 
-          <div class="mb-1.5 text-[10px]">
+          <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-circle-check text-emerald-600"></i> 5. Medidas Preventivas e Procedimentos de Segurança
             </div>
-            <div class="text-slate-700 bg-emerald-50/20 p-1.5 rounded border border-emerald-100 whitespace-pre-line leading-relaxed">
+            <div class="text-slate-700 bg-emerald-50/20 p-2.5 rounded border border-emerald-100 whitespace-pre-line leading-relaxed">
 ${escapeHtml(conteudo.medidas_preventivas || '• Utilizar obrigatoriamente todos os EPIs fornecidos durante a execução das atividades no posto;\n• Não manusear produtos químicos ou maquinários sem capacitação e leitura prévia da FISPQ/rótulo;\n• Manter as vias de circulação desobstruídas e comunicar prontamente riscos ambientais;\n• Participar de todos os exames médicos periódicos e treinamentos de reciclagem convocados.')}
             </div>
           </div>
 
-          <div class="mb-1.5 text-[10px]">
+          <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
               <i class="fa-solid fa-ban text-rose-600"></i> 6. Proibições e Penalidades (Art. 158 da CLT)
             </div>
-            <div class="text-slate-700 bg-rose-50/20 p-1.5 rounded border border-rose-100 whitespace-pre-line leading-relaxed">
+            <div class="text-slate-700 bg-rose-50/20 p-2.5 rounded border border-rose-100 whitespace-pre-line leading-relaxed">
 ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É terminantemente proibido operar equipamentos sem autorização expressa da supervisão;\n• Proibido fumar ou consumir alimentos em áreas operacionais ou de risco químico;\n• A recusa injustificada do empregado ao uso do EPI ou ao cumprimento das normas de segurança constitui ato faltoso (CLT, Art. 158), sujeito a penalidades que variam de advertência por escrito, suspensão disciplinar até demissão por justa causa (CLT, Art. 482).')}
             </div>
           </div>
 
-          <div class="mb-2 p-1.5 border border-slate-300 rounded-lg text-[10px] text-slate-700 leading-relaxed text-justify bg-slate-50">
+          <div class="mb-4 p-2.5 border border-slate-300 rounded-lg text-[10px] text-slate-700 leading-relaxed text-justify bg-slate-50">
             <div class="font-bold uppercase text-slate-900 mb-1">7. Termo de Recebimento, Ciência e Responsabilidade</div>
             <p>${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || 'Declaro ter recebido uma via da presente Ordem de Serviço, tomando pleno conhecimento dos riscos da função e das medidas preventivas a serem adotadas. Comprometo-me a cumprir integralmente todas as determinações aqui contidas, zelando pela minha segurança e dos demais colaboradores.')}</p>
           </div>
 
-          <div class="mt-4 pt-4 grid grid-cols-2 gap-8 text-center text-[10px]">
+          <div class="mt-8 pt-4 grid grid-cols-2 gap-8 text-center text-xs">
             <div>
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
                 ${statusAssin === 'ASSINADO' ? `<span class="text-emerald-700 font-bold font-mono text-[11px]"><i class="fa-solid fa-signature mr-1"></i>ASSINADO EM ${formatarData(d.data_assinatura)}</span>` : ''}
@@ -17111,8 +17111,8 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
             </div>
           </div>
 
-        <div class="sst-documento-a4 p-5 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
-          <div class="text-center mb-3 pb-2 border-b border-slate-300">
+        <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="page-break-before: always; min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+          <div class="text-center mb-6 pb-2 border-b border-slate-300">
              <h1 class="text-sm font-black uppercase tracking-wider text-slate-900 leading-tight">
                PORTARIA 3214 DE 8 DE JUNHO DE 1978 <br> NORMA REGULAMENTADORA NÚMERO 1 (NR 1) DISPOSIÇÕES GERAIS
              </h1>
@@ -17150,7 +17150,7 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
               <p><b>1.8.1.</b> Constitui ato faltoso, a recusa injustificada do empregado ao cumprimento do disposto no item anterior.</p>
           </div>
 
-          <div class="mt-6 pt-4 grid grid-cols-2 gap-8 text-center text-[10px]">
+          <div class="mt-12 pt-4 grid grid-cols-2 gap-8 text-center text-xs">
             <div>
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
                 ${statusAssin === 'ASSINADO' ? `<span class="text-emerald-700 font-bold font-mono text-[11px]"><i class="fa-solid fa-signature mr-1"></i>ASSINADO EM ${formatarData(d.data_assinatura)}</span>` : ''}
@@ -17249,24 +17249,24 @@ async function abrirModalEditarDocumentoSST(id) {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Carga Horária</label>
-          <input type="text" id="editSSTCargaHoraria" value="${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '04 Horas')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
+          <input type="text" id="editSSTCargaHoraria" value="${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '04 Horas')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
         </div>
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Instrutor / Resp. Técnico</label>
-          <input type="text" id="editSSTInstrutor" value="${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'Cleverson Almeida')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
+          <input type="text" id="editSSTInstrutor" value="${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'Cleverson Almeida')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
         </div>
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Registro DRT / MTE</label>
-          <input type="text" id="editSSTInstrutorRegistro" value="${escapeHtml(conteudo.instrutor_registro || 'TST, DRT 0073086 / MG')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
+          <input type="text" id="editSSTInstrutorRegistro" value="${escapeHtml(conteudo.instrutor_registro || 'TST, DRT 0073086 / MG')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
         </div>
       </div>
       <div>
         <label class="block font-semibold text-slate-700 mb-1">Local de Realização</label>
-        <input type="text" id="editSSTLocal" value="${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Sede Village / Posto de Trabalho')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500">
+        <input type="text" id="editSSTLocal" value="${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Sede Village / Posto de Trabalho')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500">
       </div>
       <div>
         <label class="block font-semibold text-slate-700 mb-1">Cronograma e Conteúdo Programático</label>
-        <textarea id="editSSTCronograma" rows="6" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(cronogramaLinhas || '• Módulo 1: Apresentação da Empresa e Política de Segurança e Saúde no Trabalho.\n• Módulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\n• Módulo 3: Riscos Físicos, Químicos, Biológicos, Ergonômicos e Riscos de Acidentes específicos da função.\n• Módulo 4: NR-06 - Equipamentos de Proteção Individual (EPI): Guarda, higienização e obrigatoriedade de uso.\n• Módulo 5: Procedimentos de Emergência, Primeiros Socorros e Comunicação Imediata de Acidentes (CAT).\n• Módulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.')}</textarea>
+        <textarea id="editSSTCronograma" rows="6" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(cronogramaLinhas || '• Módulo 1: Apresentação da Empresa e Política de Segurança e Saúde no Trabalho.\n• Módulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\n• Módulo 3: Riscos Físicos, Químicos, Biológicos, Ergonômicos e Riscos de Acidentes específicos da função.\n• Módulo 4: NR-06 - Equipamentos de Proteção Individual (EPI): Guarda, higienização e obrigatoriedade de uso.\n• Módulo 5: Procedimentos de Emergência, Primeiros Socorros e Comunicação Imediata de Acidentes (CAT).\n• Módulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.')}</textarea>
       </div>
     `;
   } else {
@@ -17279,29 +17279,29 @@ async function abrirModalEditarDocumentoSST(id) {
     container.innerHTML = `
       <div>
         <label class="block font-semibold text-slate-700 mb-1">Descrição das Atividades da Função</label>
-        <textarea id="editSSTAtividades" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || '')}</textarea>
+        <textarea id="editSSTAtividades" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || '')}</textarea>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Riscos Ocupacionais (um por linha)</label>
-          <textarea id="editSSTRiscos" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: [FÍSICO] Ruído contínuo&#10;[ERGONÔMICO] Postura inadequada">${escapeHtml(txtRiscos)}</textarea>
+          <textarea id="editSSTRiscos" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: [FÍSICO] Ruído contínuo&#10;[ERGONÔMICO] Postura inadequada">${escapeHtml(txtRiscos)}</textarea>
         </div>
         <div>
           <label class="block font-semibold text-slate-700 mb-1">EPIs Obrigatórios (um por linha)</label>
-          <textarea id="editSSTEPIs" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: Calçado de segurança com biqueira (CA: 12345)&#10;Luva nitrílica">${escapeHtml(txtEpis)}</textarea>
+          <textarea id="editSSTEPIs" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: Calçado de segurança com biqueira (CA: 12345)&#10;Luva nitrílica">${escapeHtml(txtEpis)}</textarea>
         </div>
       </div>
       <div>
         <label class="block font-semibold text-slate-700 mb-1">Medidas Preventivas e Procedimentos de Segurança</label>
-        <textarea id="editSSTMedidas" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.medidas_preventivas || '')}</textarea>
+        <textarea id="editSSTMedidas" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.medidas_preventivas || '')}</textarea>
       </div>
       <div>
         <label class="block font-semibold text-slate-700 mb-1">Proibições e Atos Inseguros (Art. 158 CLT)</label>
-        <textarea id="editSSTProibicoes" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '')}</textarea>
+        <textarea id="editSSTProibicoes" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '')}</textarea>
       </div>
       <div>
         <label class="block font-semibold text-slate-700 mb-1">Termo de Ciência e Compromisso</label>
-        <textarea id="editSSTTermo" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-[10px] leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || '')}</textarea>
+        <textarea id="editSSTTermo" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || '')}</textarea>
       </div>
     `;
   }
@@ -17416,7 +17416,7 @@ async function carregarModelosOSSST() {
               </span>
             </div>
             ${m.titulo_modelo && m.nome_funcao !== m.titulo_modelo ? `<div class="text-[11px] font-medium text-slate-500 mb-2">Função base: <b>${escapeHtml(m.nome_funcao)}</b></div>` : ''}
-            <p class="text-[10px] text-slate-600 line-clamp-3 leading-relaxed mb-1.5">
+            <p class="text-xs text-slate-600 line-clamp-3 leading-relaxed mb-3">
               ${escapeHtml(m.descricao_atividades || 'Sem descrição cadastrada.')}
             </p>
             <div class="flex items-center gap-2 text-[10px]">
@@ -17429,10 +17429,10 @@ async function carregarModelosOSSST() {
             </div>
           </div>
           <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-            <button onclick="abrirModalModeloOS(${m.id})" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+            <button onclick="abrirModalModeloOS(${m.id})" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
               <i class="fa-solid fa-pencil"></i> Editar Modelo
             </button>
-            <button onclick="excluirModeloOS(${m.id})" class="text-[10px] font-semibold text-rose-500 hover:text-rose-700 cursor-pointer" title="Inativar modelo">
+            <button onclick="excluirModeloOS(${m.id})" class="text-xs font-semibold text-rose-500 hover:text-rose-700 cursor-pointer" title="Inativar modelo">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -17451,16 +17451,16 @@ function adicionarLinhaRiscoModeloOS(tipo = 'Acidente', desc = '') {
   const div = document.createElement('div');
   div.className = 'linha-risco-item flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs';
   div.innerHTML = `
-    <select class="risco-tipo border border-slate-300 rounded-md px-2 py-1 text-[10px] bg-slate-50 font-semibold text-slate-700 w-36 shrink-0 focus:outline-none">
+    <select class="risco-tipo border border-slate-300 rounded-md px-2 py-1 text-xs bg-slate-50 font-semibold text-slate-700 w-36 shrink-0 focus:outline-none">
       <option value="Físico" ${tipo === 'Físico' ? 'selected' : ''}>Físico</option>
       <option value="Químico" ${tipo === 'Químico' ? 'selected' : ''}>Químico</option>
       <option value="Biológico" ${tipo === 'Biológico' ? 'selected' : ''}>Biológico</option>
       <option value="Ergonômico" ${tipo === 'Ergonômico' ? 'selected' : ''}>Ergonômico</option>
       <option value="Acidente" ${tipo === 'Acidente' ? 'selected' : ''}>Acidente / Mecânico</option>
     </select>
-    <input type="text" class="risco-desc w-full border border-slate-300 rounded-md px-2.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Ruído contínuo, postura inadequada, contato com produtos de limpeza..." value="${escapeHtml(desc)}">
+    <input type="text" class="risco-desc w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Ruído contínuo, postura inadequada, contato com produtos de limpeza..." value="${escapeHtml(desc)}">
     <button type="button" onclick="this.closest('.linha-risco-item').remove()" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Remover este risco">
-      <i class="fa-solid fa-trash-can text-[10px]"></i>
+      <i class="fa-solid fa-trash-can text-xs"></i>
     </button>
   `;
   container.appendChild(div);
@@ -17473,10 +17473,10 @@ function adicionarLinhaEPIModeloOS(nome = '', ca = '') {
   const div = document.createElement('div');
   div.className = 'linha-epi-item flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs';
   div.innerHTML = `
-    <input type="text" class="epi-nome w-full border border-slate-300 rounded-md px-2.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Calçado de segurança com biqueira, Luvas nitrílicas..." value="${escapeHtml(nome)}">
-    <input type="text" class="epi-ca w-32 shrink-0 border border-slate-300 rounded-md px-2.5 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="C.A. (opcional)" value="${escapeHtml(ca)}">
+    <input type="text" class="epi-nome w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Calçado de segurança com biqueira, Luvas nitrílicas..." value="${escapeHtml(nome)}">
+    <input type="text" class="epi-ca w-32 shrink-0 border border-slate-300 rounded-md px-2.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="C.A. (opcional)" value="${escapeHtml(ca)}">
     <button type="button" onclick="this.closest('.linha-epi-item').remove()" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Remover este EPI">
-      <i class="fa-solid fa-trash-can text-[10px]"></i>
+      <i class="fa-solid fa-trash-can text-xs"></i>
     </button>
   `;
   container.appendChild(div);
@@ -17694,7 +17694,7 @@ async function carregarCronogramaPadraoSST() {
     container.innerHTML = `
       <!-- CABEÇALHO DO CRONOGRAMA PADRÃO -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-2">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div class="flex items-center gap-4">
             <div class="w-16 h-16 rounded-xl bg-white border border-slate-200 p-1.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
@@ -17704,24 +17704,24 @@ async function carregarCronogramaPadraoSST() {
                 <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border border-amber-200">
                   Padrão Oficial de Admissão
                 </span>
-                <span class="text-[10px] text-slate-400 font-mono">NR-01 & NR-06</span>
+                <span class="text-xs text-slate-400 font-mono">NR-01 & NR-06</span>
               </div>
-              <h2 class="text-sm font-bold text-slate-900 mt-1">${escapeHtml(cronograma.titulo || 'Cronograma Padrão de Treinamento e Integração - NR-01 & NR-06')}</h2>
-              <p class="text-[10px] text-slate-500">Documento base emitido automaticamente para todos os novos colaboradores admitidos na Village.</p>
+              <h2 class="text-base font-bold text-slate-900 mt-1">${escapeHtml(cronograma.titulo || 'Cronograma Padrão de Treinamento e Integração - NR-01 & NR-06')}</h2>
+              <p class="text-xs text-slate-500">Documento base emitido automaticamente para todos os novos colaboradores admitidos na Village.</p>
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <button onclick="visualizarModeloCronogramaPadrao()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] flex items-center gap-1.5 transition cursor-pointer">
+            <button onclick="visualizarModeloCronogramaPadrao()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer">
               <i class="fa-solid fa-file-lines text-amber-600"></i> Visualizar Modelo Oficial
             </button>
-            <button onclick="abrirModalEditarCronogramaPadrao()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+            <button onclick="abrirModalEditarCronogramaPadrao()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
               <i class="fa-solid fa-pen-to-square"></i> Editar Cronograma Padrão
             </button>
           </div>
         </div>
 
         <!-- CARDS DE INFORMAÇÕES CHAVE -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[10px]">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
             <span class="text-slate-500 text-[11px] block">Carga Horária Total</span>
             <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5 mt-0.5">
@@ -17730,26 +17730,26 @@ async function carregarCronogramaPadraoSST() {
           </div>
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
             <span class="text-slate-500 text-[11px] block">Instrutor / Resp. Técnico</span>
-            <span class="font-bold text-slate-900 text-[10px] flex items-center gap-1.5 mt-0.5">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5">
               <i class="fa-solid fa-user-tie text-blue-600"></i> ${escapeHtml(instrutorNome)}
             </span>
           </div>
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
             <span class="text-slate-500 text-[11px] block">Registro Profissional / DRT</span>
-            <span class="font-bold text-slate-900 text-[10px] flex items-center gap-1.5 mt-0.5">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5">
               <i class="fa-solid fa-id-card text-emerald-600"></i> ${escapeHtml(instrutorRegistro)}
             </span>
           </div>
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
             <span class="text-slate-500 text-[11px] block">Local Padrão</span>
-            <span class="font-bold text-slate-900 text-[10px] flex items-center gap-1.5 mt-0.5 truncate" title="${escapeHtml(local)}">
+            <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5 truncate" title="${escapeHtml(local)}">
               <i class="fa-solid fa-location-dot text-rose-500"></i> ${escapeHtml(local)}
             </span>
           </div>
         </div>
 
         ${cronograma.observacoes ? `
-          <div class="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 text-[10px] text-amber-950">
+          <div class="p-3 bg-amber-50/50 rounded-lg border border-amber-200/60 text-xs text-amber-950">
             <span class="font-bold block mb-1 text-[11px] uppercase tracking-wide flex items-center gap-1.5">
               <i class="fa-solid fa-circle-info text-amber-600"></i> Metodologia e Diretrizes Gerais:
             </span>
@@ -17765,7 +17765,7 @@ async function carregarCronogramaPadraoSST() {
             <i class="fa-solid fa-layer-group text-amber-600"></i>
             Estrutura dos Módulos (${modulos.length})
           </h3>
-          <span class="text-[10px] text-slate-500">Transmitidos em treinamento presencial introdutório</span>
+          <span class="text-xs text-slate-500">Transmitidos em treinamento presencial introdutório</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -17774,17 +17774,17 @@ async function carregarCronogramaPadraoSST() {
               <div>
                 <div class="flex items-start justify-between gap-2 mb-2">
                   <div class="flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-black text-[10px] flex items-center justify-center">
+                    <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center">
                       ${idx + 1}
                     </span>
-                    <span class="font-bold text-[10px] text-slate-900">${escapeHtml(m.modulo || `Módulo ${idx + 1}`)}</span>
+                    <span class="font-bold text-xs text-slate-900">${escapeHtml(m.modulo || `Módulo ${idx + 1}`)}</span>
                   </div>
                   <span class="bg-blue-50 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-200">
                     <i class="fa-solid fa-stopwatch mr-1"></i>${escapeHtml(m.carga_horaria || '1h')}
                   </span>
                 </div>
-                <h4 class="font-bold text-[10px] text-slate-800 mb-1.5">${escapeHtml(m.tema || '')}</h4>
-                <p class="text-[10px] text-slate-600 leading-relaxed mb-1.5">
+                <h4 class="font-bold text-xs text-slate-800 mb-1.5">${escapeHtml(m.tema || '')}</h4>
+                <p class="text-xs text-slate-600 leading-relaxed mb-3">
                   ${escapeHtml(m.descricao || '')}
                 </p>
               </div>
@@ -17850,15 +17850,15 @@ function adicionarLinhaModuloCronogramaPadrao(m = null) {
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Identificação do Módulo</label>
-        <input type="text" class="modulo-nome w-full border border-slate-300 rounded px-2 py-1 text-[10px] font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modNome)}">
+        <input type="text" class="modulo-nome w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modNome)}">
       </div>
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Carga Horária</label>
-        <input type="text" class="modulo-carga w-full border border-slate-300 rounded px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modCarga)}">
+        <input type="text" class="modulo-carga w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modCarga)}">
       </div>
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Modalidade</label>
-        <select class="modulo-modalidade w-full border border-slate-300 rounded px-2 py-1 text-[10px] bg-white focus:outline-none">
+        <select class="modulo-modalidade w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none">
           <option value="Presencial Teórico-Prático" ${modModalidade === 'Presencial Teórico-Prático' ? 'selected' : ''}>Presencial Teórico-Prático</option>
           <option value="Presencial Teórico" ${modModalidade === 'Presencial Teórico' ? 'selected' : ''}>Presencial Teórico</option>
           <option value="Prático / No Posto" ${modModalidade === 'Prático / No Posto' ? 'selected' : ''}>Prático / No Posto</option>
@@ -17869,16 +17869,16 @@ function adicionarLinhaModuloCronogramaPadrao(m = null) {
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Tema / Assunto Principal *</label>
-        <input type="text" class="modulo-tema w-full border border-slate-300 rounded px-2 py-1 text-[10px] font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modTema)}" placeholder="Ex: NR-06 - Equipamentos de Proteção Individual (EPI)">
+        <input type="text" class="modulo-tema w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modTema)}" placeholder="Ex: NR-06 - Equipamentos de Proteção Individual (EPI)">
       </div>
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Instrutor Específico (opcional)</label>
-        <input type="text" class="modulo-instrutor w-full border border-slate-300 rounded px-2 py-1 text-[10px] focus:outline-none" value="${escapeHtml(modInstrutor)}" placeholder="Deixar em branco para usar o instrutor padrão">
+        <input type="text" class="modulo-instrutor w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none" value="${escapeHtml(modInstrutor)}" placeholder="Deixar em branco para usar o instrutor padrão">
       </div>
     </div>
     <div>
       <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Conteúdo Abordado / Descrição</label>
-      <textarea rows="2" class="modulo-desc w-full border border-slate-300 rounded px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Descrição detalhada do conteúdo do módulo...">${escapeHtml(modDesc)}</textarea>
+      <textarea rows="2" class="modulo-desc w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Descrição detalhada do conteúdo do módulo...">${escapeHtml(modDesc)}</textarea>
     </div>
     <div class="flex justify-end">
       <button type="button" onclick="this.closest('.item-modulo-cronograma').remove()" class="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer">
@@ -18001,15 +18001,15 @@ function visualizarModeloCronogramaPadrao() {
   const area = document.getElementById('areaImpressaoSST');
   if (area) {
     area.innerHTML = `
-      <div class="sst-documento-a4 p-5 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
-        <div class="border-b-2 border-slate-900 pb-2 mb-5 flex justify-between items-start">
+      <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
+        <div class="border-b-2 border-slate-900 pb-4 mb-5 flex justify-between items-start">
           <div class="flex items-center gap-3">
             <div class="w-14 h-14 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
               <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
             </div>
             <div>
-              <div class="font-extrabold text-sm tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
-              <div class="text-[10px] font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
+              <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÃO E SERVIÇOS EIRELI</div>
+              <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
               <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
             </div>
           </div>
@@ -18021,13 +18021,13 @@ function visualizarModeloCronogramaPadrao() {
         </div>
 
         <div class="text-center my-4 pb-2 border-b border-slate-300">
-          <h1 class="text-sm font-black uppercase tracking-wider text-slate-900">
+          <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
             LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST
           </h1>
-          <p class="text-[10px] text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
+          <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
         </div>
 
-        <div class="mb-2 bg-slate-50 border border-slate-300 rounded-lg p-3 text-[10px] leading-relaxed">
+        <div class="mb-4 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
           <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
             <i class="fa-solid fa-id-card"></i> 1. Dados Cadastrais do Colaborador (Exemplo Preenchido na Admissão)
           </div>
@@ -18041,7 +18041,7 @@ function visualizarModeloCronogramaPadrao() {
           </div>
         </div>
 
-        <div class="mb-2 border border-slate-300 rounded-lg p-3 text-[10px] leading-relaxed">
+        <div class="mb-4 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
           <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center justify-between">
             <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & Conteúdo Programático</span>
             <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga Horária: ${escapeHtml(cargaTotal)}</span>
@@ -18050,16 +18050,16 @@ function visualizarModeloCronogramaPadrao() {
             <div><b>Instrutor:</b> ${escapeHtml(instrutorNome)} (${escapeHtml(instrutorRegistro)})</div>
             <div><b>Local:</b> ${escapeHtml(local)}</div>
           </div>
-          <div class="text-[10px] text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
+          <div class="text-xs text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
 ${escapeHtml(cronogramaLinhas)}
           </div>
         </div>
 
-        <div class="mb-3 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
+        <div class="mb-6 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
           <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento Introdutório de Segurança e Saúde no Trabalho acima especificado, compreendendo os riscos inerentes à minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteção e procedimentos estabelecidos.</p>
         </div>
 
-        <div class="mt-6 pt-6 grid grid-cols-2 gap-8 text-center text-[10px]">
+        <div class="mt-12 pt-6 grid grid-cols-2 gap-8 text-center text-xs">
           <div>
             <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 48px;">
               <span class="text-slate-400 text-[10px]">Assinatura do Colaborador</span>
@@ -18168,11 +18168,11 @@ function renderizarTabelaArquivo(docs) {
     return `
       <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
         <td class="py-3 px-4">
-          <div class="font-mono font-bold text-[10px] text-slate-900">#ARQ-${d.id.toString().padStart(4, '0')}</div>
+          <div class="font-mono font-bold text-xs text-slate-900">#ARQ-${d.id.toString().padStart(4, '0')}</div>
           <div class="text-[10px] text-slate-400 mt-0.5">Solicitado em ${dataSol}</div>
         </td>
         <td class="py-3 px-4">
-          <div class="font-bold text-slate-800 text-[10px]">${d.colaborador_nome}</div>
+          <div class="font-bold text-slate-800 text-xs">${d.colaborador_nome}</div>
           <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
             <span class="font-mono bg-slate-100 px-1 rounded">${d.colaborador_cpf || 'Sem CPF'}</span>
             <span>•</span>
@@ -18181,13 +18181,13 @@ function renderizarTabelaArquivo(docs) {
           <div class="text-[10px] text-slate-400 mt-0.5">${d.cliente_nome || 'Base'}</div>
         </td>
         <td class="py-3 px-4">
-          <div class="font-semibold text-slate-800 text-[10px]">${d.descricao || d.tipo_documento}</div>
+          <div class="font-semibold text-slate-800 text-xs">${d.descricao || d.tipo_documento}</div>
           <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 uppercase mt-0.5">
             ${d.tipo_documento}
           </span>
         </td>
         <td class="py-3 px-4">
-          <div class="text-[10px] font-semibold text-slate-700">${d.solicitante_nome || 'Sistema RH'}</div>
+          <div class="text-xs font-semibold text-slate-700">${d.solicitante_nome || 'Sistema RH'}</div>
           <div class="text-[10px] text-slate-400">${d.solicitante_setor || 'Operações'}</div>
         </td>
         <td class="py-3 px-4">
@@ -18197,7 +18197,7 @@ function renderizarTabelaArquivo(docs) {
             </span>
           ` : `
             <div class="space-y-0.5">
-              <div class="font-bold text-teal-900 text-[10px] flex items-center gap-1">
+              <div class="font-bold text-teal-900 text-xs flex items-center gap-1">
                 <i class="fa-solid fa-box text-teal-600"></i> ${d.caixa_arquivo || d.localizacao_caixa || 'Caixa'}
               </div>
               <div class="text-[10px] text-slate-500">
@@ -18210,16 +18210,16 @@ function renderizarTabelaArquivo(docs) {
         <td class="py-3 px-4 text-right">
           <div class="flex items-center justify-end gap-1.5 flex-wrap">
             ${isPendente ? `
-              <button onclick="abrirModalConfirmarArquivamentoFisico(${d.id}, false)" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] flex items-center gap-1.5 shadow-2xs transition">
+              <button onclick="abrirModalConfirmarArquivamentoFisico(${d.id}, false)" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition">
                 <i class="fa-solid fa-box-open"></i> Protocolar Guarda
               </button>
             ` : `
-              <button onclick="abrirModalConfirmarArquivamentoFisico(${d.id}, true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded text-[10px] flex items-center gap-1 transition">
+              <button onclick="abrirModalConfirmarArquivamentoFisico(${d.id}, true)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-1 rounded text-xs flex items-center gap-1 transition">
                 <i class="fa-solid fa-pencil"></i> Editar Local
               </button>
             `}
             <button onclick="excluirProtocoloArquivo(${d.id})" class="text-slate-400 hover:text-rose-600 p-1 rounded transition" title="Remover protocolo">
-              <i class="fa-solid fa-trash-can text-[10px]"></i>
+              <i class="fa-solid fa-trash-can text-xs"></i>
             </button>
           </div>
         </td>
@@ -18794,22 +18794,22 @@ window.carregarTabelaAfastadosModal = async function() {
 
       tbody.innerHTML += `
         <tr class="hover:bg-slate-50 transition">
-          <td class="p-1.5">
+          <td class="p-2.5">
             <div class="font-bold text-slate-900">${d.colaborador_nome || 'N/A'}</div>
             <div class="text-[10px] text-slate-400 font-mono">${d.colaborador_cpf || 'Sem CPF'}</div>
           </td>
-          <td class="p-1.5">
+          <td class="p-2.5">
             <div class="font-semibold text-slate-800">${clienteOrigem}</div>
             <div class="text-[10px] text-slate-500">${postoOrigem}</div>
           </td>
-          <td class="p-1.5 font-mono">${formatarData(d.data_inicio)}</td>
-          <td class="p-1.5 font-mono text-slate-600">${dataPrev ? formatarData(dataPrev) : '<span class="text-slate-400 italic">Indeterminada</span>'}</td>
-          <td class="p-1.5">
+          <td class="p-2.5 font-mono">${formatarData(d.data_inicio)}</td>
+          <td class="p-2.5 font-mono text-slate-600">${dataPrev ? formatarData(dataPrev) : '<span class="text-slate-400 italic">Indeterminada</span>'}</td>
+          <td class="p-2.5">
             <div class="font-semibold text-slate-800">${d.motivo || 'N/A'}</div>
             ${d.cid ? `<div class="text-[10px] text-purple-700 font-bold font-mono">CID: ${d.cid}</div>` : ''}
           </td>
-          <td class="p-1.5 text-center">${situacaoBadge}</td>
-          <td class="p-1.5 text-right whitespace-nowrap">
+          <td class="p-2.5 text-center">${situacaoBadge}</td>
+          <td class="p-2.5 text-right whitespace-nowrap">
             <div class="flex items-center justify-end gap-1">
               ${btnRetornar}
               <button onclick="excluirAfastamento(${d.id})" class="text-slate-400 hover:text-red-600 p-1" title="Excluir Registro de Afastamento">
@@ -18951,7 +18951,7 @@ window.filtrarDenunciasTabela = function() {
     tbody.innerHTML += `
       <tr class="hover:bg-slate-50/80 transition">
         <td class="p-3">
-          <div class="font-mono font-black text-slate-900 text-[10px] text-teal-800">${d.protocolo}</div>
+          <div class="font-mono font-black text-slate-900 text-xs text-teal-800">${d.protocolo}</div>
           <div class="text-[10px] text-slate-400">${dataReg}</div>
         </td>
         <td class="p-3">${denuncianteTexto}</td>
@@ -18969,10 +18969,10 @@ window.filtrarDenunciasTabela = function() {
         <td class="p-3 text-center">${statusBadge}</td>
         <td class="p-3 text-right whitespace-nowrap">
           <div class="flex items-center justify-end gap-1.5">
-            <button onclick="abrirModalTratativasDenuncia(${d.id})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] flex items-center gap-1 shadow-xs transition" title="Abrir Análise e Registrar Tratativas Operacionais">
+            <button onclick="abrirModalTratativasDenuncia(${d.id})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-xs transition" title="Abrir Análise e Registrar Tratativas Operacionais">
               <i class="fa-solid fa-clipboard-check"></i> Tratar
             </button>
-            <button onclick="abrirDossieImpressao(${d.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg text-[10px] flex items-center gap-1 border border-slate-300 transition" title="Gerar Dossiê Oficial para Diretoria e Arquivo">
+            <button onclick="abrirDossieImpressao(${d.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 border border-slate-300 transition" title="Gerar Dossiê Oficial para Diretoria e Arquivo">
               <i class="fa-solid fa-print"></i> Dossiê
             </button>
           </div>
@@ -19213,9 +19213,9 @@ function atualizarEstiloBotoesDiasEscala() {
     const btn = document.getElementById(`btnDiaEscala-${d}`);
     if (!btn) return;
     if (state.escalaDiasAtivos.has(d)) {
-      btn.className = 'p-1.5 rounded-lg border font-bold text-[10px] transition bg-indigo-600 text-white border-indigo-700 shadow-2xs cursor-pointer';
+      btn.className = 'p-2.5 rounded-lg border font-bold text-xs transition bg-indigo-600 text-white border-indigo-700 shadow-2xs cursor-pointer';
     } else {
-      btn.className = 'p-1.5 rounded-lg border font-bold text-[10px] transition bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 cursor-pointer';
+      btn.className = 'p-2.5 rounded-lg border font-bold text-xs transition bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 cursor-pointer';
     }
   });
 }
@@ -19423,7 +19423,7 @@ function renderizarGridEscalasCadastradas() {
           <div class="flex items-start justify-between gap-2">
             <div>
               <span class="inline-block w-2.5 h-2.5 rounded-full ${badgeCor} mr-1"></span>
-              <h5 class="font-black text-slate-900 text-[10px] inline">${escapeHtml(esc.nome)}</h5>
+              <h5 class="font-black text-slate-900 text-xs inline">${escapeHtml(esc.nome)}</h5>
             </div>
             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 uppercase">
               ${esc.tipo}
@@ -19752,7 +19752,7 @@ function renderizarClientesAgrupadosMulti() {
   const total = state.multiClienteClientes.length;
   if (contador) {
     contador.textContent = `${total} de 5 selecionados`;
-    contador.className = `text-[10px] font-black px-2.5 py-1 rounded-full border ${total > 0 ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : 'bg-slate-100 text-slate-700 border-slate-300'}`;
+    contador.className = `text-xs font-black px-2.5 py-1 rounded-full border ${total > 0 ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : 'bg-slate-100 text-slate-700 border-slate-300'}`;
   }
 
   if (total === 0) {
@@ -19797,10 +19797,10 @@ function renderizarClientesAgrupadosMulti() {
             <span class="bg-indigo-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full font-mono">
               Cliente ${idx + 1}
             </span>
-            <h5 class="font-bold text-slate-900 text-[10px]">${escapeHtml(item.nome)}</h5>
+            <h5 class="font-bold text-slate-900 text-xs">${escapeHtml(item.nome)}</h5>
             <span class="text-slate-400 font-mono text-[10px]">#${item.cliente_id}</span>
           </div>
-          <button type="button" onclick="removerClienteAgrupamentoMulti(${idx})" class="text-slate-400 hover:text-red-600 p-1 text-[10px] transition cursor-pointer" title="Remover cliente deste agrupamento">
+          <button type="button" onclick="removerClienteAgrupamentoMulti(${idx})" class="text-slate-400 hover:text-red-600 p-1 text-xs transition cursor-pointer" title="Remover cliente deste agrupamento">
             <i class="fa-solid fa-trash-can mr-1"></i> Remover
           </button>
         </div>
@@ -19808,7 +19808,7 @@ function renderizarClientesAgrupadosMulti() {
         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div class="sm:col-span-4">
             <label class="block text-[10px] font-semibold text-slate-500 mb-1">Posto de Trabalho Vinculado</label>
-            <select onchange="aoSelecionarPostoClienteMulti(${idx}, this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-800 focus:outline-none">
+            <select onchange="aoSelecionarPostoClienteMulti(${idx}, this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none">
               ${optionsPosto}
             </select>
           </div>
@@ -19823,8 +19823,8 @@ function renderizarClientesAgrupadosMulti() {
           <div class="sm:col-span-3">
             <label class="block text-[10px] font-semibold text-slate-500 mb-1">Carga Horária Semanal</label>
             <div class="flex items-center gap-1.5">
-              <input type="number" min="1" max="44" step="0.5" value="${item.carga_horaria || 10}" onchange="aoAlterarCargaHorariaClienteMulti(${idx}, this.value)" class="w-20 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-[10px] font-bold text-indigo-700 text-center focus:outline-none">
-              <span class="text-[10px] font-semibold text-slate-600">horas/sem</span>
+              <input type="number" min="1" max="44" step="0.5" value="${item.carga_horaria || 10}" onchange="aoAlterarCargaHorariaClienteMulti(${idx}, this.value)" class="w-20 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-indigo-700 text-center focus:outline-none">
+              <span class="text-xs font-semibold text-slate-600">horas/sem</span>
             </div>
           </div>
         </div>
@@ -19897,13 +19897,13 @@ function recalcularTotalHorasMultiCliente() {
   if (elBadgeStatus) {
     if (Math.abs(saldo) < 0.1) {
       elBadgeStatus.textContent = 'Carga Total Equilibrada';
-      elBadgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+      elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
     } else if (saldo > 0) {
       elBadgeStatus.textContent = `Faltam ${saldo.toFixed(1)}h para atingir ${alvoValor}h`;
-      elBadgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+      elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
     } else {
       elBadgeStatus.textContent = `Atenção: Excede limite semanal em ${Math.abs(saldo).toFixed(1)}h`;
-      elBadgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 animate-pulse';
+      elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 animate-pulse';
     }
   }
 }
@@ -19991,7 +19991,7 @@ async function carregarRoteirosMultiCliente() {
 
     if (state.roteirosMultiCliente.length === 0) {
       container.innerHTML = `
-        <div class="p-3 text-center text-slate-400 bg-white rounded-lg border border-slate-200 text-[10px]">
+        <div class="p-3 text-center text-slate-400 bg-white rounded-lg border border-slate-200 text-xs">
           Nenhum roteiro Multi-Cliente ativo cadastrado no momento.
         </div>
       `;
@@ -20012,7 +20012,7 @@ async function carregarRoteirosMultiCliente() {
           <div>
             <div class="flex items-center gap-2">
               <span class="bg-purple-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full uppercase">Roteiro #${rot.id}</span>
-              <h5 class="font-bold text-slate-900 text-[10px]">${escapeHtml(rot.nome_roteiro)}</h5>
+              <h5 class="font-bold text-slate-900 text-xs">${escapeHtml(rot.nome_roteiro)}</h5>
             </div>
             <div class="text-[11px] text-slate-600 mt-1">
               Colaborador: <b class="text-indigo-900">${escapeHtml(rot.colaborador_nome || 'N/A')}</b> | Carga Semanal: <b>${rot.carga_total_semanal || 0}h</b>
@@ -20021,7 +20021,7 @@ async function carregarRoteirosMultiCliente() {
               ${tagsClientes}
             </div>
           </div>
-          <button onclick="desvincularRoteiroMulti(${rot.id}, '${escapeJsString(rot.colaborador_nome)}')" class="shrink-0 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 font-bold px-3 py-1 rounded-lg text-[10px] transition cursor-pointer flex items-center gap-1" title="Desfazer este agrupamento e liberar os postos">
+          <button onclick="desvincularRoteiroMulti(${rot.id}, '${escapeJsString(rot.colaborador_nome)}')" class="shrink-0 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 font-bold px-3 py-1 rounded-lg text-xs transition cursor-pointer flex items-center gap-1" title="Desfazer este agrupamento e liberar os postos">
             <i class="fa-solid fa-unlink"></i> Desvincular Roteiro
           </button>
         </div>
@@ -20133,13 +20133,13 @@ function renderizarCalendarioSemanalPostos(dias) {
     const postosDia = dias[col.key] || [];
 
     const cardsDiaHtml = postosDia.length === 0 
-      ? `<div class="p-4 text-center text-slate-400 text-[10px] italic bg-slate-50 rounded-xl border border-dashed border-slate-200">Sem escala neste dia</div>`
+      ? `<div class="p-4 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">Sem escala neste dia</div>`
       : postosDia.map(item => {
           const isMulti = item.tipo_alocacao === 'Multi-Cliente';
           return `
             <div class="bg-white rounded-xl border ${isMulti ? 'border-purple-300 ring-1 ring-purple-100' : 'border-slate-200'} p-3 shadow-2xs space-y-2 hover:shadow-sm transition">
               <div class="flex items-start justify-between gap-1">
-                <span class="font-bold text-slate-900 text-[10px] line-clamp-1" title="${escapeHtml(item.cliente_nome)}">
+                <span class="font-bold text-slate-900 text-xs line-clamp-1" title="${escapeHtml(item.cliente_nome)}">
                   ${escapeHtml(item.cliente_nome)}
                 </span>
                 <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isMulti ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-700'}">
@@ -20177,7 +20177,7 @@ function renderizarCalendarioSemanalPostos(dias) {
         <div class="flex items-center justify-between border-b border-slate-200 pb-2">
           <div class="flex items-center gap-1.5">
             <span class="w-2.5 h-2.5 rounded-full ${col.badge}"></span>
-            <h4 class="font-bold text-[10px] text-slate-900">${col.label}</h4>
+            <h4 class="font-bold text-xs text-slate-900">${col.label}</h4>
           </div>
           <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-white text-slate-700 shadow-2xs border border-slate-200">
             ${postosDia.length}
@@ -20193,24 +20193,24 @@ function renderizarCalendarioSemanalPostos(dias) {
 
   container.innerHTML = `
     <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-2">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
           <span class="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1.5">
             <i class="fa-solid fa-calendar-week"></i> Programação Semanal Operacional
           </span>
-          <h3 class="font-black text-slate-900 text-sm">
+          <h3 class="font-black text-slate-900 text-base">
             Calendário de Cobertura de Postos & Multi-Clientes
           </h3>
-          <p class="text-[10px] text-slate-500 mt-0.5">
+          <p class="text-xs text-slate-500 mt-0.5">
             Total de <b>${totalAtendimentosSemana} escalas/atendimentos programados</b> distribuídos ao longo da semana de Segunda a Domingo.
           </p>
         </div>
 
         <div class="flex items-center gap-2">
-          <button onclick="abrirModalMultiCliente()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+          <button onclick="abrirModalMultiCliente()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
             <i class="fa-solid fa-people-arrows"></i> Agrupar Multi-Cliente (Até 5)
           </button>
-          <button onclick="abrirModalGerenciarEscalas()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+          <button onclick="abrirModalGerenciarEscalas()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
             <i class="fa-solid fa-plus-circle text-amber-400"></i> Nova Escala
           </button>
         </div>
@@ -20378,7 +20378,7 @@ window.salvarEdicaoComunicado = salvarEdicaoComunicado;
 async function carregarFluxoImplantacao() {
   var container = document.getElementById('containerFluxoImplantacao');
   if (!container) return;
-  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-1.5 block text-orange-400"></i>Carregando ordens de implantação...</div>';
+  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-400"></i>Carregando ordens de implantação...</div>';
   try {
     var r = await fetch('/api/comercial/implantacoes');
     if (!r.ok) throw new Error('Servidor retornou erro ' + r.status);
@@ -20386,7 +20386,7 @@ async function carregarFluxoImplantacao() {
     var ordens = data.ordens || data || [];
     renderizarFluxoImplantacao(Array.isArray(ordens) ? ordens : []);
   } catch (e) {
-    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-1.5 block"></i><p class="font-bold">Erro ao carregar implantações</p><p class="text-[10px] mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
+    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3 block"></i><p class="font-bold">Erro ao carregar implantações</p><p class="text-xs mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
   }
 }
 
@@ -20397,7 +20397,7 @@ function renderizarFluxoImplantacao(ordens) {
   var setorLabels = { rh: 'RH / Recrutamento', beneficios: 'Benefícios (VT/VA)', compras: 'Compras / Uniformes', operacional: 'Operacional', faturamento: 'Faturamento', diretoria: 'Diretoria', comercial: 'Comercial', outros: 'Outros' };
 
   if (!ordens || ordens.length === 0) {
-    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-1.5 block text-orange-300"></i><p class="font-bold text-slate-600 text-sm">Nenhuma implantação ativa no momento</p><p class="text-[10px] mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantação aparecerá aqui automaticamente.</p></div>';
+    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-3 block text-orange-300"></i><p class="font-bold text-slate-600 text-base">Nenhuma implantação ativa no momento</p><p class="text-xs mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantação aparecerá aqui automaticamente.</p></div>';
     ['kpiImplantacoesAtivas','kpiTarefasPendentes','kpiTarefasConcluidas','kpiImplantacoesCompletas'].forEach(function(id) {
       var el = document.getElementById(id); if (el) el.textContent = '0';
     });
@@ -20433,7 +20433,7 @@ function renderizarFluxoImplantacao(ordens) {
         + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'Concluída' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
         + '<div class="flex-1 min-w-0">'
           + '<div class="flex items-start justify-between gap-2 flex-wrap">'
-            + '<span class="font-bold text-slate-800 text-[10px] ' + (t.status === 'Concluída' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€”') + '</span>'
+            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'Concluída' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€”') + '</span>'
             + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ' + sc + ' shrink-0">' + t.status + '</span>'
           + '</div>'
           + (t.descricao ? '<p class="text-[11px] text-slate-500 mt-0.5">' + t.descricao + '</p>' : '')
@@ -20454,7 +20454,7 @@ function renderizarFluxoImplantacao(ordens) {
 
     var dataInicioFmt = ordem.data_inicio_previsto ? new Date(ordem.data_inicio_previsto + 'T00:00:00').toLocaleDateString('pt-BR') : '';
 
-    return '<div class="bg-white rounded-2xl shadow-sm border ' + (completa ? 'border-emerald-300' : 'border-slate-200') + ' overflow-hidden mb-2">'
+    return '<div class="bg-white rounded-2xl shadow-sm border ' + (completa ? 'border-emerald-300' : 'border-slate-200') + ' overflow-hidden mb-4">'
       + '<div class="flex items-center justify-between px-5 py-4 ' + (completa ? 'bg-emerald-50' : 'bg-slate-50') + ' border-b border-slate-200">'
         + '<div class="flex items-center gap-3">'
           + '<div class="w-10 h-10 rounded-xl ' + (completa ? 'bg-emerald-500' : 'bg-orange-500') + ' flex items-center justify-center text-white font-black text-sm shrink-0">'
@@ -20479,7 +20479,7 @@ function renderizarFluxoImplantacao(ordens) {
         + '<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="' + corPct + ' h-full rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div>'
       + '</div>'
       + '<div class="px-5 py-1">'
-        + (total === 0 ? '<div class="py-6 text-center text-slate-400 text-[10px]"><i class="fa-solid fa-list-check text-2xl mb-2 block text-slate-300"></i>Nenhuma tarefa cadastrada.' + (ehAdmin ? ' Clique em <b>Nova Tarefa</b> para adicionar.' : '') + '</div>' : tarefasHtml)
+        + (total === 0 ? '<div class="py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-list-check text-2xl mb-2 block text-slate-300"></i>Nenhuma tarefa cadastrada.' + (ehAdmin ? ' Clique em <b>Nova Tarefa</b> para adicionar.' : '') + '</div>' : tarefasHtml)
       + '</div>'
       + '</div>';
   }).join('');
@@ -20630,14 +20630,14 @@ function filtrarFreelancersLocalmente() {
     html += '<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">';
     html += '<div class="flex items-center gap-3"><input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="' + f.freelancer_id + '" onchange="aoAlternarChkFree(this)">';
     html += '<div><div class="flex items-center gap-2"><h3 class="font-bold text-slate-900">' + f.nome + '</h3>';
-    html += '<span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plant�es</span>';
+    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plant�es</span>';
     html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Di�ria: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
-    html += '<div class="text-[10px] text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">';
+    html += '<div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">';
     html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'N�o cadastrado') + '</span>';
     if(f.telefone) html += '<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>' + f.telefone + '</span>';
     html += '</div></div></div>';
     html += '<div class="flex flex-wrap items-center justify-end gap-3">';
-    html += '<div class="text-right"><p class="text-[10px] text-slate-400">Total Acumulado:</p><h4 class="text-lg font-black text-indigo-900">' + formatarMoeda(f.valor_total_mes) + '</h4></div>';
+    html += '<div class="text-right"><p class="text-xs text-slate-400">Total Acumulado:</p><h4 class="text-lg font-black text-indigo-900">' + formatarMoeda(f.valor_total_mes) + '</h4></div>';
     
     if (f.valor_pendente > 0) {
       html += '<div class="text-right bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg"><p class="text-[10px] font-bold text-amber-700 uppercase">A Pagar:</p><h4 class="text-sm font-black text-amber-600">' + formatarMoeda(f.valor_pendente) + '</h4></div>';
@@ -20685,7 +20685,7 @@ function adicionarClienteRoteiroEdicao(clienteIdSelecionado = '') {
   });
   
   div.innerHTML = `
-    <select class="sel-multi-cliente-edicao flex-1 border border-slate-300 rounded px-2 py-1 text-[10px]" required>
+    <select class="sel-multi-cliente-edicao flex-1 border border-slate-300 rounded px-2 py-1 text-xs" required>
       ${options}
     </select>
     <button type="button" class="text-rose-600 font-bold hover:text-rose-800" onclick="this.parentElement.remove()">X</button>
@@ -20985,19 +20985,19 @@ function renderTabelaMedidas(lista) {
         <div class="text-[10px] text-slate-500">${c.nome_cargo || 'Sem Cargo'}</div>
       </td>
       <td class="px-4 py-3">
-        <select id="med-sexo-${c.id}" class="border border-slate-300 rounded px-2 py-1 bg-white text-[10px]" onchange="marcarAlterado(${c.id})">
+        <select id="med-sexo-${c.id}" class="border border-slate-300 rounded px-2 py-1 bg-white text-xs" onchange="marcarAlterado(${c.id})">
           <option value="" ${!c.sexo ? 'selected' : ''}>-</option>
           <option value="MASCULINO" ${c.sexo === 'MASCULINO' ? 'selected' : ''}>Masc</option>
           <option value="FEMININO" ${c.sexo === 'FEMININO' ? 'selected' : ''}>Fem</option>
         </select>
       </td>
-      <td class="px-4 py-3"><input type="text" id="med-camisa-${c.id}" value="${c.tamanho_camisa || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-[10px]" oninput="marcarAlterado(${c.id})"></td>
-      <td class="px-4 py-3"><input type="text" id="med-calca-${c.id}" value="${c.tamanho_calca || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-[10px]" oninput="marcarAlterado(${c.id})"></td>
-      <td class="px-4 py-3"><input type="text" id="med-sapato-${c.id}" value="${c.tamanho_sapato || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-[10px]" oninput="marcarAlterado(${c.id})"></td>
-      <td class="px-4 py-3"><input type="text" id="med-jaqueta-${c.id}" value="${c.tamanho_jaqueta || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-[10px]" oninput="marcarAlterado(${c.id})"></td>
-      <td class="px-4 py-3"><input type="text" id="med-blazer-${c.id}" value="${c.tamanho_blazer || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-[10px]" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-camisa-${c.id}" value="${c.tamanho_camisa || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-calca-${c.id}" value="${c.tamanho_calca || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-sapato-${c.id}" value="${c.tamanho_sapato || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-jaqueta-${c.id}" value="${c.tamanho_jaqueta || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
+      <td class="px-4 py-3"><input type="text" id="med-blazer-${c.id}" value="${c.tamanho_blazer || ''}" class="w-16 border border-slate-300 rounded px-2 py-1 text-xs" oninput="marcarAlterado(${c.id})"></td>
       <td class="px-4 py-3 text-center">
-        <button id="btn-med-${c.id}" onclick="salvarMedidasColab(${c.id})" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded text-[10px] shadow-sm">
+        <button id="btn-med-${c.id}" onclick="salvarMedidasColab(${c.id})" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded text-xs shadow-sm">
           Salvar
         </button>
         <span id="ok-med-${c.id}" class="hidden text-emerald-600 font-bold"><i class="fa-solid fa-check"></i></span>
@@ -21092,7 +21092,7 @@ function renderTabelaNecessidades() {
     <tr class="hover:bg-slate-50">
       <td class="px-4 py-3 font-bold text-slate-800">${g.item}</td>
       <td class="px-4 py-3">
-        <span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded">${g.tamanho}</span>
+        <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded">${g.tamanho}</span>
       </td>
       <td class="px-4 py-3 font-bold text-teal-700">${g.quantidade_total}</td>
       <td class="px-4 py-3 text-[10px] text-slate-500 max-w-xs truncate" title="${g.colaboradores.join('\n')}">
@@ -21101,7 +21101,7 @@ function renderTabelaNecessidades() {
       <td class="px-4 py-3">
         <div class="relative">
           <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400">R$</span>
-          <input type="number" step="0.01" id="preco-unif-${i}" class="w-24 pl-7 pr-2 py-1 border border-slate-300 rounded text-[10px]" oninput="calcTotalUnif(${i})">
+          <input type="number" step="0.01" id="preco-unif-${i}" class="w-24 pl-7 pr-2 py-1 border border-slate-300 rounded text-xs" oninput="calcTotalUnif(${i})">
         </div>
       </td>
       <td class="px-4 py-3 font-bold text-slate-800" id="total-unif-${i}">R$ 0,00</td>
@@ -21264,7 +21264,7 @@ async function carregarRegrasUniformes() {
         <td class="px-3 py-2 font-bold text-slate-700">${r.funcao}</td>
         <td class="px-3 py-2 font-medium">${r.item}</td>
         <td class="px-3 py-2 text-center bg-slate-100 font-bold">${r.quantidade}</td>
-        <td class="px-3 py-2 text-[10px] text-slate-500">${r.sexo_aplicavel}</td>
+        <td class="px-3 py-2 text-xs text-slate-500">${r.sexo_aplicavel}</td>
         <td class="px-3 py-2 text-center"><button onclick="editarRegraUniforme(${r.id}, '${r.funcao}', '${r.item}', ${r.quantidade}, '${r.sexo_aplicavel}', '${r.tamanhos_disponiveis}')" class="text-blue-500 hover:text-blue-700 mr-3" title="Editar"><i class="fa-solid fa-edit"></i></button><button onclick="deletarRegraUniforme(${r.id})" class="text-red-500 hover:text-red-700" title="Remover"><i class="fa-solid fa-trash"></i></button></td>
       </tr>
     `).join('');
@@ -21366,7 +21366,7 @@ async function carregarCatalogoUniformes() {
           <input type="number" step="0.01" id="cat-valor-${c.id}" value="${c.valor_unitario}" class="w-24 border border-slate-300 rounded px-2 py-1 text-sm text-right" oninput="mostrarBtnCat(${c.id})">
         </td>
         <td class="px-3 py-3 text-center">
-           <button id="cat-btn-${c.id}" onclick="salvarItemCatalogo(${c.id}, '${c.item_nome}')" class="hidden bg-indigo-600 text-white font-bold px-3 py-1 rounded text-[10px]">Salvar</button>
+           <button id="cat-btn-${c.id}" onclick="salvarItemCatalogo(${c.id}, '${c.item_nome}')" class="hidden bg-indigo-600 text-white font-bold px-3 py-1 rounded text-xs">Salvar</button>
            <span id="cat-ok-${c.id}" class="hidden text-emerald-600"><i class="fa-solid fa-check"></i></span>
         </td>
       </tr>
@@ -21432,7 +21432,7 @@ async function gerarNecessidadesUniformes() {
       totalGeral += dados.total_fornecedor;
       
       html += `
-        <div class="border border-slate-200 rounded-lg overflow-hidden mb-3">
+        <div class="border border-slate-200 rounded-lg overflow-hidden mb-6">
           <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
             <h4 class="font-bold"><i class="fa-solid fa-building mr-2"></i> ${forn}</h4>
             <span class="font-black text-emerald-400">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
@@ -21445,7 +21445,7 @@ async function gerarNecessidadesUniformes() {
               ${Object.values(dados.itens).sort((a,b) => a.item.localeCompare(b.item)).map(i => `
                 <tr>
                   <td class="px-4 py-2 font-medium">${i.item}</td>
-                  <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-0.5 rounded">${i.tamanho}</span></td>
+                  <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
                   <td class="px-4 py-2 text-center font-bold">${i.quantidade}</td>
                   <td class="px-4 py-2 text-right">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
                   <td class="px-4 py-2 text-right font-bold text-slate-700">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
@@ -21590,20 +21590,20 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
   let totalGeral = 0;
   
   if (tituloAviso) {
-    html += `<div class="bg-indigo-100 text-indigo-800 p-3 rounded-lg font-bold mb-2 flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> ${tituloAviso} gerado com sucesso!</div>`;
+    html += `<div class="bg-indigo-100 text-indigo-800 p-3 rounded-lg font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-file-csv"></i> ${tituloAviso} gerado com sucesso!</div>`;
   }
   
   for (const [forn, dados] of Object.entries(porFornecedor)) {
     totalGeral += dados.total_fornecedor;
     html += `
-      <div class="border border-slate-200 rounded-lg overflow-hidden mb-3">
+      <div class="border border-slate-200 rounded-lg overflow-hidden mb-6">
         
         <div class="bg-slate-800 text-white px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3" data-fornecedor="${forn}">
           <h4 class="font-bold"><i class="fa-solid fa-building mr-2"></i> ${forn}</h4>
           <div class="flex items-center gap-2">
              <span class="font-black text-emerald-400 mr-2">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
-             <button onclick="imprimirOrcamentoUniformesPDF('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fa-solid fa-file-pdf text-red-400 mr-1"></i> PDF</button>
-             <button onclick="exportarOrcamentoUniformesExcel('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fa-solid fa-file-excel text-emerald-400 mr-1"></i> Excel</button>
+             <button onclick="imprimirOrcamentoUniformesPDF('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-xs font-bold transition shadow-sm"><i class="fa-solid fa-file-pdf text-red-400 mr-1"></i> PDF</button>
+             <button onclick="exportarOrcamentoUniformesExcel('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-xs font-bold transition shadow-sm"><i class="fa-solid fa-file-excel text-emerald-400 mr-1"></i> Excel</button>
           </div>
         </div>
 
@@ -21615,7 +21615,7 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
             ${Object.values(dados.itens).sort((a, b) => a.item.localeCompare(b.item) || String(a.tamanho).localeCompare(String(b.tamanho))).map(i => `
               <tr>
                 <td class="px-4 py-2 font-medium">${i.item}</td>
-                <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-0.5 rounded">${i.tamanho}</span></td>
+                <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
                 <td class="px-4 py-2 text-center font-bold">${i.quantidade}</td>
                 <td class="px-4 py-2 text-right">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
                 <td class="px-4 py-2 text-right font-bold text-slate-700">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
@@ -21731,13 +21731,13 @@ async function carregarAdmissoesPendentes() {
       
       return `
       <tr class="hover:bg-slate-50">
-        <td class="px-4 py-3 text-[10px] text-slate-500">${new Date(a.created_at).toLocaleString('pt-BR')}</td>
+        <td class="px-4 py-3 text-xs text-slate-500">${new Date(a.created_at).toLocaleString('pt-BR')}</td>
         <td class="px-4 py-3 font-bold text-slate-800">${a.nome}<br><span class="text-[10px] font-normal text-slate-500">CPF: ${a.cpf || 'Não inf.'}</span></td>
-        <td class="px-4 py-3 text-[10px] text-slate-600">${a.cargo_nome || 'N/A'}<br><span class="font-bold text-indigo-700">${a.posto_nome || 'N/A'}</span></td>
-        <td class="px-4 py-3 text-[10px] text-slate-600"><i class="fa-solid fa-user-pen mr-1"></i> ${a.solicitante_nome || 'Desconhecido'}</td>
+        <td class="px-4 py-3 text-xs text-slate-600">${a.cargo_nome || 'N/A'}<br><span class="font-bold text-indigo-700">${a.posto_nome || 'N/A'}</span></td>
+        <td class="px-4 py-3 text-xs text-slate-600"><i class="fa-solid fa-user-pen mr-1"></i> ${a.solicitante_nome || 'Desconhecido'}</td>
         <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusColor}">${a.status}</span></td>
         <td class="px-4 py-3 text-center">
-          <button onclick='abrirInteracaoAdmissao(${JSON.stringify(a).replace(/'/g, "&apos;")})' class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-[10px] border border-indigo-200 shadow-sm">
+          <button onclick='abrirInteracaoAdmissao(${JSON.stringify(a).replace(/'/g, "&apos;")})' class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold px-3 py-1.5 rounded-lg text-xs border border-indigo-200 shadow-sm">
             <i class="fa-solid fa-comments mr-1"></i> Ver & Interagir
           </button>
         </td>
@@ -21768,18 +21768,18 @@ async function abrirInteracaoAdmissao(admObj) {
   const user = state.usuarioLogado;
   const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
   
-  const btnImprimir = `<button onclick="imprimirDossieAdmissao()" class="bg-slate-600 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded text-[10px] shadow-sm ml-2" title="Imprimir Dossiê em PDF"><i class="fa-solid fa-print"></i> Dossiê PDF</button>`;
+  const btnImprimir = `<button onclick="imprimirDossieAdmissao()" class="bg-slate-600 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2" title="Imprimir Dossiê em PDF"><i class="fa-solid fa-print"></i> Dossiê PDF</button>`;
   if (!admObj.status.includes('Autorizado') && !admObj.status.includes('Reprovado')) {
     if (isAutorizador) {
       botoes.innerHTML = `
-        <button onclick="aprovarAdmissao(${admObj.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded text-[10px] shadow-sm"><i class="fa-solid fa-check"></i> Aprovar Admissão</button>
-        <button onclick="reprovarAdmissao(${admObj.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-[10px] shadow-sm ml-2"><i class="fa-solid fa-ban"></i> Reprovar</button>
+        <button onclick="aprovarAdmissao(${admObj.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-check"></i> Aprovar Admissão</button>
+        <button onclick="reprovarAdmissao(${admObj.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2"><i class="fa-solid fa-ban"></i> Reprovar</button>
       ` + btnImprimir;
     } else {
-      botoes.innerHTML = `<span class="text-[10px] text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando Autorização da Gerência</span>` + btnImprimir;
+      botoes.innerHTML = `<span class="text-xs text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando Autorização da Gerência</span>` + btnImprimir;
     }
   } else {
-    botoes.innerHTML = `<span class="text-[10px] font-bold px-2 py-1 rounded ${admObj.status === 'Autorizado' ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'}">${admObj.status}</span>` + btnImprimir;
+    botoes.innerHTML = `<span class="text-xs font-bold px-2 py-1 rounded ${admObj.status === 'Autorizado' ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'}">${admObj.status}</span>` + btnImprimir;
   }
   
   document.getElementById('modalInteracaoAdmissao').classList.remove('hidden');
@@ -21788,12 +21788,12 @@ async function abrirInteracaoAdmissao(admObj) {
 
 async function carregarMensagensAdmissao(id) {
   const lista = document.getElementById('listaMensagensAdmissao');
-  lista.innerHTML = '<div class="text-center text-[10px] text-slate-400 py-2">Carregando...</div>';
+  lista.innerHTML = '<div class="text-center text-xs text-slate-400 py-2">Carregando...</div>';
   try {
     const res = await fetch(`/api/admissoes/${id}/mensagens`);
     const msgs = await res.json();
     if(msgs.length === 0) {
-      lista.innerHTML = '<div class="text-center text-[10px] text-slate-400 py-2 italic">Nenhuma interação registrada ainda. Envie o primeiro questionamento.</div>';
+      lista.innerHTML = '<div class="text-center text-xs text-slate-400 py-2 italic">Nenhuma interação registrada ainda. Envie o primeiro questionamento.</div>';
       return;
     }
     
@@ -22140,7 +22140,7 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
   
   // If we only want a specific supplier, hide all other supplier blocks
   if (fornecedorUnico) {
-    const blocos = clone.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-3');
+    const blocos = clone.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-6');
     blocos.forEach(bloco => {
        const header = bloco.querySelector('.bg-slate-800');
        if (header && header.getAttribute('data-fornecedor') !== fornecedorUnico) {
@@ -22218,7 +22218,7 @@ window.exportarOrcamentoUniformesExcel = function(fornecedorUnico = null) {
   const container = document.getElementById('resultadoOrcamentoUniformes');
   if (!container || container.innerHTML.includes('Nenhum item')) return;
   
-  const blocos = container.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-3');
+  const blocos = container.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-6');
   
   const dadosExcel = [];
   
