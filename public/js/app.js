@@ -21390,7 +21390,8 @@ window.mostrarBtnCat = mostrarBtnCat;
 window.gerarNecessidadesUniformes = gerarNecessidadesUniformes;
 
 
-async function gerarOrcamentoViaCsv() {
+
+window.gerarOrcamentoViaPlanilha = async function() {
   const fileInput = document.getElementById('arquivoCsvOrcamento');
   if (!fileInput.files.length) return;
   const file = fileInput.files[0];
@@ -21400,111 +21401,93 @@ async function gerarOrcamentoViaCsv() {
   container.innerHTML = '<div class="text-center py-8 text-indigo-600"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Lendo planilha e calculando orçamentos externos...</div>';
   
   try {
-    // Buscar regras e catalogo do sistema
     const resRegras = await fetch('/api/uniformes/regras');
     const regras = await resRegras.json();
     
     const resCat = await fetch('/api/uniformes/catalogo');
     const catalogo = await resCat.json();
     
-    const text = await file.text();
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-    
-    let necessidades = [];
-    
-    // Ler CSV
-    for (let i = 1; i < lines.length; i++) { // Ignora cabecalho
-      const line = lines[i];
-      let cols = [];
-      let current = '';
-      let inQuotes = false;
-      for (let c of line) {
-        if (c === '"') inQuotes = !inQuotes;
-        else if (c === ',' && !inQuotes) { cols.push(current.trim()); current = ''; }
-        else current += c;
-      }
-      cols.push(current.trim());
-      
-      if (cols.length < 5) continue;
-      
-      const nome = cols[0];
-      const sexo = cols[1] ? cols[1].toUpperCase() : '';
-      const funcao = cols[2] ? cols[2].toUpperCase() : '';
-      const tCamisa = cols[4] || '';
-      const tCalca = cols[5] || '';
-      const tSapato = cols[6] || '';
-      const tJaqueta = cols[7] || '';
-      const tBlazer = cols[8] || '';
-      
-      // Encontrar regras aplicaveis para a funcao da planilha
-      const regrasAplicaveis = regras.filter(r => r.funcao === 'TODOS' || funcao.includes(r.funcao.toUpperCase()));
-      
-      for (const r of regrasAplicaveis) {
-        // Verifica restrição de sexo
-        if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS') {
-          if (!sexo.includes(r.sexo_aplicavel.toUpperCase())) continue;
-        }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet);
         
-        // Define o tamanho com base na peca
-        let tam = '';
-        const itemUpper = r.item.toUpperCase();
-        if (itemUpper.includes('CAMISA') || itemUpper.includes('JALECO') || itemUpper.includes('POLO')) tam = tCamisa;
-        else if (itemUpper.includes('CALÇA') || itemUpper.includes('CALCA')) tam = tCalca;
-        else if (itemUpper.includes('SAPATO') || itemUpper.includes('BOTA') || itemUpper.includes('BOTINA')) tam = tSapato;
-        else if (itemUpper.includes('JAQUETA')) tam = tJaqueta;
-        else if (itemUpper.includes('BLAZER') || itemUpper.includes('COLETE')) tam = tBlazer;
+        let necessidades = [];
         
-        if (!tam && r.tamanhos_disponiveis) tam = 'SEM MEDIDA PLANILHA';
-        
-        // Busca preco e fornecedor no catalogo
-        
-        let generoBusca = 'U';
-        if (r.sexo_aplicavel === 'Masculino') generoBusca = 'M';
-        if (r.sexo_aplicavel === 'Feminino') generoBusca = 'F';
+        for (const row of rows) {
+          const nome = extrairCampoPlanilha(row, ['nome', 'colaborador', 'nome do colaborador']);
+          if (!nome) continue;
+          
+          const sexo = extrairCampoPlanilha(row, ['sexo', 'genero', 'gênero']).toUpperCase();
+          const funcao = extrairCampoPlanilha(row, ['funcao', 'função', 'cargo']).toUpperCase();
+          
+          const tCamisa = extrairCampoPlanilha(row, ['camisa', 'tamanho_camisa', 'tamanho camisa']);
+          const tCalca = extrairCampoPlanilha(row, ['calca', 'calça', 'tamanho calca', 'tamanho_calca']);
+          const tSapato = extrairCampoPlanilha(row, ['sapato', 'tamanho sapato', 'tamanho_sapato']);
+          const tJaqueta = extrairCampoPlanilha(row, ['jaqueta', 'tamanho jaqueta', 'tamanho_jaqueta']);
+          const tBlazer = extrairCampoPlanilha(row, ['blazer', 'tamanho blazer', 'tamanho_blazer']);
+          
+          const regrasAplicaveis = regras.filter(r => r.funcao === 'TODOS' || (funcao && funcao.includes(r.funcao.toUpperCase())));
+          
+          for (const r of regrasAplicaveis) {
+            if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS') {
+              if (!sexo.includes(r.sexo_aplicavel.toUpperCase())) continue;
+            }
+            
+            let tam = '';
+            const itemUpper = r.item.toUpperCase();
+            if (itemUpper.includes('CAMISA') || itemUpper.includes('JALECO') || itemUpper.includes('POLO')) tam = tCamisa;
+            else if (itemUpper.includes('CALÇA') || itemUpper.includes('CALCA')) tam = tCalca;
+            else if (itemUpper.includes('SAPATO') || itemUpper.includes('BOTA') || itemUpper.includes('BOTINA')) tam = tSapato;
+            else if (itemUpper.includes('JAQUETA')) tam = tJaqueta;
+            else if (itemUpper.includes('BLAZER') || itemUpper.includes('COLETE')) tam = tBlazer;
+            
+            if (!tam && r.tamanhos_disponiveis) tam = 'SEM MEDIDA PLANILHA';
+            
+            let generoBusca = 'U';
+            if (r.sexo_aplicavel === 'Masculino' || sexo === 'MASCULINO' || sexo === 'M') generoBusca = 'M';
+            if (r.sexo_aplicavel === 'Feminino' || sexo === 'FEMININO' || sexo === 'F') generoBusca = 'F';
 
-        let catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === generoBusca);
-        if (!catInfo) {
-           catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === 'U');
-        }
-        if (!catInfo) {
-           catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase()); // absolute fallback
-        }
+            let catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === generoBusca);
+            if (!catInfo) catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase() && c.genero === 'U');
+            if (!catInfo) catInfo = catalogo.find(c => c.item_nome.toUpperCase() === r.item.toUpperCase()); 
 
+            necessidades.push({
+              item: r.item,
+              quantidade: r.quantidade,
+              tamanho: tam || 'N/A',
+              fornecedor_nome: catInfo && catInfo.fornecedor_nome ? catInfo.fornecedor_nome : 'Sem Fornecedor Definido',
+              valor_unitario: catInfo ? catInfo.valor_unitario : 0
+            });
+          }
+        }
         
-        necessidades.push({
-          item: r.item,
-          quantidade: r.quantidade,
-          tamanho: tam || 'N/A',
-          fornecedor_nome: catInfo && catInfo.fornecedor_nome ? catInfo.fornecedor_nome : 'Sem Fornecedor Definido',
-          valor_unitario: catInfo ? catInfo.valor_unitario : 0
+        const porFornecedor = {};
+        necessidades.forEach(n => {
+          if (!porFornecedor[n.fornecedor_nome]) porFornecedor[n.fornecedor_nome] = { itens: {}, total_fornecedor: 0 };
+          const f = porFornecedor[n.fornecedor_nome];
+          const key = n.item + '_' + n.tamanho;
+          
+          if (!f.itens[key]) {
+            f.itens[key] = { item: n.item, tamanho: n.tamanho, quantidade: 0, valor_unitario: n.valor_unitario, valor_total: 0 };
+          }
+          f.itens[key].quantidade += n.quantidade;
+          f.itens[key].valor_total = f.itens[key].quantidade * n.valor_unitario;
+          f.total_fornecedor += (n.quantidade * n.valor_unitario);
         });
+        
+        renderizarResultadoOrcamentoUniformes(porFornecedor, "Orçamento de Planilha Externa");
+        fileInput.value = '';
+      } catch (err) {
+        alert('Erro ao processar planilha: ' + err.message);
       }
-    }
-    
-    // Group by Fornecedor (Reaproveitando a mesma logica visual)
-    const porFornecedor = {};
-    necessidades.forEach(n => {
-      const fName = n.fornecedor_nome;
-      if(!porFornecedor[fName]) porFornecedor[fName] = { itens: {}, total_fornecedor: 0 };
-      
-      const key = `${n.item} - Tam: ${n.tamanho}`;
-      if(!porFornecedor[fName].itens[key]) {
-        porFornecedor[fName].itens[key] = { item: n.item, tamanho: n.tamanho, quantidade: 0, valor_unitario: n.valor_unitario, valor_total: 0 };
-      }
-      porFornecedor[fName].itens[key].quantidade += n.quantidade;
-      const subtotal = n.quantidade * n.valor_unitario;
-      porFornecedor[fName].itens[key].valor_total += subtotal;
-      porFornecedor[fName].total_fornecedor += subtotal;
-    });
-    
-    renderizarResultadoOrcamentoUniformes(porFornecedor, "Orçamento de Planilha Externa");
-    fileInput.value = ''; // Limpa
-    
-  } catch(e) {
-    console.error(e);
-    container.innerHTML = `<div class="text-center py-8 text-red-500">Erro ao processar a planilha: ${e.message}</div>`;
-  }
-}
+    };
+    reader.readAsArrayBuffer(file);
+  } catch(e) { console.error(e); }
+};
 
 // Extrai a funcao de renderizacao para ser reaproveitada pelo gerar do banco e pelo gerar da planilha
 function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
