@@ -22115,7 +22115,8 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
       
       .text-right { text-align: right; }
       .text-center { text-align: center; }
-      .bg-indigo-100 { display: none; } /* Hide avisos */
+      div.bg-indigo-100 { display: none; } /* Hide avisos but keep size badges */
+      span.bg-indigo-100 { display: inline-block; padding: 2px 5px; border-radius: 4px; background: #e0e7ff; color: #3730a3; font-weight: bold; }
       
       @media print {
         body { padding: 0; }
