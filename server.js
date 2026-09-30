@@ -10156,7 +10156,7 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
       // LISTAR DENÚNCIAS (INTERNO - COORDENAÇÃO OPERACIONAL E MASTER)
       if (pathname === '/api/denuncias' && method === 'GET') {
-        let sql = ' SELECT * FROM denuncias WHERE col.nome != \'[SISTEMA] SERVIÇO EXTRA\' ';
+        let sql = ' SELECT * FROM denuncias WHERE 1=1 ';
         const params = [];
 
         if (query.status && query.status !== 'todos') {
