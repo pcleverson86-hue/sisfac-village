@@ -21439,16 +21439,28 @@ async function gerarNecessidadesUniformes() {
           </div>
           <table class="w-full text-left text-sm whitespace-nowrap">
             <thead class="bg-slate-100 text-slate-600">
-              <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
+              <tr>
+              <th class="px-4 py-2">Peça</th>
+              <th class="px-4 py-2">Tamanho</th>
+              <th class="px-4 py-2 text-center" title="Quantidade solicitada na planilha">Qtd Req.</th>
+              <th class="px-4 py-2 text-center" title="Quantidade para o estoque">Adicional</th>
+              <th class="px-4 py-2 text-center" title="Soma total do pedido">Qtd Final</th>
+              <th class="px-4 py-2 text-right">Val. Unitário</th>
+              <th class="px-4 py-2 text-right">Subtotal</th>
+            </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               ${Object.values(dados.itens).sort((a,b) => a.item.localeCompare(b.item)).map(i => `
-                <tr>
-                  <td class="px-4 py-2 font-medium">${i.item}</td>
-                  <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
-                  <td class="px-4 py-2 text-center font-bold">${i.quantidade}</td>
-                  <td class="px-4 py-2 text-right">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
-                  <td class="px-4 py-2 text-right font-bold text-slate-700">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
+                <tr class="orcamento-linha" data-vu="${i.valor_unitario}" data-fornecedor="${forn}">
+                <td class="px-4 py-2 font-medium td-peca">${i.item}</td>
+                <td class="px-4 py-2 td-tamanho"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
+                <td class="px-4 py-2 text-center text-slate-500 text-xs td-req" data-val="${i.quantidade}">${i.quantidade}</td>
+                <td class="px-4 py-2 text-center">
+                   <input type="number" min="0" value="0" class="w-16 text-center text-sm border border-slate-300 rounded p-0.5 font-bold text-indigo-700 td-adicional focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="atualizarLinhaOrcamentoUniformes(this)" />
+                </td>
+                <td class="px-4 py-2 text-center font-bold text-slate-900 text-[15px] td-final">${i.quantidade}</td>
+                <td class="px-4 py-2 text-right text-xs text-slate-500 td-vu">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
+                <td class="px-4 py-2 text-right font-black text-slate-700 td-subtotal" data-subtotal="${i.valor_total}">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -21584,6 +21596,48 @@ window.gerarOrcamentoViaPlanilha = async function() {
 };
 
 // Extrai a funcao de renderizacao para ser reaproveitada pelo gerar do banco e pelo gerar da planilha
+
+window.atualizarLinhaOrcamentoUniformes = function(input) {
+  const tr = input.closest('tr');
+  const vu = parseFloat(tr.getAttribute('data-vu'));
+  const fornecedor = tr.getAttribute('data-fornecedor');
+  
+  const req = parseInt(tr.querySelector('.td-req').getAttribute('data-val'), 10) || 0;
+  let adc = parseInt(input.value, 10) || 0;
+  if(adc < 0) { adc = 0; input.value = 0; }
+  
+  const qtdFinal = req + adc;
+  tr.querySelector('.td-final').innerText = qtdFinal;
+  
+  const subtotal = qtdFinal * vu;
+  const subtotalElem = tr.querySelector('.td-subtotal');
+  subtotalElem.innerText = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
+  subtotalElem.setAttribute('data-subtotal', subtotal);
+  
+  // Recalcular Total do Fornecedor
+  const tabela = tr.closest('.border');
+  const linhasFornecedor = tabela.querySelectorAll('.td-subtotal');
+  let novoTotalForn = 0;
+  linhasFornecedor.forEach(l => {
+     novoTotalForn += parseFloat(l.getAttribute('data-subtotal') || 0);
+  });
+  
+  const headerTotal = tabela.querySelector('.bg-slate-800 span');
+  if(headerTotal) {
+     headerTotal.innerText = 'Total: R$ ' + novoTotalForn.toFixed(2).replace('.', ',');
+  }
+  
+  // Recalcular Total Geral
+  const globalTotalElem = document.getElementById('orcamentoGlobalTotal');
+  if(globalTotalElem) {
+     const todosSubtotais = document.querySelectorAll('.td-subtotal');
+     let global = 0;
+     todosSubtotais.forEach(l => {
+        global += parseFloat(l.getAttribute('data-subtotal') || 0);
+     });
+     globalTotalElem.innerText = 'R$ ' + global.toFixed(2).replace('.', ',');
+  }
+};
 function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
   const container = document.getElementById('resultadoOrcamentoUniformes');
   let html = '';
@@ -21609,16 +21663,20 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
 
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-100 text-slate-600">
-            <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center">Qtd</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
+            <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center" title="Qtd Solicitada">Qtd Req.</th><th class="px-4 py-2 text-center" title="Qtd Estoque Adicional">Adicional</th><th class="px-4 py-2 text-center">Qtd Final</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             ${Object.values(dados.itens).sort((a, b) => a.item.localeCompare(b.item) || String(a.tamanho).localeCompare(String(b.tamanho))).map(i => `
-              <tr>
-                <td class="px-4 py-2 font-medium">${i.item}</td>
-                <td class="px-4 py-2"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
-                <td class="px-4 py-2 text-center font-bold">${i.quantidade}</td>
-                <td class="px-4 py-2 text-right">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
-                <td class="px-4 py-2 text-right font-bold text-slate-700">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
+              <tr class="orcamento-linha" data-vu="${i.valor_unitario}" data-fornecedor="${forn}">
+                <td class="px-4 py-2 font-medium td-peca">${i.item}</td>
+                <td class="px-4 py-2 td-tamanho"><span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded">${i.tamanho}</span></td>
+                <td class="px-4 py-2 text-center text-slate-500 text-xs td-req" data-val="${i.quantidade}">${i.quantidade}</td>
+                <td class="px-4 py-2 text-center">
+                   <input type="number" min="0" value="0" class="w-16 text-center text-sm border border-slate-300 rounded p-0.5 font-bold text-indigo-700 td-adicional focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="atualizarLinhaOrcamentoUniformes(this)" />
+                </td>
+                <td class="px-4 py-2 text-center font-bold text-slate-900 text-[15px] td-final">${i.quantidade}</td>
+                <td class="px-4 py-2 text-right text-xs text-slate-500 td-vu">R$ ${i.valor_unitario.toFixed(2).replace('.', ',')}</td>
+                <td class="px-4 py-2 text-right font-black text-slate-700 td-subtotal" data-subtotal="${i.valor_total}">R$ ${i.valor_total.toFixed(2).replace('.', ',')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -22138,6 +22196,15 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
   const btns = clone.querySelectorAll('button');
   btns.forEach(b => b.remove());
   
+  // Transform inputs into raw text for PDF
+  const inputs = clone.querySelectorAll('input[type="number"]');
+  const origInputs = container.querySelectorAll('input[type="number"]');
+  inputs.forEach((inp, idx) => {
+     const parent = inp.parentNode;
+     const v = parseInt(origInputs[idx].value, 10) || 0;
+     parent.innerHTML = v > 0 ? '<span style="font-weight:bold; color:#4338ca;">+' + v + '</span>' : '<span style="color:#94a3b8;">0</span>';
+  });
+  
   // If we only want a specific supplier, hide all other supplier blocks
   if (fornecedorUnico) {
     const blocos = clone.querySelectorAll('.border.border-slate-200.rounded-lg.overflow-hidden.mb-6');
@@ -22232,15 +22299,18 @@ window.exportarOrcamentoUniformesExcel = function(fornecedorUnico = null) {
      const rows = bloco.querySelectorAll('tbody tr');
      rows.forEach(r => {
         const cols = r.querySelectorAll('td');
-        if (cols.length < 5) return;
+        if (cols.length < 7) return;
         
+        const tr = r;
         dadosExcel.push({
            'Fornecedor': fornecedor,
            'Peça': cols[0].innerText.trim(),
            'Tamanho': cols[1].innerText.trim(),
-           'Quantidade': parseInt(cols[2].innerText.trim(), 10),
-           'Valor Unitário': parseFloat(cols[3].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim()),
-           'Subtotal': parseFloat(cols[4].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim())
+           'Qtd Req': parseInt(cols[2].innerText.trim(), 10),
+           'Adicional': parseInt(cols[3].querySelector('input').value, 10) || 0,
+           'Qtd Final': parseInt(cols[4].innerText.trim(), 10),
+           'Valor Unitário': parseFloat(cols[5].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+           'Subtotal': parseFloat(cols[6].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim())
         });
      });
   });
