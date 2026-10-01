@@ -1710,6 +1710,7 @@ const server = http.createServer(async (req, res) => {
         }
         
         try {
+          db.exec('PRAGMA foreign_keys = OFF;');
           db.exec('BEGIN TRANSACTION');
           
           db.prepare("DELETE FROM colaboradores WHERE nome != '[SISTEMA] SERVIÇO EXTRA'").run();
@@ -1733,14 +1734,23 @@ const server = http.createServer(async (req, res) => {
           db.prepare("DELETE FROM faturas_itens").run();
           db.prepare("DELETE FROM fechamento_mensal_faturas").run();
           db.prepare("DELETE FROM ponto_espelhos_arquivados").run();
+          db.prepare("DELETE FROM historico_eventos_colaborador").run();
+          db.prepare("DELETE FROM sst_documentos_colaborador").run();
+          db.prepare("DELETE FROM setor_arquivos_documentos").run();
+          db.prepare("DELETE FROM roteiros_multi_clientes").run();
+          db.prepare("DELETE FROM colaborador_clientes_compartilhados").run();
+          db.prepare("DELETE FROM uniformes_colaboradores").run();
+
           
           // Clear ocupacoes in postos_trabalho just to be sure (although we rely on JOINs usually, some places might have a cached count)
           
           
           db.exec('COMMIT');
+          db.exec('PRAGMA foreign_keys = ON;');
           return jsonResponse(res, { success: true, message: 'Sistema limpo com sucesso! Os clientes, postos, cargos, funcionrios do sistema e parmetros base foram mantidos.' });
         } catch (err) {
           db.exec('ROLLBACK');
+          db.exec('PRAGMA foreign_keys = ON;');
           return errorResponse(res, 'Erro ao resetar: ' + err.message, 500);
         }
       }
