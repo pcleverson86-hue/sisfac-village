@@ -1703,6 +1703,48 @@ const server = http.createServer(async (req, res) => {
           local_url: `http://${localIp}:${PORT}`
         });
       }
+      if (pathname === '/api/factory-reset' && method === 'POST') {
+        const body = await parseRequestBody(req);
+        if (body.confirmacao !== 'ZerarSistema2026') {
+          return errorResponse(res, 'Cdigo de segurana invlido', 400);
+        }
+        
+        try {
+          db.exec('BEGIN TRANSACTION');
+          
+          db.prepare("DELETE FROM colaboradores WHERE nome != '[SISTEMA] SERVIÇO EXTRA'").run();
+          db.prepare("DELETE FROM admissoes").run();
+          db.prepare("DELETE FROM admissoes_interacoes").run();
+          db.prepare("DELETE FROM faltas_coberturas").run();
+          db.prepare("DELETE FROM freelancers_pagamentos").run();
+          db.prepare("DELETE FROM faturas").run();
+          db.prepare("DELETE FROM freelancers").run();
+          db.prepare("DELETE FROM comunicados").run();
+          db.prepare("DELETE FROM sst_documentos").run();
+          db.prepare("DELETE FROM uniformes_pedidos").run();
+          db.prepare("DELETE FROM solicitacoes_compras").run();
+          db.prepare("DELETE FROM ocorrencias_ponto").run();
+          db.prepare("DELETE FROM comercial_leads").run();
+          db.prepare("DELETE FROM comercial_implantacoes").run();
+          db.prepare("DELETE FROM comercial_implantacoes_tarefas").run();
+          db.prepare("DELETE FROM beneficios_colaborador_mes").run();
+          db.prepare("DELETE FROM historico_ferias").run();
+          db.prepare("DELETE FROM afastamentos").run();
+          db.prepare("DELETE FROM faturas_itens").run();
+          db.prepare("DELETE FROM fechamento_mensal_faturas").run();
+          db.prepare("DELETE FROM ponto_espelhos_arquivados").run();
+          
+          // Clear ocupacoes in postos_trabalho just to be sure (although we rely on JOINs usually, some places might have a cached count)
+          
+          
+          db.exec('COMMIT');
+          return jsonResponse(res, { success: true, message: 'Sistema limpo com sucesso! Os clientes, postos, cargos, funcionrios do sistema e parmetros base foram mantidos.' });
+        } catch (err) {
+          db.exec('ROLLBACK');
+          return errorResponse(res, 'Erro ao resetar: ' + err.message, 500);
+        }
+      }
+
       if (pathname === '/api/auth/login' && method === 'POST') {
         const { login, senha } = await parseRequestBody(req);
         if (!login || !senha) return errorResponse(res, 'Login e senha são obrigatórios', 400);
