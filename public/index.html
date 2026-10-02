@@ -3735,6 +3735,35 @@
       </div>
     </section>
 
+
+      <!-- --------------------------------------------------------------- -->
+      <!-- ABA: ASSINATURAS ELETRÔNICAS -->
+      <!-- --------------------------------------------------------------- -->
+      <section id="aba-assinaturas" class="tab-content hidden space-y-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 class="text-2xl font-black text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-file-signature text-emerald-600"></i> Assinaturas Eletrônicas
+              </h2>
+              <p class="text-slate-500 mt-1">Dispare documentos para assinatura digital com validade jurídica via biometria facial e token local.</p>
+            </div>
+            <div class="flex gap-2">
+              <a href="/assinaturas" target="_blank" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold px-4 py-2.5 rounded-lg transition shadow-sm border border-emerald-200">
+                <i class="fa-solid fa-external-link-alt mr-1"></i> Acessar Portal Externo
+              </a>
+              <button onclick="abrirModalNovaAssinatura()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg shadow font-bold flex items-center gap-2 transition">
+                <i class="fa-solid fa-file-circle-plus"></i> Novo Documento
+              </button>
+            </div>
+          </div>
+          
+          <div id="listaAssinaturas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Carregado via JS -->
+          </div>
+        </div>
+      </section>
+
   </main>
 
   <!-- ================================================================= -->
