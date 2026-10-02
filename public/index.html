@@ -25,156 +25,127 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
+
   <!-- ================================================================= -->
   <!-- PORTAL DE ENTRADA / HUB DE ACESSO CORPORATIVO (LOGIN & SERVIÇOS) -->
   <!-- ================================================================= -->
-  <div id="telaLogin" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-    <div class="max-w-4xl w-full my-auto animate-fade-in space-y-4">
+  <div id="telaLogin" class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-4 overflow-y-auto">
+    
+    <div class="max-w-5xl w-full my-auto animate-fade-in flex flex-col items-center">
       
-      <!-- Topo Institucional do Portal de Acesso com Logo Oficial -->
-      <div class="text-center text-white mb-2">
-        <div class="inline-block bg-white rounded-2xl px-6 py-2.5 shadow-2xl border border-white/50 mb-3 hover:scale-[1.02] transition duration-200">
-          <img src="/img/logo_village.jpg" alt="Village Facilities Services" class="h-12 sm:h-14 w-auto object-contain mx-auto filter drop-shadow-xs">
+      <!-- Topo Institucional -->
+      <div class="text-center mb-8">
+        <div class="inline-block bg-white rounded-2xl px-6 py-2.5 shadow-[0_0_40px_rgba(255,255,255,0.1)] border border-white/10 mb-4">
+          <img src="/img/logo_village.jpg" alt="Village Facilities Services" class="h-12 sm:h-14 w-auto object-contain mx-auto filter drop-shadow-sm">
         </div>
-        <div class="flex items-center justify-center gap-2 mb-1">
-          <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-300 text-[10px] font-bold uppercase tracking-wider shadow-xs">
-            <span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
-            Portal Integrado Corporativo
-          </span>
-        </div>
-        <h2 class="text-lg sm:text-2xl font-black tracking-tight text-white">
-          Selecione o Ambiente de Acesso
-        </h2>
-        <p class="text-xs text-slate-300 max-w-md mx-auto">
-          Plataforma central Village Facilities Services ”” Gestão operacional, conformidade e capacitação continuada.
-        </p>
+        <h2 class="text-2xl font-black tracking-tight text-white mb-2">Portal Integrado Corporativo</h2>
+        <p class="text-slate-400 text-sm max-w-lg mx-auto">Ambiente unificado para operações de facilities, capacitação, ouvidoria e assinaturas eletrônicas.</p>
       </div>
 
-      <!-- Grid com os 3 Acessos: Sistema de Gestão (Esquerda) e Serviços Rápidos (Direita) -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+      <!-- Grid de Portais Externos (Main Focus) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mb-12">
         
-        <!-- CARD 1: SISTEMA DE GESTÁO (SISFAC 2.0) - LOGIN -->
-        <div class="lg:col-span-7 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col justify-between">
-          <div class="bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 p-5 sm:p-6 text-white text-center border-b border-slate-800 relative">
-            <div class="inline-flex items-center justify-center bg-white rounded-xl px-4 py-1.5 shadow-lg mb-2.5 border border-slate-100">
-              <img src="/img/logo_village.jpg" alt="Village Facilities Services" class="h-8 w-auto object-contain">
-            </div>
-            <div class="flex items-center justify-center gap-2">
-              <h1 class="text-lg font-black tracking-wider text-white">SISFAC 2.0</h1>
-              <span class="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Sistema de Gestão</span>
-            </div>
-            <p class="text-[11px] text-slate-400 mt-0.5">Operações de Facilities, Terceirização, RH & Suprimentos</p>
-          </div>
-
-          <form id="formLogin" onsubmit="efetuarLogin(event)" class="p-6 space-y-4 flex-1 flex flex-col justify-center">
-            <div id="loginErro" class="hidden bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg flex items-center gap-2">
-              <i class="fa-solid fa-triangle-exclamation"></i>
-              <span id="loginErroTexto">Login ou senha inválidos.</span>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Usuário / Login Administrativo</label>
-              <div class="relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <i class="fa-solid fa-user"></i>
-                </span>
-                <input type="text" id="inputLogin" required placeholder="Digite seu usuário..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50/50">
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Senha de Acesso</label>
-              <div class="relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <i class="fa-solid fa-lock"></i>
-                </span>
-                <input type="password" id="inputSenha" required placeholder="Digite sua senha..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50/50">
-              </div>
-            </div>
-
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 text-sm mt-2 active:scale-[0.99] cursor-pointer">
-              <i class="fa-solid fa-right-to-bracket"></i>
-              <span>Entrar no Sistema de Gestão</span>
-            </button>
-          </form>
-
-          <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-check text-blue-600"></i> Conexão Segura & Autenticada</span>
-            <span>SISFAC v2.0 Pro</span>
-          </div>
-        </div>
-
-        <!-- COLUNA DA DIREITA: OS DOIS PORTAIS EXTERNOS (DENÚNCIA & TREINAMENTO) -->
-        <div class="lg:col-span-5 flex flex-col gap-4 justify-between">
+        <!-- CARD: Canal de Denúncia -->
+        <div class="bg-emerald-950/40 border border-emerald-900/50 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-emerald-500/50 transition duration-300 flex flex-col justify-between">
+          <div class="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition duration-500"></div>
           
-          <!-- CARD 2: CANAL DE DENÚNCIAS & OUVIDORIA -->
-          <div class="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl shadow-xl border border-teal-500/30 p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:border-teal-400/60 transition">
-            <div class="absolute -right-8 -bottom-8 w-28 h-28 bg-teal-500/10 rounded-full blur-xl group-hover:bg-teal-500/20 transition"></div>
-            
-            <div class="space-y-2 relative z-10">
-              <div class="flex items-center justify-between">
-                <div class="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 text-teal-400 flex items-center justify-center text-lg shadow-sm">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <span class="bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  100% Sigiloso & LGPD
-                </span>
-              </div>
-              
-              <h3 class="text-base font-bold text-white group-hover:text-teal-300 transition">
-                Canal de Denúncia & Ouvidoria
-              </h3>
-              <p class="text-[11px] text-slate-300 leading-relaxed">
-                Espaço confidencial para relatos de condutas inadequadas, assédio ou sugestões com garantia legal de não retaliação e anonimato.
-              </p>
+          <div class="space-y-3 relative z-10 mb-6">
+            <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center shadow-inner mb-4">
+              <i class="fa-solid fa-shield-halved text-xl"></i>
             </div>
-
-            <div class="pt-4 space-y-2 relative z-10">
-              <a href="/denuncias" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs active:scale-[0.99]">
-                <i class="fa-solid fa-bullhorn"></i>
-                <span>Acessar Canal de Denúncia</span>
-              </a>
-              <a href="/denuncias" class="text-[11px] text-teal-400 hover:text-teal-300 font-medium flex items-center justify-center gap-1 transition">
-                <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Acompanhar Protocolo Existente &rarr;
-              </a>
-            </div>
+            <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition">Canal de Denúncia</h3>
+            <p class="text-xs text-emerald-100/60 leading-relaxed">Espaço sigiloso para relatos de condutas, assédio ou sugestões com garantia legal de não retaliação.</p>
           </div>
 
-          <!-- CARD 3: PORTAL DE TREINAMENTOS EAD -->
-          <div class="bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl shadow-xl border border-indigo-500/30 p-5 text-white flex flex-col justify-between relative overflow-hidden group hover:border-indigo-400/60 transition">
-            <div class="absolute -right-8 -bottom-8 w-28 h-28 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition"></div>
-            
-            <div class="space-y-2 relative z-10">
-              <div class="flex items-center justify-between">
-                <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center text-lg shadow-sm">
-                  <i class="fa-solid fa-graduation-cap"></i>
-                </div>
-                <span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Cursos & Certificados
-                </span>
-              </div>
-              
-              <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition">
-                Portal de Treinamento
-              </h3>
-              <p class="text-[11px] text-slate-300 leading-relaxed">
-                Ambiente de aprendizagem para colaboradores com videoaulas operacionais, módulos didáticos, provas e emissão de certificados.
-              </p>
-            </div>
-
-            <div class="pt-4 space-y-2 relative z-10">
-              <a href="/treinamentos" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs active:scale-[0.99]">
-                <i class="fa-solid fa-chalkboard-user"></i>
-                <span>Acessar Portal de Treinamento</span>
-              </a>
-              <a href="/treinamentos" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center justify-center gap-1 transition">
-                <i class="fa-solid fa-book-open text-[10px]"></i> Conhecer Cursos & Instrutores &rarr;
-              </a>
-            </div>
+          <div class="space-y-2 relative z-10">
+            <a href="/denunciar" target="_blank" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+              <i class="fa-solid fa-bullhorn"></i> Acessar Canal
+            </a>
+            <a href="/denunciar" target="_blank" class="block text-center text-xs text-emerald-400 hover:text-emerald-300 transition py-1">
+              Acompanhar Protocolo &rarr;
+            </a>
           </div>
-
         </div>
 
+        <!-- CARD: Portal de Treinamento -->
+        <div class="bg-indigo-950/40 border border-indigo-900/50 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-indigo-500/50 transition duration-300 flex flex-col justify-between">
+          <div class="absolute -right-6 -top-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition duration-500"></div>
+          
+          <div class="space-y-3 relative z-10 mb-6">
+            <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center shadow-inner mb-4">
+              <i class="fa-solid fa-graduation-cap text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white group-hover:text-indigo-300 transition">Portal EAD</h3>
+            <p class="text-xs text-indigo-100/60 leading-relaxed">Ambiente de aprendizagem com videoaulas operacionais, módulos didáticos e emissão de certificados.</p>
+          </div>
+
+          <div class="space-y-2 relative z-10">
+            <a href="/treinamentos" target="_blank" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+              <i class="fa-solid fa-chalkboard-user"></i> Acessar Aulas
+            </a>
+            <a href="/treinamentos" target="_blank" class="block text-center text-xs text-indigo-400 hover:text-indigo-300 transition py-1">
+              Conhecer Cursos &rarr;
+            </a>
+          </div>
+        </div>
+
+        <!-- CARD: Assinaturas -->
+        <div class="bg-amber-950/40 border border-amber-900/50 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-amber-500/50 transition duration-300 flex flex-col justify-between">
+          <div class="absolute -right-6 -top-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition duration-500"></div>
+          
+          <div class="space-y-3 relative z-10 mb-6">
+            <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center shadow-inner mb-4">
+              <i class="fa-solid fa-file-signature text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white group-hover:text-amber-300 transition">Assinatura Digital</h3>
+            <p class="text-xs text-amber-100/60 leading-relaxed">Assine contratos, recibos e ordens de serviço digitalmente com validade jurídica via biometria facial.</p>
+          </div>
+
+          <div class="space-y-2 relative z-10">
+            <a href="/assinaturas" target="_blank" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+              <i class="fa-solid fa-pen-nib"></i> Assinar Documento
+            </a>
+            <a href="/assinaturas" target="_blank" class="block text-center text-xs text-amber-400 hover:text-amber-300 transition py-1">
+              Ambiente Seguro <i class="fa-solid fa-lock text-[10px]"></i>
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Login Administrativo (Discreto e Retrátil) -->
+      <div class="w-full max-w-sm mx-auto pb-10">
+        <button onclick="document.getElementById('adminLoginForm').classList.toggle('hidden')" class="w-full bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-user-shield"></i> Acesso Restrito Administrativo (SISFAC)
+        </button>
+        
+        <form id="formLogin" onsubmit="efetuarLogin(event)" class="hidden mt-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-2xl animate-fade-in">
+          <div class="text-center mb-4">
+            <h3 class="text-white font-bold">SISFAC 2.0</h3>
+            <p class="text-slate-500 text-[10px] uppercase tracking-wider">Gestão Interna</p>
+          </div>
+          
+          <div id="loginErro" class="hidden bg-red-900/30 border border-red-800 text-red-400 text-xs p-3 rounded-lg flex items-center gap-2 mb-4">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="loginErroTexto">Login ou senha inválidos.</span>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Usuário</label>
+              <input type="text" id="inputLogin" required placeholder="admin" class="w-full px-3 py-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Senha</label>
+              <input type="password" id="inputSenha" required placeholder="••••••••" class="w-full px-3 py-2 border border-slate-700 bg-slate-800 rounded-lg text-sm text-white focus:ring-1 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <button type="submit" id="btnEntrar" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg transition flex justify-center items-center gap-2 text-sm mt-2">
+              <span>Entrar no Sistema</span> <i class="fa-solid fa-right-to-bracket"></i>
+            </button>
+          </div>
+        </form>
       </div>
 
     </div>

@@ -22496,3 +22496,251 @@ window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
     alert('Erro ao gerar relatório: ' + e.message);
   }
 };
+
+// =========================================================
+// ASSINATURAS ELETRÔNICAS (ADMIN)
+// =========================================================
+let docSelecionadoId = null;
+
+window.renderizarGestaoAssinaturas = async function() {
+  const container = document.getElementById('listaAssinaturas');
+  if(!container) return;
+  
+  container.innerHTML = '<div class="col-span-full text-center py-10"><i class="fa-solid fa-spinner fa-spin text-indigo-600 text-2xl"></i></div>';
+  
+  try {
+     const res = await fetch('/api/admin/assinaturas/list');
+     const docs = await res.json();
+     
+     if(docs.length === 0) {
+        container.innerHTML = '<div class="col-span-full bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-500">Nenhum documento enviado para assinatura.</div>';
+        return;
+     }
+     
+     let html = '';
+     docs.forEach(d => {
+        const perc = d.total_envios > 0 ? Math.round((d.assinados / d.total_envios) * 100) : 0;
+        let colorClass = 'bg-slate-200';
+        if(perc === 100) colorClass = 'bg-emerald-500';
+        else if (perc > 0) colorClass = 'bg-amber-400';
+        
+        html += `
+          <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition cursor-pointer" onclick="abrirDetalhesAssinatura(${d.id}, '${d.titulo.replace(/'/g, "\'")}')">
+             <div class="flex justify-between items-start mb-3">
+                <h3 class="font-bold text-slate-800 line-clamp-2">${d.titulo}</h3>
+                <span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded ml-2 whitespace-nowrap">${new Date(d.created_at).toLocaleDateString()}</span>
+             </div>
+             
+             <div class="mt-4">
+                <div class="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                   <span>Progresso</span>
+                   <span>${d.assinados} de ${d.total_envios}</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5">
+                   <div class="${colorClass} h-2.5 rounded-full" style="width: ${perc}%"></div>
+                </div>
+             </div>
+             
+             <div class="mt-4 flex justify-between items-center text-sm">
+                <span class="${perc === 100 ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}">${perc}% Concluído</span>
+                <span class="text-indigo-600 font-bold text-xs"><i class="fa-solid fa-users"></i> Gerenciar</span>
+             </div>
+          </div>
+        `;
+     });
+     container.innerHTML = html;
+     
+  } catch(err) {
+     container.innerHTML = '<div class="col-span-full text-red-500 text-center">Erro ao carregar documentos.</div>';
+  }
+};
+
+window.abrirModalNovaAssinatura = async function() {
+   const select = document.getElementById('assDocColabs');
+   select.innerHTML = '<option disabled>Carregando colaboradores...</option>';
+   abrirModal('modalNovaAssinatura');
+   
+   try {
+      const res = await fetch('/api/colaboradores');
+      const colabs = await res.json();
+      
+      select.innerHTML = '';
+      colabs.filter(c => c.status_colaborador === 'Ativo').forEach(c => {
+         select.innerHTML += `<option value="${c.id}">${c.nome} - CPF: ${c.cpf}</option>`;
+      });
+   } catch(e) {
+      select.innerHTML = '<option disabled>Erro ao carregar</option>';
+   }
+};
+
+window.salvarNovaAssinatura = function(e) {
+   e.preventDefault();
+   const btn = document.getElementById('btnSalvarAssinatura');
+   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+   btn.disabled = true;
+   
+   const titulo = document.getElementById('assDocTitulo').value;
+   const desc = document.getElementById('assDocDesc').value;
+   const select = document.getElementById('assDocColabs');
+   const ids = Array.from(select.selectedOptions).map(o => parseInt(o.value, 10));
+   
+   const fileInput = document.getElementById('assDocPdf');
+   const file = fileInput.files[0];
+   
+   if(!file || ids.length === 0) {
+      alert("Selecione um arquivo PDF e pelo menos 1 colaborador.");
+      btn.innerHTML = 'Enviar'; btn.disabled = false;
+      return;
+   }
+   
+   const reader = new FileReader();
+   reader.onload = async function(ev) {
+      const b64 = ev.target.result;
+      
+      try {
+         const res = await fetch('/api/admin/assinaturas/upload', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+               titulo: titulo,
+               descricao: desc,
+               arquivo_pdf: b64,
+               ids_colaboradores: ids
+            })
+         });
+         const data = await res.json();
+         if(data.success) {
+            fecharModal('modalNovaAssinatura');
+            document.getElementById('formNovaAssinatura').reset();
+            renderizarGestaoAssinaturas();
+            alert("Documento enviado com sucesso para " + ids.length + " colaborador(es)!");
+         } else {
+            alert(data.error || "Erro");
+         }
+      } catch(err) {
+         alert("Falha de conexão");
+      } finally {
+         btn.innerHTML = 'Enviar'; btn.disabled = false;
+      }
+   };
+   reader.readAsDataURL(file);
+};
+
+window.abrirDetalhesAssinatura = async function(id, titulo) {
+   docSelecionadoId = id;
+   document.getElementById('detalhesAssTitulo').innerText = titulo;
+   const tbody = document.getElementById('detalhesAssTbody');
+   tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</td></tr>';
+   abrirModal('modalDetalhesAssinatura');
+   
+   try {
+      const res = await fetch(`/api/admin/assinaturas/envios/${id}`);
+      const envios = await res.json();
+      
+      let assinados = 0;
+      tbody.innerHTML = '';
+      
+      envios.forEach(e => {
+         if(e.status === 'ASSINADO') assinados++;
+         const badgeStatus = e.status === 'ASSINADO' 
+            ? '<span class="bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded font-bold"><i class="fa-solid fa-check mr-1"></i> Assinado</span>'
+            : '<span class="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded font-bold"><i class="fa-solid fa-clock mr-1"></i> Pendente</span>';
+            
+         const dataAss = e.data_hora ? new Date(e.data_hora).toLocaleString('pt-BR') : '-';
+         
+         const btnCert = e.status === 'ASSINADO' 
+            ? `<button onclick="baixarCertificado('${e.colaborador}', '${e.cpf}', '${e.data_hora}', '${e.ip}', '${e.hash_assinatura}', '${e.selfie_base64}')" class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded border border-indigo-200 font-bold text-xs hover:bg-indigo-100"><i class="fa-solid fa-certificate"></i> Gerar Certificado</button>`
+            : '-';
+            
+         tbody.innerHTML += `
+            <tr>
+               <td class="px-4 py-3 font-medium text-slate-800">${e.colaborador}</td>
+               <td class="px-4 py-3 text-slate-500">${e.cpf}</td>
+               <td class="px-4 py-3 text-center">${badgeStatus}</td>
+               <td class="px-4 py-3 text-center text-slate-500 text-xs">${dataAss}</td>
+               <td class="px-4 py-3 text-center">${btnCert}</td>
+            </tr>
+         `;
+      });
+      
+      document.getElementById('detalhesAssTotal').innerText = envios.length;
+      document.getElementById('detalhesAssAssinados').innerText = assinados;
+   } catch(err) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexão</td></tr>';
+   }
+};
+
+window.baixarDocOriginal = function() {
+   if(!docSelecionadoId) return;
+   window.open(`/api/portal-assinaturas/documento/${docSelecionadoId}`, '_blank');
+};
+
+window.baixarCertificado = function(nome, cpf, dataHora, ip, hash, selfie) {
+   // Generate a simple HTML popup to print as PDF
+   const d = new Date(dataHora).toLocaleString('pt-BR');
+   
+   const html = `
+      <html>
+      <head>
+         <title>Certificado de Assinatura Eletrônica</title>
+         <style>
+            body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 20px; margin-bottom: 30px; }
+            .header h1 { margin: 0; color: #1e1b4b; }
+            .box { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; background: #f9fafb; }
+            .box h3 { margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; }
+            td { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .label { font-weight: bold; width: 150px; }
+            .selfie { text-align: center; margin-top: 20px; }
+            .selfie img { max-width: 200px; border: 3px solid #ddd; border-radius: 8px; }
+            .footer { text-align: center; font-size: 10px; color: #777; margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; }
+            .hash { font-family: monospace; background: #eee; padding: 5px; word-break: break-all; font-size: 11px; }
+         </style>
+      </head>
+      <body>
+         <div class="header">
+            <h1>Certificado de Assinatura Eletrônica</h1>
+            <p>Village Facilities Services</p>
+         </div>
+         
+         <div class="box">
+            <h3>Dados do Signatário</h3>
+            <table>
+               <tr><td class="label">Nome:</td><td>${nome}</td></tr>
+               <tr><td class="label">CPF:</td><td>${cpf}</td></tr>
+               <tr><td class="label">Data/Hora:</td><td>${d}</td></tr>
+               <tr><td class="label">Endereço de IP:</td><td>${ip || 'Não capturado'}</td></tr>
+            </table>
+         </div>
+         
+         <div class="box">
+            <h3>Validação Biométrica</h3>
+            <p>Foto capturada no momento exato da assinatura via dispositivo do usuário:</p>
+            <div class="selfie">
+               <img src="${selfie}" alt="Foto Biométrica">
+            </div>
+         </div>
+         
+         <div class="box">
+            <h3>Autenticidade e Hash</h3>
+            <p>Este certificado comprova a assinatura digital vinculada ao documento interno através de algoritmos criptográficos (SHA-256).</p>
+            <div class="hash">${hash}</div>
+         </div>
+         
+         <div class="footer">
+            Documento gerado pelo sistema SISFAC 2.0 em conformidade com as diretrizes de assinatura eletrônica aplicáveis.
+         </div>
+         
+         <script>
+            window.onload = function() { window.print(); }
+         </script>
+      </body>
+      </html>
+   `;
+   
+   const w = window.open('', '_blank');
+   w.document.write(html);
+   w.document.close();
+};
+

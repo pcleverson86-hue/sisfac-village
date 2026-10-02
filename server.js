@@ -1491,6 +1491,8 @@ function calcularTempoEmpresa(dataAdmissaoStr, dataFimStr = null) {
   return partes.join(', ');
 }
 
+
+
 // -------------------------------------------------------------
 // SINCRONIZAÇÃO DE CONTAS A PAGAR & PARCELAS DE COMPRAS
 // -------------------------------------------------------------
@@ -10500,6 +10502,134 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
 
 return errorResponse(res, 'Endpoint não encontrado', 404);
+
+      // =========================================================
+      // 14. ASSINATURAS ELETRÔNICAS (PORTAL EXTERNO E ADMIN)
+      // =========================================================
+      
+      // -- PORTAL EXTERNO --
+      if (pathname === '/api/portal-assinaturas/auth' && method === 'POST') {
+         const { cpf } = await parseRequestBody(req);
+         if (!cpf) return errorResponse(res, 'CPF obrigatório', 400);
+         const col = db.prepare('SELECT id, nome, cpf FROM colaboradores WHERE cpf = ? OR REPLACE(REPLACE(cpf, ".", ""), "-", "") = ? LIMIT 1').get(cpf, cpf);
+         if (!col) return errorResponse(res, 'CPF não encontrado na base de colaboradores.', 404);
+         
+         const token = `sign_${col.id}_${Date.now()}`; // Simple mock token
+         return jsonResponse(res, { token, colaborador: col });
+      }
+      
+      if (pathname === '/api/portal-assinaturas/pendentes' && method === 'GET') {
+         const auth = req.headers['authorization'];
+         if (!auth || !auth.startsWith('Bearer sign_')) return errorResponse(res, 'Não autorizado', 401);
+         const col_id = auth.split('_')[1];
+         
+         const pendentes = db.prepare(`
+            SELECT e.id, d.titulo, d.descricao, e.created_at, e.documento_id
+            FROM assinatura_envios e
+            JOIN assinatura_documentos d ON e.documento_id = d.id
+            WHERE e.colaborador_id = ? AND e.status = 'PENDENTE'
+            ORDER BY e.created_at DESC
+         `).all(col_id);
+         return jsonResponse(res, pendentes);
+      }
+      
+      if (pathname.startsWith('/api/portal-assinaturas/documento/') && method === 'GET') {
+         const docId = pathname.split('/').pop();
+         const doc = db.prepare('SELECT arquivo_pdf, titulo FROM assinatura_documentos WHERE id = ?').get(docId);
+         if (!doc) return errorResponse(res, 'Não encontrado', 404);
+         
+         const base64Data = doc.arquivo_pdf.replace(/^data:application\/pdf;base64,/, '');
+         const buffer = Buffer.from(base64Data, 'base64');
+         
+         res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `inline; filename="Documento_${doc.titulo}.pdf"`
+         });
+         res.end(buffer);
+         return;
+      }
+      
+      if (pathname === '/api/portal-assinaturas/assinar' && method === 'POST') {
+         const auth = req.headers['authorization'];
+         if (!auth || !auth.startsWith('Bearer sign_')) return errorResponse(res, 'Não autorizado', 401);
+         const col_id = auth.split('_')[1];
+         
+         const { envio_id, selfie_base64, latitude, longitude } = await parseRequestBody(req);
+         if (!envio_id || !selfie_base64) return errorResponse(res, 'Dados incompletos', 400);
+         
+         // Verificar se o envio pertence a ele e está pendente
+         const envio = db.prepare('SELECT * FROM assinatura_envios WHERE id = ? AND colaborador_id = ? AND status = "PENDENTE"').get(envio_id, col_id);
+         if (!envio) return errorResponse(res, 'Envio inválido ou já assinado.', 400);
+         
+         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+         const ua = req.headers['user-agent'] || 'Desconhecido';
+         const timestamp = new Date().toISOString();
+         
+         const crypto = require('crypto');
+         const hashInput = `${envio_id}|${col_id}|${timestamp}|${ip}|${selfie_base64.substring(0, 100)}`;
+         const hashAssinatura = crypto.createHash('sha256').update(hashInput).digest('hex');
+         
+         db.exec('BEGIN TRANSACTION');
+         try {
+            db.prepare(`
+               INSERT INTO assinatura_registros (envio_id, data_hora, ip, user_agent, latitude, longitude, selfie_base64, hash_assinatura)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(envio_id, timestamp, ip, ua, latitude, longitude, selfie_base64, hashAssinatura);
+            
+            db.prepare('UPDATE assinatura_envios SET status = "ASSINADO" WHERE id = ?').run(envio_id);
+            db.exec('COMMIT');
+            return jsonResponse(res, { success: true, hash: hashAssinatura });
+         } catch(e) {
+            db.exec('ROLLBACK');
+            return errorResponse(res, 'Erro ao registrar assinatura: ' + e.message, 500);
+         }
+      }
+      
+      // -- ADMIN --
+      if (pathname === '/api/admin/assinaturas/upload' && method === 'POST') {
+         const { titulo, descricao, arquivo_pdf, ids_colaboradores } = await parseRequestBody(req);
+         if (!titulo || !arquivo_pdf || !ids_colaboradores || !ids_colaboradores.length) return errorResponse(res, 'Dados inválidos', 400);
+         
+         db.exec('BEGIN TRANSACTION');
+         try {
+            const resultDoc = db.prepare('INSERT INTO assinatura_documentos (titulo, descricao, arquivo_pdf) VALUES (?, ?, ?)').run(titulo, descricao, arquivo_pdf);
+            const docId = resultDoc.lastInsertRowid;
+            
+            const stmtEnvio = db.prepare('INSERT INTO assinatura_envios (documento_id, colaborador_id) VALUES (?, ?)');
+            for(let cid of ids_colaboradores) {
+               stmtEnvio.run(docId, cid);
+            }
+            db.exec('COMMIT');
+            return jsonResponse(res, { success: true });
+         } catch(e) {
+            db.exec('ROLLBACK');
+            return errorResponse(res, 'Erro interno', 500);
+         }
+      }
+
+      if (pathname === '/api/admin/assinaturas/list' && method === 'GET') {
+         const docs = db.prepare(`
+            SELECT d.id, d.titulo, d.created_at,
+                   (SELECT COUNT(*) FROM assinatura_envios e WHERE e.documento_id = d.id) as total_envios,
+                   (SELECT COUNT(*) FROM assinatura_envios e WHERE e.documento_id = d.id AND e.status = 'ASSINADO') as assinados
+            FROM assinatura_documentos d
+            ORDER BY d.created_at DESC
+         `).all();
+         return jsonResponse(res, docs);
+      }
+      
+      if (pathname.startsWith('/api/admin/assinaturas/envios/') && method === 'GET') {
+         const docId = pathname.split('/').pop();
+         const envios = db.prepare(`
+            SELECT e.id, c.nome as colaborador, c.cpf, e.status, r.data_hora, r.ip, r.hash_assinatura, r.selfie_base64
+            FROM assinatura_envios e
+            JOIN colaboradores c ON e.colaborador_id = c.id
+            LEFT JOIN assinatura_registros r ON r.envio_id = e.id
+            WHERE e.documento_id = ?
+            ORDER BY e.status ASC, c.nome ASC
+         `).all(docId);
+         return jsonResponse(res, envios);
+      }
 
     } catch (err) {
       console.error('Erro na API:', err);

@@ -1,0 +1,426 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal de Assinaturas - Village</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .camera-wrapper { position: relative; width: 100%; max-width: 300px; margin: 0 auto; border-radius: 1rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); background: #000; }
+        #videoElement { width: 100%; height: auto; transform: scaleX(-1); /* espelhar câmera */ }
+        #canvasElement { display: none; }
+        #photoPreview { width: 100%; height: auto; display: none; transform: scaleX(-1); }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #4f46e5; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-slate-800 pb-20">
+
+    <!-- Header Mobile -->
+    <header class="bg-indigo-900 text-white p-4 shadow-md sticky top-0 z-50 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="bg-white p-1.5 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-file-signature text-indigo-900 text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold leading-tight">Assinatura Digital</h1>
+                <p class="text-indigo-200 text-xs">Village Facilities</p>
+            </div>
+        </div>
+        <button id="btnLogout" class="hidden text-indigo-200 hover:text-white" onclick="logout()">
+            <i class="fa-solid fa-right-from-bracket text-lg"></i>
+        </button>
+    </header>
+
+    <!-- Tela 1: Login -->
+    <main id="telaLogin" class="p-5 mt-10 max-w-md mx-auto">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-user-lock text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold">Acesso do Colaborador</h2>
+                <p class="text-sm text-slate-500 mt-1">Informe seu CPF para visualizar documentos pendentes de assinatura.</p>
+            </div>
+            
+            <form id="formLogin" onsubmit="realizarLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1">CPF</label>
+                    <input type="tel" id="loginCpf" class="w-full border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg" placeholder="Apenas números" required>
+                </div>
+                <button type="submit" id="btnSubmitLogin" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                    <span>Entrar</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <div id="loginErro" class="hidden mt-3 text-red-600 text-sm text-center font-medium bg-red-50 p-2 rounded-lg"></div>
+            </form>
+        </div>
+        <p class="text-center text-xs text-slate-400 mt-6"><i class="fa-solid fa-shield-halved mr-1"></i> Ambiente 100% seguro e com validade jurídica.</p>
+    </main>
+
+    <!-- Tela 2: Lista de Documentos -->
+    <main id="telaLista" class="hidden p-4 max-w-md mx-auto">
+        <div class="mb-5">
+            <h2 class="text-lg font-bold">Olá, <span id="nomeColaborador" class="text-indigo-700"></span>!</h2>
+            <p class="text-sm text-slate-500">Abaixo estão os documentos que precisam da sua assinatura.</p>
+        </div>
+
+        <div id="listaPendentes" class="space-y-4">
+            <!-- Renderizado via JS -->
+        </div>
+        
+        <div id="listaVazia" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center">
+            <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-check text-xl"></i>
+            </div>
+            <h3 class="font-bold text-emerald-800">Tudo certo!</h3>
+            <p class="text-sm text-emerald-600 mt-1">Você não possui nenhum documento pendente de assinatura no momento.</p>
+        </div>
+    </main>
+
+    <!-- Tela 3: Processo de Assinatura -->
+    <main id="telaAssinatura" class="hidden p-4 max-w-md mx-auto">
+        <button onclick="voltarLista()" class="text-slate-500 font-bold mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-arrow-left"></i> Voltar
+        </button>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+            <div class="bg-slate-50 p-4 border-b border-slate-200">
+                <h3 class="font-bold text-lg" id="docTitulo">Título do Documento</h3>
+                <p class="text-xs text-slate-500 mt-1" id="docDesc">Descrição do documento</p>
+            </div>
+            <div class="p-4 bg-slate-100 flex justify-center">
+                <!-- Visualizador simplificado do PDF (ou link pra baixar e ler antes) -->
+                <button onclick="lerDocumento()" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf text-red-500"></i> Ler Documento Original
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
+            <h3 class="font-bold mb-4 text-center"><i class="fa-solid fa-camera text-indigo-600 mr-1"></i> Validação Facial</h3>
+            <p class="text-xs text-slate-500 text-center mb-4">Para validade jurídica, precisamos capturar uma foto do seu rosto no momento da assinatura.</p>
+            
+            <div class="camera-wrapper mb-4">
+                <video id="videoElement" autoplay playsinline></video>
+                <img id="photoPreview" alt="Sua foto">
+                <canvas id="canvasElement"></canvas>
+            </div>
+            
+            <div class="flex gap-2">
+                <button id="btnCapturar" onclick="capturarFoto()" class="flex-1 bg-slate-800 text-white font-bold py-3 rounded-xl">
+                    <i class="fa-solid fa-camera mr-1"></i> Tirar Foto
+                </button>
+                <button id="btnRefazer" onclick="iniciarCamera()" class="hidden flex-1 bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Refazer
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-start gap-3 mb-4">
+                <input type="checkbox" id="chkTermos" class="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                <label for="chkTermos" class="text-sm text-slate-600 leading-tight">
+                    Declaro que li o documento e aceito assiná-lo digitalmente. Autorizo a coleta do meu IP, localização e biometria facial para fins de validade jurídica conforme MP 2.200-2/2001.
+                </label>
+            </div>
+            
+            <button id="btnAssinar" onclick="finalizarAssinatura()" disabled class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                Assinar Documento Agora
+            </button>
+        </div>
+    </main>
+
+    <!-- Tela 4: Sucesso -->
+    <main id="telaSucesso" class="hidden p-5 mt-10 max-w-md mx-auto text-center">
+        <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-check-double text-3xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold mb-2 text-slate-800">Assinatura Concluída!</h2>
+        <p class="text-slate-600 mb-8">Seu documento foi assinado digitalmente com sucesso e já está disponível no RH.</p>
+        
+        <button onclick="voltarLista()" class="w-full border-2 border-indigo-600 text-indigo-600 font-bold py-3.5 rounded-xl transition">
+            Voltar para meus documentos
+        </button>
+    </main>
+
+    <script>
+        let tokenAtual = null;
+        let colaboradorAtual = null;
+        let enviosPendentes = [];
+        let envioSelecionado = null;
+        
+        let streamCamera = null;
+        let fotoBase64 = null;
+        let localizacaoAtual = null;
+
+        // Máscara CPF
+        document.getElementById('loginCpf').addEventListener('input', function(e) {
+            let v = e.target.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.slice(0, 11);
+            e.target.value = v;
+        });
+
+        // Habilitar botão assinar
+        document.getElementById('chkTermos').addEventListener('change', function(e) {
+            verificarLiberacaoAssinatura();
+        });
+
+        function verificarLiberacaoAssinatura() {
+            const chk = document.getElementById('chkTermos').checked;
+            const btn = document.getElementById('btnAssinar');
+            if (chk && fotoBase64) {
+                btn.disabled = false;
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        async function realizarLogin(e) {
+            e.preventDefault();
+            const cpf = document.getElementById('loginCpf').value;
+            if(cpf.length !== 11) {
+                mostrarErroLogin("CPF inválido. Digite apenas 11 números.");
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitLogin');
+            btn.innerHTML = '<span class="loader border-white border-t-transparent"></span>';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/portal-assinaturas/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cpf })
+                });
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    mostrarErroLogin(data.error);
+                } else {
+                    tokenAtual = data.token;
+                    colaboradorAtual = data.colaborador;
+                    document.getElementById('nomeColaborador').innerText = colaboradorAtual.nome.split(' ')[0];
+                    document.getElementById('btnLogout').classList.remove('hidden');
+                    carregarDocumentos();
+                }
+            } catch (err) {
+                mostrarErroLogin("Erro de conexão. Tente novamente.");
+            } finally {
+                btn.innerHTML = '<span>Entrar</span> <i class="fa-solid fa-arrow-right"></i>';
+                btn.disabled = false;
+            }
+        }
+
+        function mostrarErroLogin(msg) {
+            const el = document.getElementById('loginErro');
+            el.innerText = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        async function carregarDocumentos() {
+            mostrarTela('telaLista');
+            
+            try {
+                const res = await fetch('/api/portal-assinaturas/pendentes', {
+                    headers: { 'Authorization': `Bearer ${tokenAtual}` }
+                });
+                enviosPendentes = await res.json();
+                renderizarLista();
+            } catch (err) {
+                alert("Erro ao carregar documentos.");
+            }
+        }
+
+        function renderizarLista() {
+            const container = document.getElementById('listaPendentes');
+            const vazia = document.getElementById('listaVazia');
+            
+            container.innerHTML = '';
+            
+            if (enviosPendentes.length === 0) {
+                vazia.classList.remove('hidden');
+            } else {
+                vazia.classList.add('hidden');
+                
+                enviosPendentes.forEach(envio => {
+                    container.innerHTML += `
+                        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Pendente</span>
+                                    <span class="text-xs text-slate-400">Enviado em ${new Date(envio.created_at).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                                <h3 class="font-bold text-slate-800 truncate">${envio.titulo}</h3>
+                            </div>
+                            <button onclick="abrirAssinatura(${envio.id})" class="shrink-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 w-10 h-10 rounded-full flex items-center justify-center transition">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        function abrirAssinatura(id) {
+            envioSelecionado = enviosPendentes.find(e => e.id === id);
+            if(!envioSelecionado) return;
+            
+            document.getElementById('docTitulo').innerText = envioSelecionado.titulo;
+            document.getElementById('docDesc').innerText = envioSelecionado.descricao || 'Nenhuma descrição fornecida.';
+            
+            document.getElementById('chkTermos').checked = false;
+            fotoBase64 = null;
+            verificarLiberacaoAssinatura();
+            
+            mostrarTela('telaAssinatura');
+            iniciarCamera();
+            capturarLocalizacao();
+        }
+
+        function voltarLista() {
+            pararCamera();
+            carregarDocumentos();
+        }
+
+        function logout() {
+            tokenAtual = null;
+            colaboradorAtual = null;
+            document.getElementById('loginCpf').value = '';
+            document.getElementById('btnLogout').classList.add('hidden');
+            mostrarTela('telaLogin');
+        }
+
+        function mostrarTela(id) {
+            ['telaLogin', 'telaLista', 'telaAssinatura', 'telaSucesso'].forEach(t => {
+                document.getElementById(t).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        // ================= CÂMERA =================
+        async function iniciarCamera() {
+            const video = document.getElementById('videoElement');
+            const preview = document.getElementById('photoPreview');
+            const btnCap = document.getElementById('btnCapturar');
+            const btnRef = document.getElementById('btnRefazer');
+            
+            video.style.display = 'block';
+            preview.style.display = 'none';
+            btnCap.classList.remove('hidden');
+            btnRef.classList.add('hidden');
+            
+            fotoBase64 = null;
+            verificarLiberacaoAssinatura();
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    streamCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    video.srcObject = streamCamera;
+                } catch (err) {
+                    console.error("Erro câmera", err);
+                    alert("Não foi possível acessar a câmera. Permita o acesso para assinar.");
+                }
+            } else {
+                alert("Seu navegador não suporta captura de câmera.");
+            }
+        }
+
+        function capturarFoto() {
+            const video = document.getElementById('videoElement');
+            const canvas = document.getElementById('canvasElement');
+            const preview = document.getElementById('photoPreview');
+            const btnCap = document.getElementById('btnCapturar');
+            const btnRef = document.getElementById('btnRefazer');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Comprimir um pouco (JPEG 70%)
+            fotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            
+            preview.src = fotoBase64;
+            video.style.display = 'none';
+            preview.style.display = 'block';
+            
+            btnCap.classList.add('hidden');
+            btnRef.classList.remove('hidden');
+            
+            pararCamera();
+            verificarLiberacaoAssinatura();
+        }
+
+        function pararCamera() {
+            if (streamCamera) {
+                streamCamera.getTracks().forEach(track => track.stop());
+                streamCamera = null;
+            }
+        }
+
+        function capturarLocalizacao() {
+            localizacaoAtual = null;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        localizacaoAtual = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    },
+                    (err) => { console.log("Geolocalização negada/falha"); },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            }
+        }
+
+        // ================= PDF =================
+        function lerDocumento() {
+            // Em vez de baixar direto, abre em nova aba
+            window.open(`/api/portal-assinaturas/documento/${envioSelecionado.documento_id}?token=${tokenAtual}`, '_blank');
+        }
+
+        // ================= FINALIZAR =================
+        async function finalizarAssinatura() {
+            if(!fotoBase64 || !document.getElementById('chkTermos').checked) return;
+            
+            const btn = document.getElementById('btnAssinar');
+            btn.innerHTML = '<span class="loader border-white border-t-transparent"></span> Processando e Criptografando...';
+            btn.disabled = true;
+
+            const payload = {
+                envio_id: envioSelecionado.id,
+                selfie_base64: fotoBase64,
+                latitude: localizacaoAtual ? localizacaoAtual.lat : null,
+                longitude: localizacaoAtual ? localizacaoAtual.lng : null
+            };
+
+            try {
+                const res = await fetch('/api/portal-assinaturas/assinar', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${tokenAtual}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                if(data.success) {
+                    mostrarTela('telaSucesso');
+                } else {
+                    alert("Erro ao assinar: " + (data.error || "Tente novamente."));
+                    btn.innerHTML = 'Assinar Documento Agora';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert("Falha na conexão.");
+                btn.innerHTML = 'Assinar Documento Agora';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
