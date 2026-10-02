@@ -395,6 +395,7 @@ function navegarPara(tabId) {
 
   // Disparar carregamentos específicos
   if (tabId === 'dashboard') carregarDashboardExecutivo();
+  if (tabId === 'assinaturas') renderizarGestaoAssinaturas();
   else if (tabId === 'comercial') carregarComercial();
   else if (tabId === 'comunicados') carregarComunicados();
   else if (tabId === 'implantacao') carregarFluxoImplantacao();

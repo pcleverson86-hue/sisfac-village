@@ -228,6 +228,10 @@
         </button>
 
         <nav class="flex space-x-1 overflow-x-auto pb-1 text-sm font-medium border-t border-slate-800 flex-1 scroll-smooth" id="mainNavTabs">
+        <button onclick="navegarPara('assinaturas')" id="tabBtn-assinaturas" class="tab-btn px-3.5 py-2.5 rounded-t-md text-slate-400 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-file-signature text-emerald-400"></i>
+          <span>Assinaturas</span>
+        </button>
         <button onclick="navegarPara('dashboard')" id="tabBtn-dashboard" class="tab-btn px-3.5 py-2.5 rounded-t-md text-slate-400 hover:text-white flex items-center space-x-2 whitespace-nowrap">
           <i class="fa-solid fa-gauge-high text-cyan-400"></i>
           <span>Dashboard Geral</span>
@@ -11165,6 +11169,87 @@
       </div>
     </div>
   </div>
+
+
+<!-- Modal Nova Assinatura -->
+<div id="modalNovaAssinatura" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden my-8">
+    <div class="bg-slate-800 text-white px-5 py-4 flex justify-between items-center sticky top-0 z-10">
+      <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-file-signature text-emerald-400"></i> Enviar Documento para Assinatura</h3>
+      <button onclick="fecharModal('modalNovaAssinatura')" class="text-slate-300 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div class="p-6">
+      <form id="formNovaAssinatura" onsubmit="salvarNovaAssinatura(event)">
+        <div class="grid grid-cols-1 gap-5 mb-5">
+           <div>
+             <label class="block text-sm font-bold text-slate-700 mb-1">Título do Documento <span class="text-red-500">*</span></label>
+             <input type="text" id="assDocTitulo" required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="Ex: Termo de Responsabilidade - EPI">
+           </div>
+           <div>
+             <label class="block text-sm font-bold text-slate-700 mb-1">Descrição Curta (Opcional)</label>
+             <input type="text" id="assDocDesc" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="Instruções breves...">
+           </div>
+           <div>
+             <label class="block text-sm font-bold text-slate-700 mb-1">Arquivo PDF <span class="text-red-500">*</span></label>
+             <input type="file" id="assDocPdf" accept="application/pdf" required class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-300 rounded-lg p-1 cursor-pointer">
+           </div>
+           <div>
+             <label class="block text-sm font-bold text-slate-700 mb-1">Colaboradores Destinatários <span class="text-red-500">*</span></label>
+             <select id="assDocColabs" multiple required class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 h-32">
+               <!-- Preenchido via JS -->
+             </select>
+             <p class="text-xs text-slate-500 mt-1">Segure CTRL (ou CMD) para selecionar vários.</p>
+           </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+           <button type="button" onclick="fecharModal('modalNovaAssinatura')" class="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition">Cancelar</button>
+           <button type="submit" id="btnSalvarAssinatura" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-md flex items-center gap-2">Enviar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhes Assinatura -->
+<div id="modalDetalhesAssinatura" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden my-8">
+    <div class="bg-slate-800 text-white px-5 py-4 flex justify-between items-center sticky top-0 z-10">
+      <h3 class="font-bold text-lg" id="detalhesAssTitulo">Acompanhamento do Documento</h3>
+      <button onclick="fecharModal('modalDetalhesAssinatura')" class="text-slate-300 hover:text-white transition"><i class="fa-solid fa-xmark text-xl"></i></button>
+    </div>
+    <div class="p-6">
+       <div class="flex flex-col md:flex-row justify-between mb-4 gap-4">
+          <div>
+            <p class="text-sm text-slate-500 font-medium">Status de Envio</p>
+            <div class="flex gap-4 mt-2">
+               <div class="bg-slate-100 px-4 py-2 rounded-lg"><span class="block text-2xl font-black text-slate-700" id="detalhesAssTotal">0</span> <span class="text-xs font-bold text-slate-500">ENVIADOS</span></div>
+               <div class="bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100"><span class="block text-2xl font-black text-emerald-600" id="detalhesAssAssinados">0</span> <span class="text-xs font-bold text-emerald-600">ASSINADOS</span></div>
+            </div>
+          </div>
+          <div>
+            <button onclick="baixarDocOriginal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg transition border border-slate-300 shadow-sm flex items-center gap-2"><i class="fa-solid fa-file-pdf text-red-500"></i> Ver PDF Original</button>
+          </div>
+       </div>
+       
+       <div class="overflow-x-auto border border-slate-200 rounded-lg">
+          <table class="w-full text-left text-sm whitespace-nowrap">
+             <thead class="bg-slate-50 text-slate-600">
+                <tr>
+                   <th class="px-4 py-3 font-bold">Colaborador</th>
+                   <th class="px-4 py-3 font-bold">CPF</th>
+                   <th class="px-4 py-3 font-bold text-center">Status</th>
+                   <th class="px-4 py-3 font-bold text-center">Data Assinatura</th>
+                   <th class="px-4 py-3 font-bold text-center">Certificado</th>
+                </tr>
+             </thead>
+             <tbody id="detalhesAssTbody" class="divide-y divide-slate-100">
+             </tbody>
+          </table>
+       </div>
+    </div>
+  </div>
+</div>
 
 </body>
 
