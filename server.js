@@ -1766,11 +1766,24 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      
+      // SALVAR PREFERENCIAS DE LAYOUT DO USUARIO
+      if (pathname === '/api/usuarios/preferencias' && method === 'POST') {
+        const { usuario_id, preferencias } = await parseRequestBody(req);
+        if (!usuario_id) return errorResponse(res, 'Usuario ID invalido', 400);
+        try {
+           db.prepare('UPDATE usuarios SET preferencias = ? WHERE id = ?').run(JSON.stringify(preferencias), usuario_id);
+           return jsonResponse(res, { success: true });
+        } catch(e) {
+           return errorResponse(res, e.message);
+        }
+      }
+
       if (pathname === '/api/auth/login' && method === 'POST') {
         const { login, senha } = await parseRequestBody(req);
         if (!login || !senha) return errorResponse(res, 'Login e senha são obrigatórios', 400);
 
-        const usuario = db.prepare('SELECT id, nome, login, setor, email, pode_enviar_comunicados, ativo FROM usuarios WHERE login = ? AND senha = ? AND ativo = 1').get(login, senha);
+        const usuario = db.prepare('SELECT id, nome, login, setor, email, pode_enviar_comunicados, ativo, preferencias FROM usuarios WHERE login = ? AND senha = ? AND ativo = 1').get(login, senha);
         if (!usuario) {
           return errorResponse(res, 'Login ou senha inválidos', 401);
         }
