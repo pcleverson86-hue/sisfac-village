@@ -390,6 +390,9 @@
                 <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Mês de Referência:</label>
                 <input type="month" id="dashboardMes" onchange="carregarDashboardExecutivo()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none">
               </div>
+              <button id="btnPersonalizarLayout" onclick="toggleModoPersonalizacao()" class="mt-4 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition" title="Personalizar Layout Drag-and-Drop">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Personalizar
+              </button>
               <button onclick="carregarDashboardExecutivo()" class="mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg shadow-sm flex items-center gap-1.5 transition">
                 <i class="fa-solid fa-arrows-rotate"></i> Atualizar
               </button>
@@ -3390,7 +3393,7 @@
             <!-- Coluna 2: Treinamento / Documentação Pendente -->
             <div class="bg-white rounded-xl shadow-sm border border-amber-300 flex flex-col h-[500px]">
                <div class="bg-amber-50 border-b border-amber-300 px-4 py-3 rounded-t-xl flex justify-between items-center sticky top-0">
-                  <h3 class="font-bold text-amber-800 text-sm uppercase"><i class="fa-solid fa-spinner fa-spin text-amber-500 mr-1"></i> Em Integração</h3>
+                  <h3 class="font-bold text-amber-800 text-sm uppercase"><i class="fa-solid fa-spinner text-amber-500 mr-1"></i> Em Integração</h3>
                   <span id="kbSstIntegrandoTotal" class="bg-amber-200 text-amber-800 text-xs font-black px-2 py-0.5 rounded-full">0</span>
                </div>
                <div class="p-3 flex-1 overflow-y-auto space-y-3 bg-slate-50/50" id="kbSstIntegrandoLista">

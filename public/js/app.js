@@ -16639,29 +16639,40 @@ function carregarPainelSST() {
    if(!containerAguardando) return;
    
    // Dados mockados ou leitura real da API. Aqui puxaremos colaboradores recentemente adicionados.
-   const admissaoHTML = (nome, cargo, data) => `
-      <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm cursor-grab hover:border-slate-300 transition">
+   
+   const admissaoHTML = (nome, cargo, data, step) => {
+      let btns = '';
+      if(step === 1) btns = `<button type="button" onclick="alert('Movido para Integração')" class="text-xs text-amber-600 hover:text-amber-800"><i class="fa-solid fa-arrow-right"></i></button>`;
+      else if(step === 2) btns = `<button type="button" onclick="alert('Voltou para Admissão')" class="text-xs text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></button><button type="button" onclick="alert('Movido para Liberado')" class="text-xs text-emerald-600 hover:text-emerald-800"><i class="fa-solid fa-arrow-right"></i></button>`;
+      else if(step === 3) btns = `<button type="button" onclick="alert('Voltou para Integração')" class="text-xs text-amber-500 hover:text-amber-700"><i class="fa-solid fa-arrow-left"></i></button>`;
+
+      return `<div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition">
          <div class="flex justify-between items-start mb-2">
             <span class="text-xs font-bold text-slate-700">${nome}</span>
             <span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">${data}</span>
          </div>
-         <span class="text-[10px] text-slate-500 flex items-center gap-1"><i class="fa-solid fa-briefcase"></i> ${cargo}</span>
+         <div class="flex justify-between items-center mt-2">
+            <span class="text-[10px] text-slate-500 flex items-center gap-1"><i class="fa-solid fa-briefcase"></i> ${cargo}</span>
+            <div class="flex items-center gap-2">${btns}</div>
+         </div>
       </div>`;
+   };
+
       
    containerAguardando.innerHTML = 
-      admissaoHTML('João Silva', 'Porteiro', 'Hoje') + 
-      admissaoHTML('Maria Oliveira', 'Recepcionista', 'Hoje') + 
-      admissaoHTML('Carlos Mendes', 'Aux. Limpeza', 'Ontem');
+      admissaoHTML('João Silva', 'Porteiro', 'Hoje', 1) + 
+      admissaoHTML('Maria Oliveira', 'Recepcionista', 'Hoje', 1) + 
+      admissaoHTML('Carlos Mendes', 'Aux. Limpeza', 'Ontem', 1);
       
    containerIntegrando.innerHTML = 
-      admissaoHTML('Ana Clara', 'Líder Limpeza', '01/Out') + 
-      admissaoHTML('Roberto Carlos', 'Porteiro', '30/Set');
+      admissaoHTML('Ana Clara', 'Líder Limpeza', '01/Out', 2) + 
+      admissaoHTML('Roberto Carlos', 'Porteiro', '30/Set', 2);
       
    containerLiberado.innerHTML = 
-      admissaoHTML('Fábio Júnior', 'Jardineiro', '28/Set') +
-      admissaoHTML('Sandra Rosa', 'Recepcionista', '28/Set') +
-      admissaoHTML('Thiago Silva', 'Vigia', '25/Set') +
-      admissaoHTML('Fernanda Lima', 'Aux. Limpeza', '25/Set');
+      admissaoHTML('Fábio Júnior', 'Jardineiro', '28/Set', 3) +
+      admissaoHTML('Sandra Rosa', 'Recepcionista', '28/Set', 3) +
+      admissaoHTML('Thiago Silva', 'Vigia', '25/Set', 3) +
+      admissaoHTML('Fernanda Lima', 'Aux. Limpeza', '25/Set', 3);
       
    document.getElementById('kbSstAguardandoTotal').innerText = '3';
    document.getElementById('kbSstIntegrandoTotal').innerText = '2';
@@ -23024,3 +23035,46 @@ function aplicarPreferenciaLayout() {
       }
    } catch (e) {}
 }
+
+
+function alternarTodosClientes(master) {
+   document.querySelectorAll('.chk-cliente').forEach(chk => chk.checked = master.checked);
+   atualizarBarraAcoesClientes();
+}
+function atualizarBarraAcoesClientes() {
+   const marcados = document.querySelectorAll('.chk-cliente:checked');
+   const barra = document.getElementById('barraAcoesClientes');
+   if(barra) {
+      if(marcados.length > 0) {
+         barra.classList.remove('hidden');
+         barra.classList.add('flex');
+         document.getElementById('qtdClientesSelecionados').innerText = marcados.length;
+      } else {
+         barra.classList.add('hidden');
+         barra.classList.remove('flex');
+      }
+   }
+}
+async function excluirClientesSelecionados() {
+   const marcados = document.querySelectorAll('.chk-cliente:checked');
+   if(marcados.length === 0) return;
+   if(!confirm('Atenção: Deseja excluir ' + marcados.length + ' cliente(s) e todos os postos vinculados a ele?')) return;
+   
+   const ids = Array.from(marcados).map(c => c.value);
+   try {
+      const res = await fetch('/api/batch-delete', {
+         method: 'POST',
+         headers: {'Content-Type': 'application/json'},
+         body: JSON.stringify({ entidade: 'clientes', ids })
+      });
+      const data = await res.json();
+      if(data.success) {
+         carregarClientes();
+      } else {
+         alert(data.message);
+      }
+   } catch(e) {
+      alert('Erro ao excluir clientes');
+   }
+}
+   
