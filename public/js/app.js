@@ -394,6 +394,7 @@ function navegarPara(tabId) {
   if (secaoAtiva) secaoAtiva.classList.remove('hidden');
 
   // Disparar carregamentos específicos
+  if (tabId === 'faltas') inicializarCompetenciaFaltas();
   if (tabId === 'dashboard') carregarDashboardExecutivo();
   if (tabId === 'assinaturas') renderizarGestaoAssinaturas();
   else if (tabId === 'comercial') carregarComercial();
@@ -22745,3 +22746,147 @@ window.baixarCertificado = function(nome, cpf, dataHora, ip, hash, selfie) {
    w.document.close();
 };
 
+
+
+// =============================================================
+// SMART IMPORT - STAGING AREA
+// =============================================================
+function abrirStagingArea() {
+   const tbody = document.getElementById('stagingTbody');
+   tbody.innerHTML = '';
+   
+   document.getElementById('stagingTotalClientes').innerText = window.stagingClientes.length;
+   
+   window.stagingClientes.forEach(cli => {
+      tbody.innerHTML += `
+         <tr class="hover:bg-slate-50 transition" data-id="${cli.id}">
+            <td class="px-4 py-3 text-slate-800 font-bold">${cli.nome}</td>
+            <td class="px-4 py-3"><input type="text" class="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:ring-amber-500 cli-cnpj" placeholder="00.000.000/0000-00"></td>
+            <td class="px-4 py-3 flex gap-2">
+               <input type="text" class="w-2/3 border border-slate-300 rounded px-2 py-1 text-xs focus:ring-amber-500 cli-cidade" placeholder="Cidade">
+               <input type="text" class="w-1/3 border border-slate-300 rounded px-2 py-1 text-xs focus:ring-amber-500 cli-estado" placeholder="UF" maxlength="2">
+            </td>
+            <td class="px-4 py-3"><input type="text" class="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:ring-amber-500 cli-rua" placeholder="Logradouro"></td>
+         </tr>
+      `;
+   });
+   
+   document.getElementById('modalStagingArea').classList.remove('hidden');
+   document.getElementById('modalStagingArea').classList.add('flex');
+}
+
+function fecharModalStaging() {
+   document.getElementById('modalStagingArea').classList.add('hidden');
+   document.getElementById('modalStagingArea').classList.remove('flex');
+   window.stagingClientes = [];
+}
+
+async function salvarStagingArea() {
+   const rows = document.querySelectorAll('#stagingTbody tr');
+   const payload = [];
+   
+   rows.forEach(tr => {
+      const id = tr.getAttribute('data-id');
+      const cnpj = tr.querySelector('.cli-cnpj').value;
+      const cidade = tr.querySelector('.cli-cidade').value;
+      const estado = tr.querySelector('.cli-estado').value;
+      const rua = tr.querySelector('.cli-rua').value;
+      
+      payload.push({ id, cnpj, cidade, estado, rua });
+   });
+   
+   try {
+      const res = await fetch('/api/importar/staging-save', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ clientes: payload })
+      });
+      const data = await res.json();
+      if(data.success) {
+         alert('Novos clientes validados com sucesso!');
+         fecharModalStaging();
+         if(state.abaAtiva === 'clientes') carregarClientes();
+      } else {
+         alert('Erro ao salvar validações: ' + data.message);
+      }
+   } catch(e) {
+      alert('Erro de comunicação');
+   }
+}
+
+
+// =============================================================
+// GESTÃO DE COMPETÊNCIA MENSAL (FALTAS E COBERTURAS)
+// =============================================================
+
+function inicializarCompetenciaFaltas() {
+   const input = document.getElementById('filtroFaltasMes');
+   if (!input.value) {
+      const hoje = new Date();
+      const ano = hoje.getFullYear();
+      const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+      input.value = `${ano}-${mes}`;
+   }
+   carregarFaltasCompetencia();
+}
+
+async function carregarFaltasCompetencia() {
+   const comp = document.getElementById('filtroFaltasMes').value;
+   if (!comp) return;
+   
+   try {
+      const res = await fetch(`/api/fechamento-mensal/status?ano_mes=${comp}`);
+      const data = await res.json();
+      
+      const badge = document.getElementById('statusFechamentoBadge');
+      const btnFechar = document.getElementById('btnFecharMes');
+      const btnNovaFalta = document.querySelector('button[onclick="abrirModalNovaFalta()"]');
+      
+      if (data.fechado) {
+         badge.classList.remove('hidden');
+         badge.classList.add('flex');
+         btnFechar.classList.add('hidden');
+         if(btnNovaFalta) btnNovaFalta.classList.add('hidden'); // Impede novas faltas no mês fechado
+      } else {
+         badge.classList.add('hidden');
+         badge.classList.remove('flex');
+         btnFechar.classList.remove('hidden');
+         if(btnNovaFalta) btnNovaFalta.classList.remove('hidden');
+      }
+      
+      // O carregarFaltas() original lê direto do filtroFaltasMes, então só chamamos.
+      carregarFaltas(); 
+   } catch(e) {
+      console.error(e);
+   }
+}
+
+async function fecharCompetenciaMensal() {
+   const comp = document.getElementById('filtroFaltasMes').value;
+   if (!comp) return;
+   
+   if(!confirm('Tem certeza que deseja FECHAR O MÊS ' + comp + '?
+
+Isso congelará os apontamentos e impedirá alterações retroativas!')) return;
+   
+   const totalFaltas = document.getElementById('kpiFaltasTotal').innerText;
+   const custoCoberturas = 0; // Pode ser calculado depois com kpiFinanceiroCoberturas
+   const resp = state.usuarioLogado ? state.usuarioLogado.nome : 'Admin';
+   
+   try {
+      const res = await fetch('/api/fechamento-mensal', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ ano_mes: comp, total_faltas: parseInt(totalFaltas) || 0, custo_coberturas: custoCoberturas, responsavel: resp })
+      });
+      const data = await res.json();
+      if(data.success) {
+         alert(data.message);
+         carregarFaltasCompetencia();
+      } else {
+         alert('Erro: ' + data.message);
+      }
+   } catch(e) {
+      alert('Erro de rede');
+   }
+}

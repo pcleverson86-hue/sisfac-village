@@ -1493,6 +1493,7 @@ function calcularTempoEmpresa(dataAdmissaoStr, dataFimStr = null) {
 
 
 
+try { db.exec('CREATE TABLE IF NOT EXISTS fechamentos_mensais (id INTEGER PRIMARY KEY AUTOINCREMENT, ano_mes TEXT, data_fechamento TEXT, total_faltas INTEGER, custo_coberturas REAL, travado INTEGER DEFAULT 1, responsavel TEXT)'); } catch (e) {}
 // -------------------------------------------------------------
 // SINCRONIZAÇÃO DE CONTAS A PAGAR & PARCELAS DE COMPRAS
 // -------------------------------------------------------------
@@ -5203,6 +5204,8 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
         `);
 
         let inseridos = 0;
+        let novosClientesStaging = [];
+        let novosPostosStaging = [];
         for (const c of clientes) {
           if (c.nome_razao_social) {
             stmt.run(
@@ -5219,6 +5222,26 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
         }
 
         return jsonResponse(res, { success: true, inseridos });
+      }
+
+      
+      // SMART IMPORT: Salvar correções da Staging Area
+      if (pathname === '/api/importar/staging-save' && method === 'POST') {
+        const body = await parseRequestBody(req);
+        if (body.clientes && Array.isArray(body.clientes)) {
+           const updateCli = db.prepare("UPDATE clientes SET cnpj = ?, inscricao_estadual = ?, inscricao_municipal = ?, logradouro = ?, numero = ?, bairro = ?, cidade = ?, estado = ?, cep = ? WHERE id = ?");
+           db.exec('BEGIN TRANSACTION');
+           try {
+             for (const cli of body.clientes) {
+                updateCli.run(cli.cnpj || null, cli.ie || null, cli.im || null, cli.rua || null, cli.numero || null, cli.bairro || null, cli.cidade || null, cli.estado || null, cli.cep || null, cli.id);
+             }
+             db.exec('COMMIT');
+           } catch(e) {
+             db.exec('ROLLBACK');
+             return errorResponse(res, e.message);
+           }
+        }
+        return jsonResponse(res, { success: true });
       }
 
       if (pathname === '/api/importar/colaboradores' && method === 'POST') {
@@ -5296,6 +5319,14 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
               }
               if (cliFound) clienteId = cliFound.id;
             }
+            
+            // SMART IMPORT: Auto-Criação do Cliente caso não exista
+            if (!clienteId && rawCliVal && String(rawCliVal).trim() !== '') {
+               const nomeCliNovo = String(rawCliVal).trim();
+               const resNovoCli = db.prepare("INSERT INTO clientes (nome_fantasia, nome_razao_social, status) VALUES (?, ?, 'Ativo')").run(nomeCliNovo, nomeCliNovo);
+               clienteId = resNovoCli.lastInsertRowid;
+               novosClientesStaging.push({ id: clienteId, nome: nomeCliNovo });
+            }
           }
 
           // 3. Resolver posto_trabalho_id
@@ -5326,6 +5357,14 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
                 if (pFound && !clienteId) clienteId = pFound.cliente_id;
               }
               if (pFound) postoTrabalhoId = pFound.id;
+            }
+            
+            // SMART IMPORT: Auto-Criação do Posto caso não exista e exista um Cliente
+            if (clienteId && !postoTrabalhoId && rawPostoVal && String(rawPostoVal).trim() !== '') {
+               const nomePostoNovo = String(rawPostoVal).trim();
+               const resNovoPosto = db.prepare("INSERT INTO postos_trabalho (cliente_id, nome_posto, cargo_id, ativo, quantidade_vagas_limite) VALUES (?, ?, ?, 1, 1)").run(clienteId, nomePostoNovo, cargoId);
+               postoTrabalhoId = resNovoPosto.lastInsertRowid;
+               novosPostosStaging.push({ id: postoTrabalhoId, cliente_id: clienteId, nome: nomePostoNovo });
             }
           }
 
@@ -6344,6 +6383,32 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
 
 
       // FALTAS
+      
+      // FECHAMENTO MENSAL DE FALTAS
+      if (pathname === '/api/fechamento-mensal' && method === 'POST') {
+        const body = await parseRequestBody(req);
+        const { ano_mes, total_faltas, custo_coberturas, responsavel } = body;
+        
+        try {
+           // Verifica se já existe
+           const existe = db.prepare('SELECT id FROM fechamentos_mensais WHERE ano_mes = ?').get(ano_mes);
+           if (existe) {
+              return errorResponse(res, 'Este mês já encontra-se fechado no sistema.');
+           }
+           
+           db.prepare('INSERT INTO fechamentos_mensais (ano_mes, data_fechamento, total_faltas, custo_coberturas, travado, responsavel) VALUES (?, datetime("now", "localtime"), ?, ?, 1, ?)').run(ano_mes, total_faltas, custo_coberturas, responsavel);
+           return jsonResponse(res, { success: true, message: 'Competência ' + ano_mes + ' fechada com sucesso!' });
+        } catch(e) {
+           return errorResponse(res, e.message);
+        }
+      }
+      
+      if (pathname === '/api/fechamento-mensal/status' && method === 'GET') {
+         const { ano_mes } = query;
+         const fechamento = db.prepare('SELECT * FROM fechamentos_mensais WHERE ano_mes = ?').get(ano_mes);
+         return jsonResponse(res, { success: true, fechado: !!fechamento, detalhes: fechamento });
+      }
+
       if (pathname === '/api/faltas' && method === 'GET') {
         let sql = `
           SELECT fc.*,
@@ -10644,8 +10709,9 @@ return errorResponse(res, 'Endpoint não encontrado', 404);
   let targetFile = lowerPath === '/' ? 'index.html' : 
                    (lowerPath === '/supervisor' ? 'supervisor.html' : 
                    (lowerPath === '/treinamentos' || lowerPath === '/treinamento' || lowerPath === '/ead' || lowerPath === '/cursos' ? 'treinamentos.html' : 
-                   (lowerPath === '/denuncias' || lowerPath === '/denuncia' || lowerPath === '/ouvidoria' || lowerPath === '/canal-denuncia' || lowerPath === '/canal-denuncias' ? 'denuncias.html' : 
-                   (lowerPath === '/pedido-unidade' ? 'pedido-unidade.html' : pathname))));
+                   (lowerPath === '/denuncias' || lowerPath === '/denuncia' || lowerPath === '/denunciar' || lowerPath === '/ouvidoria' || lowerPath === '/canal-denuncia' || lowerPath === '/canal-denuncias' ? 'denuncias.html' : 
+                   (lowerPath === '/assinaturas' || lowerPath === '/assinatura' ? 'portal-assinaturas.html' : 
+                   (lowerPath === '/pedido-unidade' ? 'pedido-unidade.html' : pathname)))));
 
   let filePath = path.join(PUBLIC_DIR, targetFile);
   const safePath = path.normalize(filePath);
