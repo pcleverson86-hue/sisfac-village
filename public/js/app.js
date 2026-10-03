@@ -22949,7 +22949,7 @@ function renderizarConsolidadoCompras(modo) {
 // =============================================================
 let sortableKpis = null;
 let sortablePanels = null;
-let modoEdicaoAtivo = false;
+
 
 function toggleModoPersonalizacao() {
    try {
@@ -22966,11 +22966,11 @@ function toggleModoPersonalizacao() {
         return;
      }
 
-     modoEdicaoAtivo = !modoEdicaoAtivo;
+     window.modoEdicaoAtivo = !window.modoEdicaoAtivo;
      const btn = document.getElementById('btnPersonalizarLayout');
 
    
-   if (modoEdicaoAtivo) {
+   if (window.modoEdicaoAtivo) {
       // Ativar Modo Edição
       btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar Layout';
       btn.classList.replace('bg-amber-500', 'bg-emerald-600');
