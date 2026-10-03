@@ -22884,9 +22884,7 @@ async function fecharCompetenciaMensal() {
    const comp = document.getElementById('filtroFaltasMes').value;
    if (!comp) return;
    
-   if(!confirm('Tem certeza que deseja FECHAR O MÊS ' + comp + '?
-
-Isso congelará os apontamentos e impedirá alterações retroativas!')) return;
+   if(!confirm('Tem certeza que deseja FECHAR O MÊS ' + comp + '\n\nIsso congelará os apontamentos e impedirá alterações retroativas!')) return;
    
    const totalFaltas = document.getElementById('kpiFaltasTotal').innerText;
    const custoCoberturas = 0; // Pode ser calculado depois com kpiFinanceiroCoberturas
