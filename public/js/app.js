@@ -16642,9 +16642,9 @@ function carregarPainelSST() {
    
    const admissaoHTML = (nome, cargo, data, step) => {
       let btns = '';
-      if(step === 1) btns = `<button type="button" onclick="alert('Movido para Integração')" class="text-xs text-amber-600 hover:text-amber-800"><i class="fa-solid fa-arrow-right"></i></button>`;
-      else if(step === 2) btns = `<button type="button" onclick="alert('Voltou para Admissão')" class="text-xs text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></button><button type="button" onclick="alert('Movido para Liberado')" class="text-xs text-emerald-600 hover:text-emerald-800"><i class="fa-solid fa-arrow-right"></i></button>`;
-      else if(step === 3) btns = `<button type="button" onclick="alert('Voltou para Integração')" class="text-xs text-amber-500 hover:text-amber-700"><i class="fa-solid fa-arrow-left"></i></button>`;
+      if(step === 1) btns = `<button type="button" onclick="moverCardSst(this, 'right')" class="text-xs text-amber-600 hover:text-amber-800"><i class="fa-solid fa-arrow-right"></i></button>`;
+      else if(step === 2) btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></button><button type="button" onclick="moverCardSst(this, 'right')" class="text-xs text-emerald-600 hover:text-emerald-800"><i class="fa-solid fa-arrow-right"></i></button>`;
+      else if(step === 3) btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-amber-500 hover:text-amber-700"><i class="fa-solid fa-arrow-left"></i></button>`;
 
       return `<div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition">
          <div class="flex justify-between items-start mb-2">
@@ -23078,3 +23078,57 @@ async function excluirClientesSelecionados() {
    }
 }
    
+
+function moverCardSst(btn, direcao) {
+   const card = btn.closest('.bg-white.p-3');
+   const currentContainer = card.parentElement;
+   let targetContainerId = '';
+   
+   if(currentContainer.id === 'kbSstAguardandoLista') {
+      if(direcao === 'right') targetContainerId = 'kbSstIntegrandoLista';
+   } else if (currentContainer.id === 'kbSstIntegrandoLista') {
+      if(direcao === 'left') targetContainerId = 'kbSstAguardandoLista';
+      if(direcao === 'right') targetContainerId = 'kbSstLiberadoLista';
+   } else if (currentContainer.id === 'kbSstLiberadoLista') {
+      if(direcao === 'left') targetContainerId = 'kbSstIntegrandoLista';
+   }
+   
+   if(targetContainerId) {
+      document.getElementById(targetContainerId).appendChild(card);
+      atualizarSetasSst(card, targetContainerId);
+      atualizarContadoresSst();
+   }
+}
+
+function atualizarSetasSst(card, newContainerId) {
+   const botoesContainer = card.querySelector('.flex.items-center.gap-2');
+   if(!botoesContainer) return;
+   
+   let btns = '';
+   if(newContainerId === 'kbSstAguardandoLista') {
+      btns = `<button type="button" onclick="moverCardSst(this, 'right')" class="text-xs text-amber-600 hover:text-amber-800"><i class="fa-solid fa-arrow-right"></i></button>`;
+   } else if (newContainerId === 'kbSstIntegrandoLista') {
+      btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+              <button type="button" onclick="moverCardSst(this, 'right')" class="text-xs text-emerald-600 hover:text-emerald-800"><i class="fa-solid fa-arrow-right"></i></button>`;
+   } else if (newContainerId === 'kbSstLiberadoLista') {
+      btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-amber-500 hover:text-amber-700"><i class="fa-solid fa-arrow-left"></i></button>`;
+   }
+   botoesContainer.innerHTML = btns;
+}
+
+function atualizarContadoresSst() {
+   const c1 = document.getElementById('kbSstAguardandoLista').children.length;
+   const c2 = document.getElementById('kbSstIntegrandoLista').children.length;
+   const c3 = document.getElementById('kbSstLiberadoLista').children.length;
+   
+   document.getElementById('kbSstAguardandoTotal').innerText = c1;
+   document.getElementById('kbSstIntegrandoTotal').innerText = c2;
+   document.getElementById('kbSstLiberadoTotal').innerText = c3;
+   
+   const total = c1 + c2 + c3;
+   const p = total > 0 ? Math.round((c3 / total) * 100) : 0;
+   
+   document.getElementById('kpiSstAdmissoes').innerText = total;
+   document.getElementById('kpiSstIntegrados').innerText = c3;
+   document.getElementById('kpiSstConformidade').innerText = p + '%';
+}
