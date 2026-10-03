@@ -16644,7 +16644,8 @@ function carregarPainelSST() {
       let btns = '';
       if(step === 1) btns = `<button type="button" onclick="moverCardSst(this, 'right')" class="text-xs text-amber-600 hover:text-amber-800"><i class="fa-solid fa-arrow-right"></i></button>`;
       else if(step === 2) btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></button><button type="button" onclick="moverCardSst(this, 'right')" class="text-xs text-emerald-600 hover:text-emerald-800"><i class="fa-solid fa-arrow-right"></i></button>`;
-      else if(step === 3) btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-amber-500 hover:text-amber-700"><i class="fa-solid fa-arrow-left"></i></button>`;
+      else if(step === 3) btns = `<button type="button" onclick="moverCardSst(this, 'left')" class="text-xs text-amber-500 hover:text-amber-700 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+<button type="button" onclick="arquivarCardSst(this)" class="text-xs text-teal-600 hover:text-teal-800 bg-teal-50 px-2 py-1 rounded"><i class="fa-solid fa-check mr-1"></i>Concluir</button>`;
 
       return `<div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition">
          <div class="flex justify-between items-start mb-2">
@@ -22951,10 +22952,23 @@ let sortablePanels = null;
 let modoEdicaoAtivo = false;
 
 function toggleModoPersonalizacao() {
-   modoEdicaoAtivo = !modoEdicaoAtivo;
-   const btn = document.getElementById('btnPersonalizarLayout');
-   const kpiGrid = document.getElementById('dashboardKpisGrid');
-   const panelGrid = document.getElementById('dashboardAnalyticalPanels');
+   try {
+     const kpiGrid = document.getElementById('dashboardKpisGrid');
+     const panelGrid = document.getElementById('dashboardAnalyticalPanels');
+     
+     if (!kpiGrid || !panelGrid) {
+        alert('Erro: Painéis não encontrados na tela.');
+        return;
+     }
+     
+     if (typeof Sortable === 'undefined') {
+        alert('Aguarde o carregamento do sistema e tente novamente. (SortableJS não carregado)');
+        return;
+     }
+
+     modoEdicaoAtivo = !modoEdicaoAtivo;
+     const btn = document.getElementById('btnPersonalizarLayout');
+
    
    if (modoEdicaoAtivo) {
       // Ativar Modo Edição
@@ -23001,6 +23015,7 @@ function toggleModoPersonalizacao() {
       sortableKpis = null;
       sortablePanels = null;
    }
+   } catch(e) { alert('Erro ao ativar personalização: ' + e.message); }
 }
 
 async function salvarPreferenciaLayout(layout) {
@@ -23131,4 +23146,14 @@ function atualizarContadoresSst() {
    document.getElementById('kpiSstAdmissoes').innerText = total;
    document.getElementById('kpiSstIntegrados').innerText = c3;
    document.getElementById('kpiSstConformidade').innerText = p + '%';
+}
+
+
+function arquivarCardSst(btn) {
+   if(!confirm('Deseja arquivar este processo de integração? O colaborador sairá do painel de admissões deste mês.')) return;
+   const card = btn.closest('.bg-white.p-3');
+   if(card) {
+      card.remove();
+      atualizarContadoresSst();
+   }
 }
