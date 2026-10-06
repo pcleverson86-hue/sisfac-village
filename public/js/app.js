@@ -5828,18 +5828,7 @@ async function processarImportacaoPlanilha() {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      
-      // Encontrar a linha de cabeçalho dinamicamente (pula linhas vazias ou de título)
-      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-      let headerRowIndex = 0;
-      for (let i = 0; i < Math.min(20, rawRows.length); i++) {
-         const rowStr = (rawRows[i] || []).join(' ').toLowerCase();
-         if (rowStr.includes('funcao') || rowStr.includes('função') || rowStr.includes('cargo') || rowStr.includes('peca') || rowStr.includes('peça') || rowStr.includes('item')) {
-            headerRowIndex = i;
-            break;
-         }
-      }
-      const rows = XLSX.utils.sheet_to_json(firstSheet, { range: headerRowIndex });
+      const rows = XLSX.utils.sheet_to_json(firstSheet);
 
 
       if (rows.length === 0) return alert('A planilha selecionada está vazia.');
