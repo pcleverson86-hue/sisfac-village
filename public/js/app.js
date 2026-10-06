@@ -22187,7 +22187,13 @@ window.processarImportacaoMatrizUniformes = function() {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet);
+      const rawRowsUni = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      let headerRowUni = 0;
+      for (let i = 0; i < Math.min(20, rawRowsUni.length); i++) {
+        const rowStr = (rawRowsUni[i] || []).join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (rowStr.includes('funcao') || rowStr.includes('cargo') || rowStr.includes('peca') || rowStr.includes('item')) { headerRowUni = i; break; }
+      }
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { range: headerRowUni });
       
       const payload = rows.map(r => ({
         funcao: extrairCampoPlanilha(r, ['funcao', 'cargo', 'função']),
