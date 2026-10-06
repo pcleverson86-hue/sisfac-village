@@ -1,1 +1,1 @@
-https://circuits-forests-technology-artist.trycloudflare.com
+https://api.trycloudflare.com
