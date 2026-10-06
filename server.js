@@ -184,6 +184,54 @@ try {
   db.exec("UPDATE faltas_coberturas SET turno = '12x36' WHERE turno LIKE '12x36%';");
 } catch (e) {}
 db.exec(`
+  
+  CREATE TABLE IF NOT EXISTS fornecedores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome_empresa TEXT NOT NULL,
+    cnpj TEXT,
+    tipo_fornecedor TEXT,
+    contato TEXT,
+    telefone TEXT,
+    email TEXT,
+    prazo_entrega_dias INTEGER DEFAULT 3,
+    condicoes_pagamento TEXT,
+    chave_pix TEXT,
+    dados_bancarios TEXT,
+    observacoes TEXT,
+    ativo INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  CREATE TABLE IF NOT EXISTS uniformes_catalogo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_nome TEXT NOT NULL,
+    fornecedor_id INTEGER,
+    valor_unitario REAL DEFAULT 0,
+    genero TEXT DEFAULT 'U',
+    ativo INTEGER DEFAULT 1
+  );
+  
+  CREATE TABLE IF NOT EXISTS uniformes_regras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    funcao TEXT NOT NULL,
+    quantidade INTEGER DEFAULT 1,
+    item TEXT NOT NULL,
+    sexo_aplicavel TEXT DEFAULT 'TODOS',
+    ativo INTEGER DEFAULT 1
+  );
+  
+  CREATE TABLE IF NOT EXISTS uniformes_colaboradores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    colaborador_id INTEGER UNIQUE NOT NULL,
+    sexo TEXT,
+    tamanho_camisa TEXT,
+    tamanho_calca TEXT,
+    tamanho_sapato TEXT,
+    tamanho_jaqueta TEXT,
+    tamanho_blazer TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS historico_ferias (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     colaborador_id INTEGER NOT NULL,
