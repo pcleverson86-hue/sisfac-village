@@ -22239,14 +22239,31 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
   const btns = clone.querySelectorAll('button');
   btns.forEach(b => b.remove());
   
-  // Transform inputs into raw text for PDF
-  const inputs = clone.querySelectorAll('input[type="number"]');
-  const origInputs = container.querySelectorAll('input[type="number"]');
-  inputs.forEach((inp, idx) => {
-     const parent = inp.parentNode;
-     const v = parseInt(origInputs[idx].value, 10) || 0;
-     parent.innerHTML = v > 0 ? '<span style="font-weight:bold; color:#4338ca;">+' + v + '</span>' : '<span style="color:#94a3b8;">0</span>';
-  });
+  const ocultarAdicionais = confirm("Deseja OCULTAR as colunas 'Qtd Req' e 'Adicional' no PDF (exibindo apenas a Qtd Final)?");
+  
+  if (ocultarAdicionais) {
+    const ths = clone.querySelectorAll('th');
+    ths.forEach(th => {
+       if (th.innerText.includes('Qtd Req') || th.innerText.includes('Adicional')) th.remove();
+    });
+    const trs = clone.querySelectorAll('tbody tr');
+    trs.forEach(tr => {
+       const tds = tr.querySelectorAll('td');
+       if (tds.length >= 7) {
+          tds[2].remove();
+          tds[3].remove();
+       }
+    });
+  } else {
+    // Transform inputs into raw text for PDF
+    const inputs = clone.querySelectorAll('input[type="number"]');
+    const origInputs = container.querySelectorAll('input[type="number"]');
+    inputs.forEach((inp, idx) => {
+       const parent = inp.parentNode;
+       const v = parseInt(origInputs[idx].value, 10) || 0;
+       parent.innerHTML = v > 0 ? '<span style="font-weight:bold; color:#4338ca;">+' + v + '</span>' : '<span style="color:#94a3b8;">0</span>';
+    });
+  }
   
   // If we only want a specific supplier, hide all other supplier blocks
   if (fornecedorUnico) {
