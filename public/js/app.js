@@ -1,4 +1,4 @@
-﻿// app.js - Lógica Completa SISFAC 2.0 (Autenticação, RBAC, Postos, Férias, Benefícios, Compras & Importação)
+// app.js - Lógica Completa SISFAC 2.0 (Autenticação, RBAC, Postos, Férias, Benefícios, Compras & Importação)
 
 // Estado Global da Aplicação
 const state = {
@@ -16637,7 +16637,6 @@ async function exportarBaseCompletaColaboradoresExcel() {
 // MÓDULO DE SEGURANÇA E SAÚDE DO TRABALHO (SST - NR-01)
 // =============================================================
 
-async 
 // =============================================================
 // MÓDULO SST E INTEGRAÇÃO (ONBOARDING)
 // =============================================================
