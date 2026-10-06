@@ -5828,7 +5828,19 @@ async function processarImportacaoPlanilha() {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet);
+      
+      // Encontrar a linha de cabeçalho dinamicamente (pula linhas vazias ou de título)
+      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(20, rawRows.length); i++) {
+         const rowStr = (rawRows[i] || []).join(' ').toLowerCase();
+         if (rowStr.includes('funcao') || rowStr.includes('função') || rowStr.includes('cargo') || rowStr.includes('peca') || rowStr.includes('peça') || rowStr.includes('item')) {
+            headerRowIndex = i;
+            break;
+         }
+      }
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { range: headerRowIndex });
+
 
       if (rows.length === 0) return alert('A planilha selecionada está vazia.');
 
@@ -21188,6 +21200,10 @@ async function importarCsvMedidas() {
   if (!fileInput.files.length) return;
   const file = fileInput.files[0];
   
+  if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+    return alert('ATENÇÃO: Este botão é exclusivo para importar o CSV com as MEDIDAS de roupas dos colaboradores.\n\nSe você quer importar a Matriz de Uniformes (com Regras e Valores), feche esta janela e clique no botão verde "Importar Planilha" na tela de Uniformes.');
+  }
+
   if (!confirm('Deseja importar e sobrescrever os tamanhos com base neste arquivo CSV? As colunas devem estar na ordem: Nome, Sexo, Função, Supervisor, Camisa, Calça, Sapato, Jaqueta, Blazer')) return;
   
   const text = await file.text();
@@ -22188,13 +22204,13 @@ window.processarImportacaoMatrizUniformes = function() {
       const payload = rows.map(r => ({
         funcao: extrairCampoPlanilha(r, ['funcao', 'cargo', 'função']),
         genero: extrairCampoPlanilha(r, ['genero', 'sexo', 'gênero', 'sexo_aplicavel']),
-        peca: extrairCampoPlanilha(r, ['peca', 'peça', 'item']),
+        peca: extrairCampoPlanilha(r, ['peca', 'peça', 'item', 'produto', 'epi']),
         quantidade: extrairCampoPlanilha(r, ['quantidade', 'qtd']),
         preco: extrairCampoPlanilha(r, ['preco', 'preço', 'valor', 'valor_unitario', 'custo']),
         fornecedor: extrairCampoPlanilha(r, ['fornecedor', 'empresa'])
       })).filter(x => x.funcao && x.peca);
       
-      if (!payload.length) return alert('Nenhum dado válido encontrado.');
+      if (!payload.length) return alert('Nenhum dado válido encontrado. Certifique-se de que a planilha possui as colunas FUNCAO e PECA.');
       
       const res = await fetch('/api/uniformes/importar', {
         method: 'POST',
