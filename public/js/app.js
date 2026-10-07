@@ -21598,8 +21598,12 @@ window.gerarOrcamentoViaPlanilha = async function() {
             if (!catInfo) catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && c.genero === 'U');
             if (!catInfo) catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase()); 
 
+            let genStr = '';
+            if (generoBusca === 'M') genStr = ' (MASC)';
+            else if (generoBusca === 'F') genStr = ' (FEM)';
+
             necessidades.push({
-              item: r.item,
+              item: r.item + genStr,
               quantidade: r.quantidade,
               tamanho: tam || 'N/A',
               fornecedor_nome: catInfo && catInfo.fornecedor_nome ? catInfo.fornecedor_nome : 'Sem Fornecedor Definido',
