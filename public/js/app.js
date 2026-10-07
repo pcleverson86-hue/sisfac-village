@@ -21659,9 +21659,9 @@ window.atualizarLinhaOrcamentoUniformes = function(input) {
      novoTotalForn += parseFloat(l.getAttribute('data-subtotal') || 0);
   });
   
-  const headerTotal = tabela.querySelector('.bg-slate-800 span');
+  const headerTotal = tabela.querySelector('.total-forn-atual');
   if(headerTotal) {
-     headerTotal.innerText = 'Total: R$ ' + novoTotalForn.toFixed(2).replace('.', ',');
+     headerTotal.innerText = 'Atual: R$ ' + novoTotalForn.toFixed(2).replace('.', ',');
   }
   
   // Recalcular Total Geral
@@ -21692,7 +21692,8 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
         <div class="bg-slate-800 text-white px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3" data-fornecedor="${forn}">
           <h4 class="font-bold"><i class="fa-solid fa-building mr-2"></i> ${forn}</h4>
           <div class="flex items-center gap-2">
-             <span class="font-black text-emerald-400 mr-2">Total: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
+             <span class="font-bold text-slate-400 text-xs mr-2 div-previsto">Previsto: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
+             <span class="font-black text-emerald-400 mr-2 total-forn-atual">Atual: R$ ${dados.total_fornecedor.toFixed(2).replace('.', ',')}</span>
              <button onclick="imprimirOrcamentoUniformesPDF('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-xs font-bold transition shadow-sm"><i class="fa-solid fa-file-pdf text-red-400 mr-1"></i> PDF</button>
              <button onclick="exportarOrcamentoUniformesExcel('${forn}')" class="bg-slate-700 hover:bg-slate-600 px-2.5 py-1.5 rounded text-xs font-bold transition shadow-sm"><i class="fa-solid fa-file-excel text-emerald-400 mr-1"></i> Excel</button>
           </div>
@@ -22240,6 +22241,12 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
   btns.forEach(b => b.remove());
   
   const ocultarAdicionais = confirm("Deseja OCULTAR as colunas 'Qtd Req' e 'Adicional' no PDF (exibindo apenas a Qtd Final)?");
+  const ocultarPrevisto = confirm("Deseja OCULTAR o 'Valor Previsto (Base)' no PDF e manter apenas o Valor Atualizado?");
+  
+  if (ocultarPrevisto) {
+    const previstos = clone.querySelectorAll('.div-previsto');
+    previstos.forEach(p => p.remove());
+  }
   
   if (ocultarAdicionais) {
     const ths = clone.querySelectorAll('th');
