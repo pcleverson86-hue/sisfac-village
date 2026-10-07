@@ -21598,7 +21598,7 @@ window.gerarOrcamentoViaPlanilha = async function() {
             if (!catInfo) catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && c.genero === 'U');
             if (!catInfo) catInfo = catalogo.find(c => c.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase()); 
 
-            let genStr = '';
+            let genStr = ' (UNISSEX)';
             if (generoBusca === 'M') genStr = ' (MASC)';
             else if (generoBusca === 'F') genStr = ' (FEM)';
 

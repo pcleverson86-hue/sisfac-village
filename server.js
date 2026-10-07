@@ -10610,7 +10610,7 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
               if (!catInfo) catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && cat.genero === 'U');
               if (!catInfo) catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase()); 
 
-              let genStr = '';
+              let genStr = ' (UNISSEX)';
               if (generoBusca === 'M') genStr = ' (MASC)';
               else if (generoBusca === 'F') genStr = ' (FEM)';
 
