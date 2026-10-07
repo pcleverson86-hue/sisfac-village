@@ -10610,11 +10610,15 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
               if (!catInfo) catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase() && cat.genero === 'U');
               if (!catInfo) catInfo = catalogo.find(cat => cat.item_nome.trim().toUpperCase() === r.item.trim().toUpperCase()); 
 
+              let genStr = '';
+              if (generoBusca === 'M') genStr = ' (MASC)';
+              else if (generoBusca === 'F') genStr = ' (FEM)';
+
               necessidades.push({
                 colaborador_id: c.id,
                 colaborador_nome: c.nome,
                 cargo: c.nome_cargo,
-                item: r.item.trim().toUpperCase(),
+                item: r.item.trim().toUpperCase() + genStr,
                 quantidade: r.quantidade,
                 tamanho: tam || 'N/A',
                 fornecedor_id: catInfo ? catInfo.fornecedor_id : null,
