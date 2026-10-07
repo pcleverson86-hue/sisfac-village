@@ -10588,7 +10588,7 @@ if (pathname === '/api/colaboradores' && method === 'GET') {
             const regrasCargo = regras.filter(r => c.nome_cargo.toUpperCase().includes(r.funcao.toUpperCase()) || r.funcao.toUpperCase() === 'TODOS');
             
             for (const r of regrasCargo) {
-              if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS' && r.sexo_aplicavel.trim() !== '') {
+              if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS' && r.sexo_aplicavel !== 'UNISSEX' && r.sexo_aplicavel.trim() !== '') {
                 if (c.sexo && !r.sexo_aplicavel.toUpperCase().includes(c.sexo.toUpperCase())) continue; 
               }
 
@@ -10834,6 +10834,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   iniciarOuVerificarTunnel();
 });
+
 
 
 

@@ -1,6 +1,6 @@
-// app.js - Lógica Completa SISFAC 2.0 (Autenticação, RBAC, Postos, Férias, Benefícios, Compras & Importação)
+﻿// app.js - LÃ³gica Completa SISFAC 2.0 (AutenticaÃ§Ã£o, RBAC, Postos, FÃ©rias, BenefÃ­cios, Compras & ImportaÃ§Ã£o)
 
-// Estado Global da Aplicação
+// Estado Global da AplicaÃ§Ã£o
 const state = {
   usuarioLogado: null,
   abaAtiva: 'faltas',
@@ -77,13 +77,13 @@ function escapeJsString(str) {
 }
 
 // -------------------------------------------------------------
-// INICIALIZAÇÁO DA APLICAÇÁO & SESSÁO
+// INICIALIZAÃ‡ÃO DA APLICAÃ‡ÃO & SESSÃO
 // -------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', async () => {
   configurarDataPadrao();
   verificarSessao();
   carregarEscalas();
-  // Iniciar polling de comunicados para alertas sonoros (a cada 30s após login)
+  // Iniciar polling de comunicados para alertas sonoros (a cada 30s apÃ³s login)
   setTimeout(() => iniciarPollingComunicados(), 8000);
 });
 
@@ -110,7 +110,7 @@ function configurarDataPadrao() {
     elCobFim.value = dFim.toISOString().split('T')[0];
   }
 
-  // Datas padrão para Compras e Financeiro
+  // Datas padrÃ£o para Compras e Financeiro
   const elOrcDataAdiant = document.getElementById('orcDataAdiantamento_novo');
   if (elOrcDataAdiant && !elOrcDataAdiant.value) elOrcDataAdiant.value = hoje;
   const elOrcDataAVista = document.getElementById('orcDataAVista_novo');
@@ -122,7 +122,7 @@ function configurarDataPadrao() {
 }
 
 // -------------------------------------------------------------
-// 1. AUTENTICAÇÁO E PERMISSÕES (RBAC)
+// 1. AUTENTICAÃ‡ÃO E PERMISSÃ•ES (RBAC)
 // -------------------------------------------------------------
 function verificarSessao() {
   const sessaoSalva = localStorage.getItem('sisfac_usuario');
@@ -137,7 +137,7 @@ function verificarSessao() {
       localStorage.removeItem('sisfac_usuario');
     }
   }
-  // Se não logado, exibir tela de login
+  // Se nÃ£o logado, exibir tela de login
   document.getElementById('telaLogin').classList.remove('hidden');
 }
 
@@ -189,12 +189,12 @@ async function iniciarAplicacaoAutenticada() {
   document.getElementById('telaLogin').classList.add('hidden');
   const u = state.usuarioLogado;
 
-  // Atualizar Header com dados do usuário logado
+  // Atualizar Header com dados do usuÃ¡rio logado
   document.getElementById('headerUsuarioNome').textContent = u.nome;
   document.getElementById('headerUsuarioSetor').textContent = `Setor: ${u.setor.toUpperCase()}`;
   document.getElementById('headerSetorBadge').textContent = u.setor;
 
-  // Se for admin, garantir permissões completas
+  // Se for admin, garantir permissÃµes completas
   if (isUsuarioAdminMaster() && (!state.permissoes || state.permissoes.length < 10)) {
     try {
       const res = await fetch('/api/usuarios');
@@ -266,7 +266,7 @@ function temPermissao(modulo, acao = 'visualizar') {
 function aplicarPermissoesUI() {
   const ehAdmin = isUsuarioAdminMaster();
 
-  // Botão de acesso rápido no topo (ao lado de Mural de Avisos)
+  // BotÃ£o de acesso rÃ¡pido no topo (ao lado de Mural de Avisos)
   const headerAdminBtn = document.getElementById('headerBtnAdmin');
   if (headerAdminBtn) {
     if (ehAdmin) {
@@ -276,7 +276,7 @@ function aplicarPermissoesUI() {
     }
   }
 
-  // Ajustar visibilidade das abas conforme permissões
+  // Ajustar visibilidade das abas conforme permissÃµes
   const abasMap = {
     'dashboard': 'dashboard',
     'relatorios': 'relatorios',
@@ -335,7 +335,7 @@ function aplicarPermissoesUI() {
     }, { passive: false });
   }
 
-  // Verificar comunicados não lidos para atualizar badges
+  // Verificar comunicados nÃ£o lidos para atualizar badges
   verificarComunicadosNaoLidos();
 }
 
@@ -353,7 +353,7 @@ function navegarParaPrimeiraAbaPermitida() {
 }
 
 // -------------------------------------------------------------
-// NAVEGAÇÁO ENTRE ABAS
+// NAVEGAÃ‡ÃO ENTRE ABAS
 // -------------------------------------------------------------
 function navegarPara(tabId) {
   if (tabId === 'postos') tabId = 'clientes';
@@ -372,7 +372,7 @@ function navegarPara(tabId) {
 
 
   if (!permissaoOk && !ehAdmin) {
-    alert('Acesso Restrito: Seu usuário não possui permissão para acessar este módulo.');
+    alert('Acesso Restrito: Seu usuÃ¡rio nÃ£o possui permissÃ£o para acessar este mÃ³dulo.');
     return;
   }
 
@@ -393,7 +393,7 @@ function navegarPara(tabId) {
   const secaoAtiva = document.getElementById(`aba-${tabId}`);
   if (secaoAtiva) secaoAtiva.classList.remove('hidden');
 
-  // Disparar carregamentos específicos
+  // Disparar carregamentos especÃ­ficos
   if (tabId === 'faltas') inicializarCompetenciaFaltas();
   if (tabId === 'dashboard') carregarDashboardExecutivo();
   if (tabId === 'assinaturas') renderizarGestaoAssinaturas();
@@ -491,7 +491,7 @@ async function carregarDadosBase() {
         if (t.url) state.urlTunnelGlobal = t.url;
         if (t.local_url) state.urlLocalRede = t.local_url;
       }
-    }).catch(err => console.warn('Erro ao carregar dados do túnel:', err));
+    }).catch(err => console.warn('Erro ao carregar dados do tÃºnel:', err));
 
     fetch('/api/sst/modelos-os').then(r => r.json()).then(d => {
       state.sstModelosOS = Array.isArray(d) ? d : [];
@@ -529,14 +529,14 @@ function atualizarSelectModelosOSColaborador(tipo = 'novo', cargoIdForcado = nul
 
   const modelos = Array.isArray(state.sstModelosOS) ? state.sstModelosOS : [];
 
-  let html = '<option value="">-- Padrão Automático da Função --</option>';
+  let html = '<option value="">-- PadrÃ£o AutomÃ¡tico da FunÃ§Ã£o --</option>';
 
   if (modelos.length > 0) {
     const vinculadosAoCargo = cargoId ? modelos.filter(m => m.cargo_id === cargoId) : [];
     const outrosModelos = cargoId ? modelos.filter(m => m.cargo_id !== cargoId) : modelos;
 
     if (vinculadosAoCargo.length > 0) {
-      html += `<optgroup label="Modelos específicos deste Cargo">`;
+      html += `<optgroup label="Modelos especÃ­ficos deste Cargo">`;
       vinculadosAoCargo.forEach(m => {
         const tit = m.titulo_modelo || m.nome_funcao;
         const sub = m.titulo_modelo && m.nome_funcao !== m.titulo_modelo ? ` (${m.nome_funcao})` : '';
@@ -546,7 +546,7 @@ function atualizarSelectModelosOSColaborador(tipo = 'novo', cargoIdForcado = nul
     }
 
     if (outrosModelos.length > 0) {
-      html += `<optgroup label="${vinculadosAoCargo.length > 0 ? 'Outros Modelos de OS Cadastrados' : 'Modelos de OS Disponíveis'}">`;
+      html += `<optgroup label="${vinculadosAoCargo.length > 0 ? 'Outros Modelos de OS Cadastrados' : 'Modelos de OS DisponÃ­veis'}">`;
       outrosModelos.forEach(m => {
         const tit = m.titulo_modelo || m.nome_funcao;
         const cargoNome = m.nome_cargo ? ` [${m.nome_cargo}]` : (m.nome_funcao ? ` [${m.nome_funcao}]` : '');
@@ -571,7 +571,7 @@ function popularSelectsGlobais() {
   if (!Array.isArray(state.freelancers)) state.freelancers = [];
   if (!Array.isArray(state.postos)) state.postos = [];
 
-  // Ordenar clientes em ordem alfabética estrita por Nome Fantasia / Razão Social
+  // Ordenar clientes em ordem alfabÃ©tica estrita por Nome Fantasia / RazÃ£o Social
   state.clientes.sort((a, b) => {
     const nA = (a.nome_fantasia || a.nome_razao_social || '').toLowerCase();
     const nB = (b.nome_fantasia || b.nome_razao_social || '').toLowerCase();
@@ -591,13 +591,13 @@ function popularSelectsGlobais() {
 
   popularSelectSupervisoresFiltro();
 
-  // Cargos & Funções / Setores
+  // Cargos & FunÃ§Ãµes / Setores
   ['postoCargoId', 'cadColabCargoId', 'cadFreeCargoId', 'editColabCargoId', 'inlinePostoCargoId', 'inlinePostoCargoIdEdicao', 'filtroColabCargo'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const valAtual = el.value;
     const isFiltro = id.startsWith('filtro');
-    el.innerHTML = isFiltro ? '<option value="">Todas as Funções / Setores</option>' : '<option value="">Selecione a Função / Cargo...</option>';
+    el.innerHTML = isFiltro ? '<option value="">Todas as FunÃ§Ãµes / Setores</option>' : '<option value="">Selecione a FunÃ§Ã£o / Cargo...</option>';
     state.cargos.forEach(c => {
       el.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome_cargo}</option>`;
     });
@@ -607,14 +607,14 @@ function popularSelectsGlobais() {
   // Popular selects de cargos no modal de cliente (postos iniciais)
   document.querySelectorAll('.select-posto-cargo').forEach(sel => {
     const valAtual = sel.value;
-    sel.innerHTML = '<option value="">Selecione a Função / Cargo...</option>';
+    sel.innerHTML = '<option value="">Selecione a FunÃ§Ã£o / Cargo...</option>';
     state.cargos.forEach(c => {
       sel.innerHTML += `<option value="${c.id}">[ID: ${c.id}] ${c.nome_cargo}</option>`;
     });
     if (valAtual) sel.value = valAtual;
   });
 
-  // Fornecedores no Orçamento
+  // Fornecedores no OrÃ§amento
   const elFornOrc = document.getElementById('orcFornecedorId');
   if (elFornOrc) {
     elFornOrc.innerHTML = '<option value="">Selecione o Fornecedor...</option>';
@@ -623,7 +623,7 @@ function popularSelectsGlobais() {
     });
   }
 
-  // Clientes no Orçamento
+  // Clientes no OrÃ§amento
   const elCliOrc = document.getElementById('orcClienteId');
   if (elCliOrc) {
     elCliOrc.innerHTML = '<option value="">Selecione o Cliente Destino...</option>';
@@ -643,7 +643,7 @@ function popularSelectsGlobais() {
     elFornFinan.value = valAtual;
   }
 
-  // Freelancers no Modal de Férias, Faltas e Concessão
+  // Freelancers no Modal de FÃ©rias, Faltas e ConcessÃ£o
   ['faltaFreelancerId', 'cobFreelancerId', 'feriasFreelancerId'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -653,12 +653,12 @@ function popularSelectsGlobais() {
     });
   });
 
-  // Colaboradores Titulares no Modal de Férias
+  // Colaboradores Titulares no Modal de FÃ©rias
   const elColabTitular = document.getElementById('cobColabTitularId');
   if (elColabTitular) {
     elColabTitular.innerHTML = '<option value="">Selecione o Colaborador Titular...</option>';
     state.colaboradores.forEach(col => {
-      elColabTitular.innerHTML += `<option value="${col.id}">${col.nome} (${col.cliente_nome || 'Geral'} - ${col.nome_posto || 'Posto Padrão'})</option>`;
+      elColabTitular.innerHTML += `<option value="${col.id}">${col.nome} (${col.cliente_nome || 'Geral'} - ${col.nome_posto || 'Posto PadrÃ£o'})</option>`;
     });
   }
 
@@ -783,7 +783,7 @@ function filtrarCargosModalPosto(inputId = 'postoBuscaCargo', selectId = 'postoC
     return nome.includes(termo) || idStr.includes(termo);
   });
 
-  select.innerHTML = '<option value="">Selecione o Cargo / Função...</option>';
+  select.innerHTML = '<option value="">Selecione o Cargo / FunÃ§Ã£o...</option>';
   filtrados.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.id;
@@ -801,7 +801,7 @@ function filtrarCargosModalPosto(inputId = 'postoBuscaCargo', selectId = 'postoC
 }
 
 // -------------------------------------------------------------
-// SISTEMA DE CADASTRO DE MÚLTIPLOS POSTOS PARA O MESMO CLIENTE
+// SISTEMA DE CADASTRO DE MÃšLTIPLOS POSTOS PARA O MESMO CLIENTE
 // -------------------------------------------------------------
 state.novosPostos = [];
 state.linhaCargoPendente = null;
@@ -838,7 +838,7 @@ function adicionarLinhaNovoPosto(dados = {}) {
     cargo_id: dados.cargo_id || primeiroCargoId,
     quantidade_vagas_limite: dados.quantidade_vagas_limite || 1,
     escala: dados.escala || '5x2',
-    turno: dados.turno || '08:00 às 17:00',
+    turno: dados.turno || '08:00 Ã s 17:00',
     unidade_id: dados.unidade_id !== undefined ? dados.unidade_id : (unidadePadrao ? parseInt(unidadePadrao, 10) : null)
   });
 
@@ -862,7 +862,7 @@ function removerLinhaNovoPosto(idx) {
       cargo_id: (state.cargos && state.cargos.length > 0) ? state.cargos[0].id : '',
       quantidade_vagas_limite: 1,
       escala: '5x2',
-      turno: '08:00 às 17:00',
+      turno: '08:00 Ã s 17:00',
       unidade_id: unidadePadrao ? parseInt(unidadePadrao, 10) : null
     };
   }
@@ -878,10 +878,10 @@ function duplicarLinhaNovoPosto(idx) {
   if (novoNome.toLowerCase().includes('diurno') || novoNome.toLowerCase().includes('dia')) {
     novoNome = novoNome.replace(/diurno/i, 'Noturno').replace(/dia/i, 'Noite');
     if (novoTurno.includes('06:00') || novoTurno.includes('07:00') || novoTurno.includes('08:00')) {
-      novoTurno = '18:00 às 06:00';
+      novoTurno = '18:00 Ã s 06:00';
     }
   } else if (novoNome) {
-    novoNome += ' (Cópia)';
+    novoNome += ' (CÃ³pia)';
   }
 
   state.novosPostos.splice(idx + 1, 0, {
@@ -921,7 +921,7 @@ function renderizarLinhasNovosPostos() {
       cargo_id: primeiroCargoId,
       quantidade_vagas_limite: 1,
       escala: '5x2',
-      turno: '08:00 às 17:00',
+      turno: '08:00 Ã s 17:00',
       unidade_id: unidadePadrao ? parseInt(unidadePadrao, 10) : null
     }];
   }
@@ -966,20 +966,20 @@ function renderizarLinhasNovosPostos() {
         <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
           <!-- Nome do Posto -->
           <div class="md:col-span-4">
-            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Nome de Identificação do Posto *</label>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Nome de IdentificaÃ§Ã£o do Posto *</label>
             <input type="text" name="postoNome" required value="${escapeHtml(p.nome_posto || '')}" oninput="aoDigitarNomePostoLinha(${idx}, this.value)" placeholder="Ex: Portaria 12x36 ou Limpeza Bloco A" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-rose-500">
           </div>
 
-          <!-- Cargo / Função -->
+          <!-- Cargo / FunÃ§Ã£o -->
           <div class="md:col-span-3">
             <div class="flex justify-between items-center mb-1">
-              <label class="block text-[11px] font-semibold text-slate-700">Função / Cargo *</label>
-              <button type="button" onclick="abrirModalNovaFuncaoRapida(${idx})" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold" title="Cadastrar nova função">
-                + Nova Função
+              <label class="block text-[11px] font-semibold text-slate-700">FunÃ§Ã£o / Cargo *</label>
+              <button type="button" onclick="abrirModalNovaFuncaoRapida(${idx})" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold" title="Cadastrar nova funÃ§Ã£o">
+                + Nova FunÃ§Ã£o
               </button>
             </div>
             <select name="postoCargoId" id="linhaPostoCargo_${idx}" required class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white">
-              <option value="">Selecione a Função...</option>
+              <option value="">Selecione a FunÃ§Ã£o...</option>
               ${cargosOptions}
             </select>
           </div>
@@ -1003,15 +1003,15 @@ function renderizarLinhasNovosPostos() {
           <!-- Turno -->
           <div class="md:col-span-2">
             <label class="block text-[11px] font-semibold text-slate-700 mb-1">Turno</label>
-            <input type="text" name="postoTurno" value="${escapeHtml(p.turno || '08:00 às 17:00')}" placeholder="06h às 18h" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+            <input type="text" name="postoTurno" value="${escapeHtml(p.turno || '08:00 Ã s 17:00')}" placeholder="06h Ã s 18h" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none">
           </div>
         </div>
 
-        <!-- Unidade específica -->
+        <!-- Unidade especÃ­fica -->
         <div class="flex items-center gap-2 pt-1 border-t border-slate-50 text-[11px] text-slate-500">
-          <span class="font-medium text-slate-600"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>Unidade / Prédio deste posto:</span>
+          <span class="font-medium text-slate-600"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>Unidade / PrÃ©dio deste posto:</span>
           <select name="postoUnidadeId" class="border border-slate-200 rounded px-2 py-1 text-xs bg-slate-50 focus:bg-white focus:outline-none text-slate-700 max-w-xs">
-            <option value="">(Padrão do Cliente / Matriz)</option>
+            <option value="">(PadrÃ£o do Cliente / Matriz)</option>
             ${unidadesOptions}
           </select>
         </div>
@@ -1061,7 +1061,7 @@ function aoMudarClientePosto() {
   const postosDoCliente = (state.postos || []).filter(p => p.cliente_id === clienteId);
   if (badgeInfo) {
     badgeInfo.classList.remove('hidden');
-    badgeInfo.innerHTML = `<i class="fa-solid fa-layer-group text-rose-500 mr-1"></i> ${postosDoCliente.length} postos já cadastrados neste cliente`;
+    badgeInfo.innerHTML = `<i class="fa-solid fa-layer-group text-rose-500 mr-1"></i> ${postosDoCliente.length} postos jÃ¡ cadastrados neste cliente`;
   }
 
   const unidadesDoCliente = (state.unidades || []).filter(u => u.cliente_id === clienteId);
@@ -1098,7 +1098,7 @@ function abrirModalNovoPosto(clienteId = null) {
     cargo_id: primeiroCargoId,
     quantidade_vagas_limite: 1,
     escala: '5x2',
-    turno: '08:00 às 17:00',
+    turno: '08:00 Ã s 17:00',
     unidade_id: null
   }];
 
@@ -1147,17 +1147,17 @@ async function salvarNovoPosto(e) {
     return;
   }
 
-  // Validação de cada linha
+  // ValidaÃ§Ã£o de cada linha
   for (let i = 0; i < postos.length; i++) {
     const p = postos[i];
     if (!p.nome_posto || !p.nome_posto.trim()) {
-      alert(`Por favor, informe o Nome de Identificação do Posto #${i + 1}.`);
+      alert(`Por favor, informe o Nome de IdentificaÃ§Ã£o do Posto #${i + 1}.`);
       const inputs = document.querySelectorAll('#listaNovosPostosContainer [name="postoNome"]');
       if (inputs && inputs[i]) inputs[i].focus();
       return;
     }
     if (!p.cargo_id) {
-      alert(`Por favor, selecione a Função / Cargo do Posto #${i + 1} ("${p.nome_posto}").`);
+      alert(`Por favor, selecione a FunÃ§Ã£o / Cargo do Posto #${i + 1} ("${p.nome_posto}").`);
       const selects = document.querySelectorAll('#listaNovosPostosContainer [name="postoCargoId"]');
       if (selects && selects[i]) selects[i].focus();
       return;
@@ -1200,7 +1200,7 @@ async function salvarNovoPosto(e) {
           cargo_id: primeiroCargoId,
           quantidade_vagas_limite: 1,
           escala: '5x2',
-          turno: '08:00 às 17:00',
+          turno: '08:00 Ã s 17:00',
           unidade_id: unidadePadrao ? parseInt(unidadePadrao, 10) : null
         }];
         aoMudarClientePosto();
@@ -1215,7 +1215,7 @@ async function salvarNovoPosto(e) {
       alert('Erro ao salvar postos: ' + (json.message || 'Falha desconhecida.'));
     }
   } catch (err) {
-    alert('Erro de conexão ao salvar postos: ' + err.message);
+    alert('Erro de conexÃ£o ao salvar postos: ' + err.message);
   } finally {
     if (btn) btn.disabled = false;
     if (txtBtn) txtBtn.textContent = txtOriginal;
@@ -1224,7 +1224,7 @@ async function salvarNovoPosto(e) {
 }
 
 // -------------------------------------------------------------
-// GESTÁO DE FUNÇÕES / CARGOS OPERACIONAIS
+// GESTÃO DE FUNÃ‡Ã•ES / CARGOS OPERACIONAIS
 // -------------------------------------------------------------
 function abrirModalNovaFuncao(origemSelectId = null) {
   state.cargoSelectOrigem = origemSelectId;
@@ -1246,7 +1246,7 @@ function renderizarTabelaFuncoesExistentes() {
   if (elQtd) elQtd.textContent = state.cargos.length;
 
   if (state.cargos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">Nenhuma função cadastrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-slate-400">Nenhuma funÃ§Ã£o cadastrada.</td></tr>';
     return;
   }
 
@@ -1263,7 +1263,7 @@ function renderizarTabelaFuncoesExistentes() {
         </td>
         <td class="px-3 py-2.5">
           <div class="font-bold text-slate-800">${c.nome_cargo}</div>
-          <div class="text-[11px] text-slate-400">${c.descricao || (c.valor_diaria_referencia > 0 ? 'Diária ref: ' + formatarMoeda(c.valor_diaria_referencia) : 'Sem descrição')}</div>
+          <div class="text-[11px] text-slate-400">${c.descricao || (c.valor_diaria_referencia > 0 ? 'DiÃ¡ria ref: ' + formatarMoeda(c.valor_diaria_referencia) : 'Sem descriÃ§Ã£o')}</div>
         </td>
         <td class="px-3 py-2.5 text-center">
           <span class="bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded text-xs">${postos}</span>
@@ -1273,11 +1273,11 @@ function renderizarTabelaFuncoesExistentes() {
         </td>
         <td class="px-3 py-2.5 text-right">
           ${podeExcluir ? `
-            <button type="button" onclick="excluirFuncao(${c.id}, '${escapeJsString(c.nome_cargo)}')" class="text-slate-400 hover:text-red-600 p-1 transition" title="Excluir Função">
+            <button type="button" onclick="excluirFuncao(${c.id}, '${escapeJsString(c.nome_cargo)}')" class="text-slate-400 hover:text-red-600 p-1 transition" title="Excluir FunÃ§Ã£o">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           ` : `
-            <span class="text-[10px] text-slate-400 italic" title="Função em uso no sistema">Em uso</span>
+            <span class="text-[10px] text-slate-400 italic" title="FunÃ§Ã£o em uso no sistema">Em uso</span>
           `}
         </td>
       </tr>
@@ -1292,7 +1292,7 @@ async function salvarNovaFuncao(e) {
   const descricao = document.getElementById('funcaoDescricao').value.trim();
 
   if (!nomeCargo) {
-    alert('Por favor, digite o nome da função / cargo.');
+    alert('Por favor, digite o nome da funÃ§Ã£o / cargo.');
     return;
   }
 
@@ -1312,13 +1312,13 @@ async function salvarNovaFuncao(e) {
       await carregarDadosBase();
       renderizarTabelaFuncoesExistentes();
 
-      // Se acionado a partir de um select específico, seleciona a nova função automaticamente
+      // Se acionado a partir de um select especÃ­fico, seleciona a nova funÃ§Ã£o automaticamente
       if (state.cargoSelectOrigem) {
         const selAlvo = document.getElementById(state.cargoSelectOrigem);
         if (selAlvo) selAlvo.value = json.id;
       }
 
-      // Se o modal de múltiplos postos estiver aberto, atualiza a linha do posto
+      // Se o modal de mÃºltiplos postos estiver aberto, atualiza a linha do posto
       if (!document.getElementById('modalNovoPosto')?.classList.contains('hidden')) {
         sincronizarValoresLinhasNovosPostos();
         if (state.linhaCargoPendente !== null && state.linhaCargoPendente !== undefined) {
@@ -1330,17 +1330,17 @@ async function salvarNovaFuncao(e) {
         renderizarLinhasNovosPostos();
       }
 
-      alert(`Função '${nomeCargo}' cadastrada com sucesso e já disponível em todos os postos e colaboradores!`);
+      alert(`FunÃ§Ã£o '${nomeCargo}' cadastrada com sucesso e jÃ¡ disponÃ­vel em todos os postos e colaboradores!`);
     } else {
       alert('Aviso: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao salvar função: ' + err.message);
+    alert('Erro ao salvar funÃ§Ã£o: ' + err.message);
   }
 }
 
 async function excluirFuncao(id, nome) {
-  if (!confirm(`Deseja realmente inativar/excluir a função '${nome}'?`)) return;
+  if (!confirm(`Deseja realmente inativar/excluir a funÃ§Ã£o '${nome}'?`)) return;
 
   try {
     const res = await fetch(`/api/cargos/${id}`, {
@@ -1350,17 +1350,17 @@ async function excluirFuncao(id, nome) {
     if (json.success) {
       await carregarDadosBase();
       renderizarTabelaFuncoesExistentes();
-      alert(`Função '${nome}' excluída com sucesso!`);
+      alert(`FunÃ§Ã£o '${nome}' excluÃ­da com sucesso!`);
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao excluir função: ' + err.message);
+    alert('Erro ao excluir funÃ§Ã£o: ' + err.message);
   }
 }
 
 // -------------------------------------------------------------
-// 3. COLABORADORES EFETIVOS & EXCLUSÁO MÚLTIPLA COM CHECKBOXES
+// 3. COLABORADORES EFETIVOS & EXCLUSÃO MÃšLTIPLA COM CHECKBOXES
 // -------------------------------------------------------------
 function filtrarClientesAbaColab() {
   const input = document.getElementById('filtroColabBuscaCliente');
@@ -1509,8 +1509,8 @@ function renderizarLinhasColaboradores() {
       badgeStatusColab = `<span class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded font-medium">Desligado</span>`;
     } else if (isAfastado) {
       badgeStatusColab = `<span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-0.5 rounded border border-purple-300" title="Colaborador Afastado"><i class="fa-solid fa-hospital-user mr-1"></i>Afastado</span>`;
-    } else if (c.status_ferias_atual === 'Em Férias') {
-      badgeStatusColab = `<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded border border-indigo-200"><i class="fa-solid fa-umbrella-beach mr-1"></i>Em Férias</span>`;
+    } else if (c.status_ferias_atual === 'Em FÃ©rias') {
+      badgeStatusColab = `<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded border border-indigo-200"><i class="fa-solid fa-umbrella-beach mr-1"></i>Em FÃ©rias</span>`;
     } else if (c.status_ferias === 'Vencida') {
       badgeStatusColab = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded animate-pulse">VENCIDA!</span>`;
     } else if (c.status_ferias && c.status_ferias.includes('60d')) {
@@ -1532,7 +1532,7 @@ function renderizarLinhasColaboradores() {
           ${c.cliente_nome || 'Afastado'}
           ${c.cliente_id ? `<span class="text-purple-700 font-mono font-bold text-[10px] bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded ml-1">#${c.cliente_id}</span>` : ''}
         </div>
-        <div class="text-xs text-purple-700 font-semibold">📍 Posto: AFASTADOS</div>
+        <div class="text-xs text-purple-700 font-semibold">ðŸ“ Posto: AFASTADOS</div>
       `;
         } else {
       const isMulti = c.is_multi_cliente === true || c.is_multi_cliente === 1 || c.escala === 'Multi-Cliente' || (c.clientes_compartilhados && c.clientes_compartilhados.length > 0);
@@ -1552,10 +1552,10 @@ function renderizarLinhasColaboradores() {
       } else {
         clientePostoHtml = `
           <div class="font-bold text-slate-800">
-            ${c.cliente_nome || 'Reserva Técnica'}
-            ${c.cliente_id ? `<span class="text-violet-700 font-mono font-bold text-[10px] bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded ml-1" title="Código ID do Cliente"><i class="fa-solid fa-id-badge mr-0.5"></i>ID: #${c.cliente_id}</span>` : ''}
+            ${c.cliente_nome || 'Reserva TÃ©cnica'}
+            ${c.cliente_id ? `<span class="text-violet-700 font-mono font-bold text-[10px] bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded ml-1" title="CÃ³digo ID do Cliente"><i class="fa-solid fa-id-badge mr-0.5"></i>ID: #${c.cliente_id}</span>` : ''}
           </div>
-          <div class="text-xs text-rose-700 font-semibold">${c.nome_posto ? '📍 ' + c.nome_posto : 'Sem posto fixo'}</div>
+          <div class="text-xs text-rose-700 font-semibold">${c.nome_posto ? 'ðŸ“ ' + c.nome_posto : 'Sem posto fixo'}</div>
         `;
       }
     }
@@ -1566,7 +1566,7 @@ function renderizarLinhasColaboradores() {
     let btnFalta = '';
     if (!isDemitido) {
       btnFalta = `
-        <button onclick="lancarFaltaDiretoColaborador(${c.id})" class="text-rose-600 hover:text-rose-800 p-1 mr-1 transition" title="Lançar Falta / Ocorrência Direta para ${escapeJsString(c.nome)}">
+        <button onclick="lancarFaltaDiretoColaborador(${c.id})" class="text-rose-600 hover:text-rose-800 p-1 mr-1 transition" title="LanÃ§ar Falta / OcorrÃªncia Direta para ${escapeJsString(c.nome)}">
           <i class="fa-solid fa-calendar-xmark"></i>
         </button>
       `;
@@ -1578,12 +1578,12 @@ function renderizarLinhasColaboradores() {
         `;
       } else {
         btnFerias = `
-          <button onclick="abrirModalConcederFerias(${c.id})" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Conceder Férias ao Colaborador">
+          <button onclick="abrirModalConcederFerias(${c.id})" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Conceder FÃ©rias ao Colaborador">
             <i class="fa-solid fa-umbrella-beach"></i>
           </button>
         `;
         btnAfastamento = `
-          <button onclick="abrirModalAfastarColaborador(${c.id}, '${escapeJsString(c.nome)}', '${escapeJsString(c.cliente_nome || 'Sem cliente')} - ${escapeJsString(c.nome_posto || 'Sem posto')}')" class="text-purple-600 hover:text-purple-800 p-1 mr-1" title="Lançar Afastamento (INSS, Licença Médica, etc.)">
+          <button onclick="abrirModalAfastarColaborador(${c.id}, '${escapeJsString(c.nome)}', '${escapeJsString(c.cliente_nome || 'Sem cliente')} - ${escapeJsString(c.nome_posto || 'Sem posto')}')" class="text-purple-600 hover:text-purple-800 p-1 mr-1" title="LanÃ§ar Afastamento (INSS, LicenÃ§a MÃ©dica, etc.)">
             <i class="fa-solid fa-hospital-user"></i>
           </button>
         `;
@@ -1614,7 +1614,7 @@ function renderizarLinhasColaboradores() {
         </td>
         <td class="px-4 py-3">
           <span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-medium">${c.nome_cargo}</span>
-          <span class="text-indigo-700 font-mono font-bold text-[10px] ml-1 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded" title="Código ID da Função/Cargo"><i class="fa-solid fa-briefcase mr-0.5"></i>ID: #${c.cargo_id}</span>
+          <span class="text-indigo-700 font-mono font-bold text-[10px] ml-1 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded" title="CÃ³digo ID da FunÃ§Ã£o/Cargo"><i class="fa-solid fa-briefcase mr-0.5"></i>ID: #${c.cargo_id}</span>
         </td>
         <td class="px-4 py-3">
           ${clientePostoHtml}
@@ -1623,10 +1623,10 @@ function renderizarLinhasColaboradores() {
         <td class="px-4 py-3 text-xs font-medium text-slate-800">${formatarData(c.data_admissao)}</td>
         <td class="px-4 py-3 text-center">${badgeStatusColab}</td>
         <td class="px-4 py-3 text-right whitespace-nowrap">
-          <button onclick="abrirModalHistoricoColaborador(${c.id})" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Ver Dossiê e Histórico da Vida do Colaborador (Linha do Tempo 360°)">
+          <button onclick="abrirModalHistoricoColaborador(${c.id})" class="text-amber-600 hover:text-amber-800 p-1 mr-1" title="Ver DossiÃª e HistÃ³rico da Vida do Colaborador (Linha do Tempo 360Â°)">
             <i class="fa-solid fa-clock-rotate-left"></i>
           </button>
-          <button onclick="abrirModalEditarBeneficiosRapido(${c.id})" class="text-emerald-600 hover:text-emerald-800 p-1 mr-1" title="Editar Benefícios (VT e VA) do Colaborador">
+          <button onclick="abrirModalEditarBeneficiosRapido(${c.id})" class="text-emerald-600 hover:text-emerald-800 p-1 mr-1" title="Editar BenefÃ­cios (VT e VA) do Colaborador">
             <i class="fa-solid fa-utensils"></i>
           </button>
           ${btnFalta}
@@ -1679,7 +1679,7 @@ async function excluirColaboradoresSelecionados() {
     });
     const json = await res.json();
     if (json.success) {
-      alert(`${json.count} colaboradores excluídos com sucesso!`);
+      alert(`${json.count} colaboradores excluÃ­dos com sucesso!`);
       carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
     }
@@ -1725,7 +1725,7 @@ function filtrarClientesModalColab(inputId = 'cadColabBuscaCliente', selectId = 
 }
 
 // -------------------------------------------------------------
-// MÓDULO DE TRANSPORTE MULTI-LINHAS (IDA & VOLTA)
+// MÃ“DULO DE TRANSPORTE MULTI-LINHAS (IDA & VOLTA)
 // -------------------------------------------------------------
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -1802,7 +1802,7 @@ function renderizarLinhasTransporte(modo) {
     <tr class="hover:bg-slate-50/70 transition">
       <td class="p-2">
         <input type="text" value="${escapeHtml(l.nome_linha || '')}" 
-          placeholder="Ex: Linha 107T ou Metrô L1" 
+          placeholder="Ex: Linha 107T ou MetrÃ´ L1" 
           class="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-sky-500" 
           onchange="atualizarLinhaTransporte(${idx}, 'nome_linha', this.value, '${modo}')">
       </td>
@@ -1847,7 +1847,7 @@ function atualizarResumoBeneficiosNovoColab() {
   });
   totalDiarioVT = Math.round(totalDiarioVT * 100) / 100;
 
-  const txtLinhas = `${lista.length} linha(s) • ${totalPassagens} passagens/dia`;
+  const txtLinhas = `${lista.length} linha(s) â€¢ ${totalPassagens} passagens/dia`;
   const elTexto = document.getElementById('resumoTransporteNovoTexto');
   const elValor = document.getElementById('resumoTransporteNovoValor');
   if (elTexto) elTexto.innerText = txtLinhas;
@@ -1876,7 +1876,7 @@ function atualizarResumoBeneficiosEdicaoColab() {
   const va = parseFloat(document.getElementById('editColabValorVA')?.value) || 0;
   const totalDiario = totalDiarioVT + va;
 
-  const txtLinhas = `${lista.length} linha(s) • ${totalPassagens} passagens/dia`;
+  const txtLinhas = `${lista.length} linha(s) â€¢ ${totalPassagens} passagens/dia`;
   const elTexto = document.getElementById('resumoTransporteEdicaoTexto');
   const elValor = document.getElementById('resumoTransporteEdicaoValor');
   if (elTexto) elTexto.innerText = txtLinhas;
@@ -1884,7 +1884,7 @@ function atualizarResumoBeneficiosEdicaoColab() {
 
   const elPrevia = document.getElementById('editColabPreviaTotalBenef');
   if (elPrevia) {
-    elPrevia.innerHTML = `Total diário: <b class="text-emerald-800">R$ ${totalDiario.toFixed(2).replace('.', ',')}</b> (VT: R$ ${totalDiarioVT.toFixed(2).replace('.', ',')} + VA: R$ ${va.toFixed(2).replace('.', ',')})`;
+    elPrevia.innerHTML = `Total diÃ¡rio: <b class="text-emerald-800">R$ ${totalDiario.toFixed(2).replace('.', ',')}</b> (VT: R$ ${totalDiarioVT.toFixed(2).replace('.', ',')} + VA: R$ ${va.toFixed(2).replace('.', ',')})`;
   }
 
   const inputLinhas = document.getElementById('editColabLinhas');
@@ -1940,12 +1940,12 @@ function aoMudarClienteColab() {
 
   const postosCliente = (state.postos || []).filter(p => p.cliente_id === clienteId);
   if (postosCliente.length === 0) {
-    selPosto.innerHTML = '<option value="">⚠️ Nenhum posto cadastrado para este cliente</option>';
+    selPosto.innerHTML = '<option value="">âš ï¸ Nenhum posto cadastrado para este cliente</option>';
     if (aviso) aviso.classList.remove('hidden');
   } else {
     postosCliente.forEach(p => {
       const estaLotado = p.total_ocupados >= p.quantidade_vagas_limite;
-      const statusTxt = estaLotado ? `(⚠️ LOTADO ${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)` : `(${p.total_ocupados}/${p.quantidade_vagas_limite} vagas ocupadas)`;
+      const statusTxt = estaLotado ? `(âš ï¸ LOTADO ${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)` : `(${p.total_ocupados}/${p.quantidade_vagas_limite} vagas ocupadas)`;
       selPosto.innerHTML += `<option value="${p.id}" data-cargo="${p.cargo_id || ''}" data-escala="${p.escala || ''}" data-lotado="${estaLotado ? '1' : '0'}" class="${estaLotado ? 'text-red-600 font-bold bg-red-50' : ''}">${p.nome_posto} ${statusTxt}</option>`;
     });
   }
@@ -1997,14 +1997,14 @@ async function salvarPostoInlineColab() {
 
   const nomePosto = document.getElementById('inlinePostoNome').value.trim();
   if (!nomePosto) {
-    alert('Por favor, informe o Nome / Descrição do Posto (Ex: Portaria Principal, Limpeza Bloco A...).');
+    alert('Por favor, informe o Nome / DescriÃ§Ã£o do Posto (Ex: Portaria Principal, Limpeza Bloco A...).');
     document.getElementById('inlinePostoNome').focus();
     return;
   }
 
   const cargoId = parseInt(document.getElementById('inlinePostoCargoId').value, 10);
   if (!cargoId) {
-    alert('Por favor, selecione a Função / Cargo para este posto.');
+    alert('Por favor, selecione a FunÃ§Ã£o / Cargo para este posto.');
     document.getElementById('inlinePostoCargoId').focus();
     return;
   }
@@ -2037,11 +2037,11 @@ async function salvarPostoInlineColab() {
       // Atualizar select de postos do modal
       aoMudarClienteColab();
 
-      // Selecionar o posto recém-criado
+      // Selecionar o posto recÃ©m-criado
       const selPosto = document.getElementById('cadColabPostoId');
       if (selPosto) selPosto.value = json.id;
 
-      // Se a função do colaborador não estiver selecionada, sincronizar com o posto
+      // Se a funÃ§Ã£o do colaborador nÃ£o estiver selecionada, sincronizar com o posto
       const selCargo = document.getElementById('cadColabCargoId');
       if (selCargo && !selCargo.value) {
         selCargo.value = cargoId;
@@ -2079,23 +2079,23 @@ function aoMudarPostoColab() {
 
   if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
     if (avisoLotado && txtLotado) {
-      txtLotado.innerHTML = `⚠️ <b>Setor Lotado:</b> ${p.nome_posto} já possui ${p.total_ocupados}/${p.quantidade_vagas_limite} colaboradores alocados.`;
+      txtLotado.innerHTML = `âš ï¸ <b>Setor Lotado:</b> ${p.nome_posto} jÃ¡ possui ${p.total_ocupados}/${p.quantidade_vagas_limite} colaboradores alocados.`;
       avisoLotado.classList.remove('hidden');
     }
 
     const outrosComVagas = (state.postos || []).filter(x => x.cliente_id === p.cliente_id && x.id !== p.id && x.total_ocupados < x.quantidade_vagas_limite);
-    let msg = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO NESTE SETOR!\n\n` +
-      `O setor "${p.nome_posto}" já possui a quantidade total de ${p.quantidade_vagas_limite} colaborador(es) alocado(s) (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
+    let msg = `âš ï¸ ALERTA: LIMITE DE FUNCIONÃRIOS ATINGIDO NESTE SETOR!\n\n` +
+      `O setor "${p.nome_posto}" jÃ¡ possui a quantidade total de ${p.quantidade_vagas_limite} colaborador(es) alocado(s) (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
 
     if (outrosComVagas.length > 0) {
-      msg += `Outros setores deste mesmo cliente com vagas disponíveis:\n` +
-        outrosComVagas.map(o => ` • ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
-        `\n\nDeseja selecionar outro setor disponível ou criar um novo posto?`;
+      msg += `Outros setores deste mesmo cliente com vagas disponÃ­veis:\n` +
+        outrosComVagas.map(o => ` â€¢ ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
+        `\n\nDeseja selecionar outro setor disponÃ­vel ou criar um novo posto?`;
     } else {
-      msg += `Não há outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
+      msg += `NÃ£o hÃ¡ outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
     }
 
-    const trocar = confirm(msg + `\n\nClique em [OK] para criar novo posto ou escolher outro setor.\nClique em [CANCELAR] para manter seleção.`);
+    const trocar = confirm(msg + `\n\nClique em [OK] para criar novo posto ou escolher outro setor.\nClique em [CANCELAR] para manter seleÃ§Ã£o.`);
     if (trocar) {
       selPosto.value = '';
       toggleCriarPostoInlineColab(true);
@@ -2154,7 +2154,7 @@ async function salvarNovoColaborador(e) {
   if (postoIdVal) {
     const p = (state.postos || []).find(x => x.id === postoIdVal);
     if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
-      alert(`⚠️ BLOQUEIO DE LOTAÇÁO: O setor "${p.nome_posto}" já atingiu a capacidade máxima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, vincule este colaborador a outro setor com vagas disponíveis ou crie um novo posto.`);
+      alert(`âš ï¸ BLOQUEIO DE LOTAÃ‡ÃO: O setor "${p.nome_posto}" jÃ¡ atingiu a capacidade mÃ¡xima de ${p.quantidade_vagas_limite} colaboradores alocados.\n\nPor favor, vincule este colaborador a outro setor com vagas disponÃ­veis ou crie um novo posto.`);
       return;
     }
   }
@@ -2200,7 +2200,7 @@ async function salvarNovoColaborador(e) {
     
     if (!isAutorizador) {
       urlTarget = '/api/admissoes';
-      msgTarget = 'Solicitação de Admissão enviada com sucesso! Ela ficará pendente de autorização pela gerência.';
+      msgTarget = 'SolicitaÃ§Ã£o de AdmissÃ£o enviada com sucesso! Ela ficarÃ¡ pendente de autorizaÃ§Ã£o pela gerÃªncia.';
       payload.solicitante_nome = user ? user.nome : 'Desconhecido';
     }
 
@@ -2219,7 +2219,7 @@ async function salvarNovoColaborador(e) {
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
       alert(msgTarget);
     } else {
-      alert(json.message); // Trava de lotação
+      alert(json.message); // Trava de lotaÃ§Ã£o
     }
   } catch (err) {
     alert('Erro ao salvar: ' + err.message);
@@ -2231,7 +2231,7 @@ function abrirModalDemitirColaborador(id, nome, postoInfo) {
   document.getElementById('demissaoColabNome').value = nome;
   document.getElementById('demissaoColabPosto').value = postoInfo;
   document.getElementById('demissaoData').value = new Date().toISOString().split('T')[0];
-  document.getElementById('demissaoMotivo').value = 'Pedido de Demissão';
+  document.getElementById('demissaoMotivo').value = 'Pedido de DemissÃ£o';
   document.getElementById('demissaoObs').value = '';
   document.getElementById('modalDemitirColaborador').classList.remove('hidden');
 }
@@ -2257,17 +2257,17 @@ async function confirmarDemissaoColaborador(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
-      alert('Demissão registrada com sucesso!\nA vaga do posto de trabalho foi liberada e agora requer contratação ou realocação.');
+      alert('DemissÃ£o registrada com sucesso!\nA vaga do posto de trabalho foi liberada e agora requer contrataÃ§Ã£o ou realocaÃ§Ã£o.');
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao registrar demissão: ' + err.message);
+    alert('Erro ao registrar demissÃ£o: ' + err.message);
   }
 }
 
 // -------------------------------------------------------------
-// EDIÇÁO DE DADOS DO COLABORADOR
+// EDIÃ‡ÃO DE DADOS DO COLABORADOR
 // -------------------------------------------------------------
 async function abrirModalEditarColaborador(id) {
   try {
@@ -2345,7 +2345,7 @@ async function abrirModalEditarColaborador(id) {
     document.getElementById('modalEditarColaborador').classList.remove('hidden');
 
   } catch (err) {
-    alert('Erro ao abrir edição de colaborador: ' + err.message);
+    alert('Erro ao abrir ediÃ§Ã£o de colaborador: ' + err.message);
   }
 }
 
@@ -2357,7 +2357,7 @@ function atualizarPreviaBeneficiosEdicaoColab() {
   const totalDiario = vtDiario + va;
   const el = document.getElementById('editColabPreviaTotalBenef');
   if (el) {
-    el.innerHTML = `Total diário: <b class="text-emerald-800">R$ ${totalDiario.toFixed(2).replace('.', ',')}</b> (VT: R$ ${vtDiario.toFixed(2).replace('.', ',')} + VA: R$ ${va.toFixed(2).replace('.', ',')})`;
+    el.innerHTML = `Total diÃ¡rio: <b class="text-emerald-800">R$ ${totalDiario.toFixed(2).replace('.', ',')}</b> (VT: R$ ${vtDiario.toFixed(2).replace('.', ',')} + VA: R$ ${va.toFixed(2).replace('.', ',')})`;
   }
 }
 
@@ -2370,13 +2370,13 @@ function aoMudarClienteColabEdicao(postoSelecionadoId) {
   if (avisoLotado) avisoLotado.classList.add('hidden');
 
   if (!selPosto) return;
-  selPosto.innerHTML = '<option value="">-- Sem Posto Fixo (Reserva Técnica) --</option>';
+  selPosto.innerHTML = '<option value="">-- Sem Posto Fixo (Reserva TÃ©cnica) --</option>';
   if (!clienteId) return;
 
   const postosCliente = (state.postos || []).filter(p => p.cliente_id === clienteId);
   postosCliente.forEach(p => {
     const estaLotado = p.total_ocupados >= p.quantidade_vagas_limite;
-    const statusTxt = estaLotado ? `(⚠️ LOTADO ${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)` : `(${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)`;
+    const statusTxt = estaLotado ? `(âš ï¸ LOTADO ${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)` : `(${p.total_ocupados}/${p.quantidade_vagas_limite} vagas)`;
     selPosto.innerHTML += `<option value="${p.id}" data-cargo="${p.cargo_id || ''}" data-escala="${p.escala || ''}" data-lotado="${estaLotado ? '1' : '0'}" class="${estaLotado ? 'text-red-600 font-bold bg-red-50' : ''}">${p.nome_posto} ${statusTxt}</option>`;
   });
   if (postoSelecionadoId) {
@@ -2402,23 +2402,23 @@ function aoMudarPostoColabEdicao() {
 
   if (p && !jaAlocadoNestePosto && p.total_ocupados >= p.quantidade_vagas_limite) {
     if (avisoLotado && txtLotado) {
-      txtLotado.innerHTML = `⚠️ <b>Setor Lotado:</b> ${p.nome_posto} já possui ${p.total_ocupados}/${p.quantidade_vagas_limite} colaboradores alocados.`;
+      txtLotado.innerHTML = `âš ï¸ <b>Setor Lotado:</b> ${p.nome_posto} jÃ¡ possui ${p.total_ocupados}/${p.quantidade_vagas_limite} colaboradores alocados.`;
       avisoLotado.classList.remove('hidden');
     }
 
     const outrosComVagas = (state.postos || []).filter(x => x.cliente_id === p.cliente_id && x.id !== p.id && x.total_ocupados < x.quantidade_vagas_limite);
-    let msg = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO NESTE SETOR!\n\n` +
-      `O setor "${p.nome_posto}" já possui a quantidade total de ${p.quantidade_vagas_limite} colaboradores alocados (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
+    let msg = `âš ï¸ ALERTA: LIMITE DE FUNCIONÃRIOS ATINGIDO NESTE SETOR!\n\n` +
+      `O setor "${p.nome_posto}" jÃ¡ possui a quantidade total de ${p.quantidade_vagas_limite} colaboradores alocados (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
 
     if (outrosComVagas.length > 0) {
-      msg += `Outros setores deste mesmo cliente com vagas disponíveis:\n` +
-        outrosComVagas.map(o => ` • ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
-        `\n\nDeseja selecionar outro setor disponível ou criar um novo posto?`;
+      msg += `Outros setores deste mesmo cliente com vagas disponÃ­veis:\n` +
+        outrosComVagas.map(o => ` â€¢ ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
+        `\n\nDeseja selecionar outro setor disponÃ­vel ou criar um novo posto?`;
     } else {
-      msg += `Não há outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
+      msg += `NÃ£o hÃ¡ outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
     }
 
-    const trocar = confirm(msg + `\n\nClique em [OK] para criar novo posto ou escolher outro setor.\nClique em [CANCELAR] para manter seleção.`);
+    const trocar = confirm(msg + `\n\nClique em [OK] para criar novo posto ou escolher outro setor.\nClique em [CANCELAR] para manter seleÃ§Ã£o.`);
     if (trocar) {
       selPosto.value = colabAtual?.posto_trabalho_id || '';
       toggleCriarPostoInlineColabEdicao(true);
@@ -2484,14 +2484,14 @@ async function salvarPostoInlineColabEdicao() {
 
   const nomePosto = document.getElementById('inlinePostoNomeEdicao').value.trim();
   if (!nomePosto) {
-    alert('Por favor, informe o Nome / Descrição do Posto (Ex: Portaria Principal, Limpeza Bloco A...).');
+    alert('Por favor, informe o Nome / DescriÃ§Ã£o do Posto (Ex: Portaria Principal, Limpeza Bloco A...).');
     document.getElementById('inlinePostoNomeEdicao').focus();
     return;
   }
 
   const cargoId = parseInt(document.getElementById('inlinePostoCargoIdEdicao').value, 10);
   if (!cargoId) {
-    alert('Por favor, selecione a Função / Cargo para este posto.');
+    alert('Por favor, selecione a FunÃ§Ã£o / Cargo para este posto.');
     document.getElementById('inlinePostoCargoIdEdicao').focus();
     return;
   }
@@ -2561,7 +2561,7 @@ async function salvarEdicaoColaborador(e) {
       if (postoIdVal && (!colabAtual || colabAtual.posto_trabalho_id !== postoIdVal)) {
         const p = (state.postos || []).find(x => x.id === postoIdVal);
         if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
-          if (!confirm('BLOQUEIO DE LOTAÇÃO: O setor "' + p.nome_posto + '" já atingiu a capacidade máxima. Deseja ignorar a lotação e salvar?')) {
+          if (!confirm('BLOQUEIO DE LOTAÃ‡ÃƒO: O setor "' + p.nome_posto + '" jÃ¡ atingiu a capacidade mÃ¡xima. Deseja ignorar a lotaÃ§Ã£o e salvar?')) {
              return;
           }
         }
@@ -2615,17 +2615,17 @@ async function salvarEdicaoColaborador(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
-      alert('Informações do colaborador atualizadas com sucesso!');
+      alert('InformaÃ§Ãµes do colaborador atualizadas com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao salvar edição: ' + err.message);
+    alert('Erro ao salvar ediÃ§Ã£o: ' + err.message);
   }
 }
 
 // -------------------------------------------------------------
-// CONCESSÁO DE FÉRIAS AO COLABORADOR
+// CONCESSÃO DE FÃ‰RIAS AO COLABORADOR
 // -------------------------------------------------------------
 async function abrirModalConcederFerias(id) {
   try {
@@ -2634,13 +2634,13 @@ async function abrirModalConcederFerias(id) {
       const res = await fetch(`/api/colaboradores/${id}`);
       if (res.ok) colab = await res.json();
     }
-    if (!colab) return alert('Colaborador não encontrado');
+    if (!colab) return alert('Colaborador nÃ£o encontrado');
 
     popularSelectsGlobais();
 
     document.getElementById('feriasColabId').value = colab.id;
-    document.getElementById('feriasColabNome').textContent = `${colab.nome} (Função: ${colab.nome_cargo || 'Não informada'})`;
-    document.getElementById('feriasColabPostoCliente').textContent = `Cliente: ${colab.cliente_nome || 'Reserva Técnica'} | Posto: ${colab.nome_posto || 'Sem posto fixo'}`;
+    document.getElementById('feriasColabNome').textContent = `${colab.nome} (FunÃ§Ã£o: ${colab.nome_cargo || 'NÃ£o informada'})`;
+    document.getElementById('feriasColabPostoCliente').textContent = `Cliente: ${colab.cliente_nome || 'Reserva TÃ©cnica'} | Posto: ${colab.nome_posto || 'Sem posto fixo'}`;
 
     const hoje = new Date();
     const amanha = new Date(hoje);
@@ -2650,7 +2650,7 @@ async function abrirModalConcederFerias(id) {
 
     document.getElementById('feriasDataInicio').value = amanha.toISOString().split('T')[0];
     document.getElementById('feriasDataFim').value = em30Dias.toISOString().split('T')[0];
-    document.getElementById('feriasTipo').value = 'Férias Integrais (30 dias)';
+    document.getElementById('feriasTipo').value = 'FÃ©rias Integrais (30 dias)';
 
     const chkCob = document.getElementById('feriasHaveraCobertura');
     if (chkCob) {
@@ -2664,7 +2664,7 @@ async function abrirModalConcederFerias(id) {
 
     document.getElementById('modalConcederFerias').classList.remove('hidden');
   } catch (err) {
-    alert('Erro ao abrir concessão de férias: ' + err.message);
+    alert('Erro ao abrir concessÃ£o de fÃ©rias: ' + err.message);
   }
 }
 
@@ -2705,7 +2705,7 @@ async function salvarConcessaoFerias(e) {
   };
 
   if (haveraCob && !payload.freelancer_id) {
-    alert('Por favor, selecione um Freelancer para assumir a cobertura das férias.');
+    alert('Por favor, selecione um Freelancer para assumir a cobertura das fÃ©rias.');
     return;
   }
 
@@ -2721,17 +2721,17 @@ async function salvarConcessaoFerias(e) {
       await carregarDadosBase();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
       if (state.abaAtiva === 'ferias') carregarPainelFerias();
-      alert(`FÉRIAS CONCEDIDAS COM SUCESSO!\n\n${json.message}`);
+      alert(`FÃ‰RIAS CONCEDIDAS COM SUCESSO!\n\n${json.message}`);
     } else {
-      alert(json.message || 'Erro ao conceder férias');
+      alert(json.message || 'Erro ao conceder fÃ©rias');
     }
   } catch (err) {
-    alert('Erro ao registrar férias: ' + err.message);
+    alert('Erro ao registrar fÃ©rias: ' + err.message);
   }
 }
 
 // -------------------------------------------------------------
-// 4. FÉRIAS, CALENDÁRIO INTERATIVO & PROCESSOS DO DP
+// 4. FÃ‰RIAS, CALENDÃRIO INTERATIVO & PROCESSOS DO DP
 // -------------------------------------------------------------
 
 state.visualizacaoFerias = state.visualizacaoFerias || 'calendario';
@@ -2749,7 +2749,7 @@ async function carregarPainelFerias() {
   const clienteId = document.getElementById('filtroFeriasCliente')?.value || '';
   const busca = document.getElementById('filtroFeriasBusca')?.value || '';
 
-  // Popular Select de Clientes do Filtro de Férias se estiver vazio
+  // Popular Select de Clientes do Filtro de FÃ©rias se estiver vazio
   const selectCli = document.getElementById('filtroFeriasCliente');
   if (selectCli && selectCli.options.length <= 1 && Array.isArray(state.clientes)) {
     const atual = selectCli.value;
@@ -2767,7 +2767,7 @@ async function carregarPainelFerias() {
   if (chkMasterFerias) chkMasterFerias.checked = false;
 
   try {
-    // 1. Carregar Programação de Férias com KPIs e Detalhes
+    // 1. Carregar ProgramaÃ§Ã£o de FÃ©rias com KPIs e Detalhes
     const url = `/api/ferias/programadas?ano_mes=${mes}&etapa_processo=${encodeURIComponent(etapa)}&cliente_id=${clienteId}&busca=${encodeURIComponent(busca)}`;
     const res = await fetch(url);
     const data = await res.json();
@@ -2787,13 +2787,13 @@ async function carregarPainelFerias() {
     if (document.getElementById('kpiFeriasRecibo')) document.getElementById('kpiFeriasRecibo').textContent = kpis.total_recibo_entregue;
     if (document.getElementById('kpiFeriasConcluidas')) document.getElementById('kpiFeriasConcluidas').textContent = kpis.total_concluidas;
     if (document.getElementById('badgeTotalFeriasMes')) {
-      document.getElementById('badgeTotalFeriasMes').textContent = `${feriasList.length} colaborador(es) em férias neste mês`;
+      document.getElementById('badgeTotalFeriasMes').textContent = `${feriasList.length} colaborador(es) em fÃ©rias neste mÃªs`;
     }
     if (document.getElementById('qtdProcessosFeriasTxt')) {
       document.getElementById('qtdProcessosFeriasTxt').textContent = `${feriasList.length} registro(s) encontrado(s)`;
     }
 
-    // 2. Renderizar Calendário Mensal
+    // 2. Renderizar CalendÃ¡rio Mensal
     renderizarCalendarioFerias(feriasList, mes);
 
     // 3. Renderizar Tabela de Processos DP
@@ -2817,7 +2817,7 @@ async function carregarPainelFerias() {
               <td class="px-4 py-3 font-semibold text-slate-800">${formatarData(cob.data_inicio)} a ${formatarData(cob.data_fim)}</td>
               <td class="px-4 py-3">
                 <div class="font-bold text-slate-900">${cob.cliente_nome}</div>
-                <div class="text-xs text-slate-500">📍 ${cob.nome_posto}</div>
+                <div class="text-xs text-slate-500">ðŸ“ ${cob.nome_posto}</div>
               </td>
               <td class="px-4 py-3 font-bold text-slate-800">${cob.titular_nome}</td>
               <td class="px-4 py-3 font-bold text-blue-700">${cob.freelancer_nome}</td>
@@ -2831,7 +2831,7 @@ async function carregarPainelFerias() {
       }
     }
 
-    // 5. Previsões e Prazos de Férias dos Colaboradores (View 3)
+    // 5. PrevisÃµes e Prazos de FÃ©rias dos Colaboradores (View 3)
     const resCol = await fetch('/api/colaboradores');
     const colabs = await resCol.json();
     const tbodyPrev = document.getElementById('tabelaPrevisoesFeriasBody');
@@ -2840,7 +2840,7 @@ async function carregarPainelFerias() {
       colabs.filter(c => c.data_admissao).forEach(c => {
         let badgeSit = '';
         if (c.status_ferias === 'Vencida') {
-          badgeSit = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded">FÉRIAS VENCIDAS</span>`;
+          badgeSit = `<span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-0.5 rounded">FÃ‰RIAS VENCIDAS</span>`;
         } else if (c.status_ferias && c.status_ferias.includes('60d')) {
           badgeSit = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-0.5 rounded">VENCE EM BREVE</span>`;
         } else {
@@ -2868,7 +2868,7 @@ async function carregarPainelFerias() {
     }
 
   } catch (err) {
-    console.error('Erro ao carregar férias:', err);
+    console.error('Erro ao carregar fÃ©rias:', err);
   }
 }
 
@@ -2880,13 +2880,13 @@ function renderizarCalendarioFerias(feriasList, anoMes) {
   const ano = parseInt(partes[0], 10);
   const mes = parseInt(partes[1], 10);
 
-  // Nome do Mês Formatado
+  // Nome do MÃªs Formatado
   const dataReferencia = new Date(ano, mes - 1, 1);
   const nomeMes = dataReferencia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const elTitulo = document.getElementById('tituloCalendarioMesAno');
   if (elTitulo) elTitulo.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
 
-  // Dias do mês
+  // Dias do mÃªs
   const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay(); // 0 = Domingo
   const totalDiasMes = new Date(ano, mes, 0).getDate();
 
@@ -2895,19 +2895,19 @@ function renderizarCalendarioFerias(feriasList, anoMes) {
 
   let html = '';
 
-  // Células vazias dos dias antes do 1º dia do mês
+  // CÃ©lulas vazias dos dias antes do 1Âº dia do mÃªs
   for (let i = 0; i < primeiroDiaSemana; i++) {
     html += `<div class="bg-slate-50/50 min-h-[90px] p-1.5 rounded-lg border border-slate-100 text-slate-300"></div>`;
   }
 
-  // Células dos dias do mês
+  // CÃ©lulas dos dias do mÃªs
   for (let dia = 1; dia <= totalDiasMes; dia++) {
     const diaFormatado = String(dia).padStart(2, '0');
     const mesFormatado = String(mes).padStart(2, '0');
     const dataDiaStr = `${ano}-${mesFormatado}-${diaFormatado}`;
     const isHoje = dataDiaStr === hojeStr;
 
-    // Férias ativas neste dia específico
+    // FÃ©rias ativas neste dia especÃ­fico
     const feriasDoDia = feriasList.filter(f => {
       return f.data_inicio <= dataDiaStr && f.data_fim >= dataDiaStr;
     });
@@ -2917,13 +2917,13 @@ function renderizarCalendarioFerias(feriasList, anoMes) {
       // Cores por etapa do processo
       let estiloEtapa = 'bg-purple-100 text-purple-900 border-purple-300';
       let dotCor = 'bg-purple-500';
-      if (f.etapa_processo === 'Aviso de férias entregue') {
+      if (f.etapa_processo === 'Aviso de fÃ©rias entregue') {
         estiloEtapa = 'bg-amber-100 text-amber-900 border-amber-300';
         dotCor = 'bg-amber-500';
-      } else if (f.etapa_processo === 'Recibo de férias entregue') {
+      } else if (f.etapa_processo === 'Recibo de fÃ©rias entregue') {
         estiloEtapa = 'bg-blue-100 text-blue-900 border-blue-300';
         dotCor = 'bg-blue-500';
-      } else if (f.etapa_processo === 'Férias em Gozo / Concluídas') {
+      } else if (f.etapa_processo === 'FÃ©rias em Gozo / ConcluÃ­das') {
         estiloEtapa = 'bg-emerald-100 text-emerald-900 border-emerald-300';
         dotCor = 'bg-emerald-500';
       }
@@ -2967,7 +2967,7 @@ function renderizarCalendarioFerias(feriasList, anoMes) {
           </div>
         </div>
         <div class="pt-1 text-right">
-          <button onclick="abrirModalProgramarFeriasComData('${dataDiaStr}')" class="text-[10px] text-slate-400 hover:text-amber-600 transition" title="Programar férias iniciando neste dia">
+          <button onclick="abrirModalProgramarFeriasComData('${dataDiaStr}')" class="text-[10px] text-slate-400 hover:text-amber-600 transition" title="Programar fÃ©rias iniciando neste dia">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
@@ -2975,7 +2975,7 @@ function renderizarCalendarioFerias(feriasList, anoMes) {
     `;
   }
 
-  // Células restantes para completar a última semana (grid de 7)
+  // CÃ©lulas restantes para completar a Ãºltima semana (grid de 7)
   const celulasPreenchidas = primeiroDiaSemana + totalDiasMes;
   const celulasFinais = (7 - (celulasPreenchidas % 7)) % 7;
   for (let j = 0; j < celulasFinais; j++) {
@@ -2995,10 +2995,10 @@ function renderizarTabelaProcessosFerias(feriasList) {
       <tr>
         <td colspan="7" class="text-center py-10 text-slate-400">
           <i class="fa-solid fa-umbrella-beach text-3xl mb-2 text-slate-300 block"></i>
-          Nenhuma programação de férias encontrada para os filtros selecionados.
+          Nenhuma programaÃ§Ã£o de fÃ©rias encontrada para os filtros selecionados.
           <div class="mt-2">
             <button onclick="abrirModalProgramarFerias()" class="text-amber-600 hover:text-amber-700 font-bold text-xs">
-              + Programar férias de um colaborador agora
+              + Programar fÃ©rias de um colaborador agora
             </button>
           </div>
         </td>
@@ -3012,32 +3012,32 @@ function renderizarTabelaProcessosFerias(feriasList) {
     let badgeEtapa = '';
     let btnAvancar = '';
 
-    if (f.etapa_processo === 'Férias solicitada ao Departamento Pessoal') {
+    if (f.etapa_processo === 'FÃ©rias solicitada ao Departamento Pessoal') {
       badgeEtapa = `<span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-purple-200">
         <i class="fa-solid fa-paper-plane text-purple-600"></i> 1. DP Solicitada
       </span>`;
-      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Aviso de férias entregue')" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-lg border border-amber-200 transition" title="Marcar que o aviso formal foi assinado e entregue">
-        Aviso Entregue ➜
+      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Aviso de fÃ©rias entregue')" class="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-lg border border-amber-200 transition" title="Marcar que o aviso formal foi assinado e entregue">
+        Aviso Entregue âžœ
       </button>`;
-    } else if (f.etapa_processo === 'Aviso de férias entregue') {
+    } else if (f.etapa_processo === 'Aviso de fÃ©rias entregue') {
       badgeEtapa = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-amber-200">
         <i class="fa-solid fa-file-signature text-amber-600"></i> 2. Aviso Entregue
       </span>`;
-      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Recibo de férias entregue')" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition" title="Marcar recibo assinado e pagamento efetuado">
-        Recibo Entregue ➜
+      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Recibo de fÃ©rias entregue')" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded-lg border border-blue-200 transition" title="Marcar recibo assinado e pagamento efetuado">
+        Recibo Entregue âžœ
       </button>`;
-    } else if (f.etapa_processo === 'Recibo de férias entregue') {
+    } else if (f.etapa_processo === 'Recibo de fÃ©rias entregue') {
       badgeEtapa = `<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-blue-200">
         <i class="fa-solid fa-money-check-dollar text-blue-600"></i> 3. Recibo Entregue
       </span>`;
-      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'Férias em Gozo / Concluídas')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-lg border border-emerald-200 transition" title="Concluir processo de férias">
-        Em Gozo / Concluir ➜
+      btnAvancar = `<button onclick="avancarEtapaFerias(${f.id}, 'FÃ©rias em Gozo / ConcluÃ­das')" class="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-lg border border-emerald-200 transition" title="Concluir processo de fÃ©rias">
+        Em Gozo / Concluir âžœ
       </button>`;
     } else {
       badgeEtapa = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border border-emerald-200">
-        <i class="fa-solid fa-circle-check text-emerald-600"></i> 4. Gozo / Concluída
+        <i class="fa-solid fa-circle-check text-emerald-600"></i> 4. Gozo / ConcluÃ­da
       </span>`;
-      btnAvancar = `<span class="text-[11px] text-emerald-700 font-bold"><i class="fa-solid fa-check-double mr-1"></i>Concluído</span>`;
+      btnAvancar = `<span class="text-[11px] text-emerald-700 font-bold"><i class="fa-solid fa-check-double mr-1"></i>ConcluÃ­do</span>`;
     }
 
     // Cobertura
@@ -3066,7 +3066,7 @@ function renderizarTabelaProcessosFerias(feriasList) {
       cobHtml = `<span class="text-xs text-slate-400 italic">Sem Cobertura Contratada</span>`;
     }
 
-    // Comprovações de Entrega
+    // ComprovaÃ§Ãµes de Entrega
     let entregasHtml = `
       <div class="text-xs space-y-0.5">
         <div><b>Aviso:</b> ${f.data_aviso_entregue ? `<span class="text-amber-700 font-bold">${formatarData(f.data_aviso_entregue)}</span>` : '<span class="text-slate-400">Pendente</span>'}</div>
@@ -3082,7 +3082,7 @@ function renderizarTabelaProcessosFerias(feriasList) {
         </td>
         <td class="px-4 py-3">
           <div class="font-bold text-slate-800 text-xs">${f.cliente_nome || 'Geral'}</div>
-          <div class="text-xs text-slate-500">📍 ${f.nome_posto || 'Posto'}</div>
+          <div class="text-xs text-slate-500">ðŸ“ ${f.nome_posto || 'Posto'}</div>
         </td>
         <td class="px-4 py-3">
           <div class="font-semibold text-slate-900 text-xs">${formatarData(f.data_inicio)} a ${formatarData(f.data_fim)}</div>
@@ -3103,7 +3103,7 @@ function renderizarTabelaProcessosFerias(feriasList) {
             <button onclick="abrirModalEditarFerias(${f.id})" class="text-slate-600 hover:text-amber-700 p-1.5 rounded hover:bg-slate-100 transition" title="Editar Datas, Cobertura ou Processo">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button onclick="cancelarFeriasProgramadas(${f.id})" class="text-slate-400 hover:text-rose-600 p-1.5 rounded hover:bg-rose-50 transition" title="Cancelar / Excluir Programação">
+            <button onclick="cancelarFeriasProgramadas(${f.id})" class="text-slate-400 hover:text-rose-600 p-1.5 rounded hover:bg-rose-50 transition" title="Cancelar / Excluir ProgramaÃ§Ã£o">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -3185,7 +3185,7 @@ function filtrarFeriasPorEtapa(etapa) {
   if (select) {
     select.value = (select.value === etapa) ? '' : etapa;
   }
-  // Se estiver em outra view, muda para o calendário ou processos
+  // Se estiver em outra view, muda para o calendÃ¡rio ou processos
   if (state.visualizacaoFerias === 'vencimentos' || state.visualizacaoFerias === 'coberturas') {
     trocarVisualizacaoFerias('calendario');
   }
@@ -3235,9 +3235,9 @@ function aoMudarEtapaFeriasForm(prefix) {
   const hoje = new Date();
   const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
-  if (etapa === 'Aviso de férias entregue') {
+  if (etapa === 'Aviso de fÃ©rias entregue') {
     if (inputAviso && !inputAviso.value) inputAviso.value = hojeStr;
-  } else if (etapa === 'Recibo de férias entregue' || etapa === 'Férias em Gozo / Concluídas') {
+  } else if (etapa === 'Recibo de fÃ©rias entregue' || etapa === 'FÃ©rias em Gozo / ConcluÃ­das') {
     if (inputAviso && !inputAviso.value) inputAviso.value = hojeStr;
     if (inputRecibo && !inputRecibo.value) inputRecibo.value = hojeStr;
   }
@@ -3248,7 +3248,7 @@ function aoSelecionarColaboradorFerias(colabId) {
   const elInfo = document.getElementById('progFeriasInfoPosto');
   if (!elInfo) return;
   if (colab) {
-    elInfo.innerHTML = `📍 Posto Atual: <b>${colab.nome_posto || 'Sem posto definido'}</b> | Cliente: <b>${colab.cliente_nome || 'Geral'}</b>`;
+    elInfo.innerHTML = `ðŸ“ Posto Atual: <b>${colab.nome_posto || 'Sem posto definido'}</b> | Cliente: <b>${colab.cliente_nome || 'Geral'}</b>`;
   } else {
     elInfo.innerHTML = '';
   }
@@ -3280,16 +3280,16 @@ function abrirModalProgramarFerias(colabIdDefault, dataInicioDefault) {
     });
   }
 
-  // Popular Colegas Efetivos para Substituição
+  // Popular Colegas Efetivos para SubstituiÃ§Ã£o
   const selectSub = document.getElementById('progFeriasSubstitutoId');
   if (selectSub) {
     selectSub.innerHTML = '<option value="">-- Selecione o Colega Substituto --</option>';
     (state.colaboradores || []).filter(c => c.ativo === 1 && c.id !== parseInt(colabIdDefault, 10)).forEach(c => {
-      selectSub.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_posto || 'Reserva Técnica'})</option>`;
+      selectSub.innerHTML += `<option value="${c.id}">${c.nome} (${c.nome_posto || 'Reserva TÃ©cnica'})</option>`;
     });
   }
 
-  // Datas padrão
+  // Datas padrÃ£o
   let dataIni = dataInicioDefault;
   if (!dataIni) {
     const daqui30d = new Date();
@@ -3304,7 +3304,7 @@ function abrirModalProgramarFerias(colabIdDefault, dataInicioDefault) {
   document.getElementById('progFeriasDias').value = 30;
   calcularDataFimFerias('prog');
 
-  document.getElementById('progFeriasEtapa').value = 'Férias solicitada ao Departamento Pessoal';
+  document.getElementById('progFeriasEtapa').value = 'FÃ©rias solicitada ao Departamento Pessoal';
   document.getElementById('progFeriasDataAviso').value = '';
   document.getElementById('progFeriasDataRecibo').value = '';
   document.getElementById('progFeriasTipoCob').value = 'freelancer';
@@ -3325,7 +3325,7 @@ async function salvarProgramacaoFerias(e) {
 
   const colabId = parseInt(document.getElementById('progFeriasColabId').value, 10);
   if (!colabId) {
-    alert('Selecione o colaborador titular para as férias.');
+    alert('Selecione o colaborador titular para as fÃ©rias.');
     return;
   }
 
@@ -3346,7 +3346,7 @@ async function salvarProgramacaoFerias(e) {
   const observacoes = document.getElementById('progFeriasObs').value.trim();
 
   if (tipo_cobertura === 'freelancer' && !freelancer_id) {
-    alert('Por favor, selecione qual freelancer cobrirá as férias ou altere o tipo de cobertura.');
+    alert('Por favor, selecione qual freelancer cobrirÃ¡ as fÃ©rias ou altere o tipo de cobertura.');
     return;
   }
 
@@ -3357,7 +3357,7 @@ async function salvarProgramacaoFerias(e) {
     data_inicio,
     data_fim,
     dias_ferias,
-    tipo_ferias: dias_ferias === 30 ? 'Férias Integrais (30 dias)' : `Férias Fracionadas (${dias_ferias} dias)`,
+    tipo_ferias: dias_ferias === 30 ? 'FÃ©rias Integrais (30 dias)' : `FÃ©rias Fracionadas (${dias_ferias} dias)`,
     havera_cobertura,
     tipo_cobertura,
     freelancer_id,
@@ -3383,18 +3383,18 @@ async function salvarProgramacaoFerias(e) {
       body: JSON.stringify(payload)
     });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao programar férias');
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao programar fÃ©rias');
 
     fecharModal('modalProgramarFerias');
-    alert('Férias programadas com sucesso!');
+    alert('FÃ©rias programadas com sucesso!');
     await carregarPainelFerias();
   } catch (err) {
-    console.error('Erro ao programar férias:', err);
-    alert('Erro ao salvar programação de férias: ' + err.message);
+    console.error('Erro ao programar fÃ©rias:', err);
+    alert('Erro ao salvar programaÃ§Ã£o de fÃ©rias: ' + err.message);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-check"></i> Programar Férias';
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Programar FÃ©rias';
     }
   }
 }
@@ -3404,24 +3404,24 @@ async function abrirModalEditarFerias(id) {
     const res = await fetch(`/api/ferias/programadas/${id}`);
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || 'Erro ao carregar dados da programação de férias');
+      throw new Error(err.error || 'Erro ao carregar dados da programaÃ§Ã£o de fÃ©rias');
     }
     const f = await res.json();
 
     document.getElementById('editFeriasId').value = f.id;
     document.getElementById('editFeriasNomeColab').textContent = `${f.titular_nome} (CPF: ${f.titular_cpf || '-'})`;
     document.getElementById('editFeriasPostoCliente').textContent = `${f.cliente_nome || 'Geral'} - ${f.nome_posto || 'Posto'}`;
-    document.getElementById('editFeriasSubtitulo').textContent = `Registro #${f.id} • Cadastrado em ${formatarData(f.created_at)}`;
+    document.getElementById('editFeriasSubtitulo').textContent = `Registro #${f.id} â€¢ Cadastrado em ${formatarData(f.created_at)}`;
 
     document.getElementById('editFeriasDataInicio').value = f.data_inicio;
     document.getElementById('editFeriasDias').value = f.dias_ferias || 30;
     document.getElementById('editFeriasDataFim').value = f.data_fim;
 
-    document.getElementById('editFeriasEtapa').value = f.etapa_processo || 'Férias solicitada ao Departamento Pessoal';
+    document.getElementById('editFeriasEtapa').value = f.etapa_processo || 'FÃ©rias solicitada ao Departamento Pessoal';
     document.getElementById('editFeriasDataAviso').value = f.data_aviso_entregue || '';
     document.getElementById('editFeriasDataRecibo').value = f.data_recibo_entregue || '';
 
-    // Previsão de Cobertura
+    // PrevisÃ£o de Cobertura
     const tipoCob = f.havera_cobertura === 0 ? 'sem_cobertura' : (f.tipo_cobertura || 'freelancer');
     document.getElementById('editFeriasTipoCob').value = tipoCob;
 
@@ -3437,7 +3437,7 @@ async function abrirModalEditarFerias(id) {
     const selectSub = document.getElementById('editFeriasSubstitutoId');
     selectSub.innerHTML = '<option value="">-- Selecione o Colega Substituto --</option>';
     (state.colaboradores || []).filter(c => c.id !== f.colaborador_id).forEach(c => {
-      selectSub.innerHTML += `<option value="${c.id}" ${c.id === f.colaborador_substituto_id ? 'selected' : ''}>${c.nome} (${c.nome_posto || 'Reserva Técnica'})</option>`;
+      selectSub.innerHTML += `<option value="${c.id}" ${c.id === f.colaborador_substituto_id ? 'selected' : ''}>${c.nome} (${c.nome_posto || 'Reserva TÃ©cnica'})</option>`;
     });
     document.getElementById('editFeriasSubstitutoNome').value = f.nome_substituto_avulso || '';
 
@@ -3448,8 +3448,8 @@ async function abrirModalEditarFerias(id) {
 
     abrirModal('modalEditarProgramacaoFerias');
   } catch (err) {
-    console.error('Erro ao abrir edição de férias:', err);
-    alert('Erro ao carregar dados das férias: ' + err.message);
+    console.error('Erro ao abrir ediÃ§Ã£o de fÃ©rias:', err);
+    alert('Erro ao carregar dados das fÃ©rias: ' + err.message);
   }
 }
 
@@ -3478,7 +3478,7 @@ async function salvarEdicaoFerias(e) {
     data_inicio,
     data_fim,
     dias_ferias,
-    tipo_ferias: dias_ferias === 30 ? 'Férias Integrais (30 dias)' : `Férias Fracionadas (${dias_ferias} dias)`,
+    tipo_ferias: dias_ferias === 30 ? 'FÃ©rias Integrais (30 dias)' : `FÃ©rias Fracionadas (${dias_ferias} dias)`,
     havera_cobertura,
     tipo_cobertura,
     freelancer_id,
@@ -3505,18 +3505,18 @@ async function salvarEdicaoFerias(e) {
       body: JSON.stringify(payload)
     });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao atualizar férias');
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao atualizar fÃ©rias');
 
     fecharModal('modalEditarProgramacaoFerias');
-    alert('Programação de férias atualizada com sucesso!');
+    alert('ProgramaÃ§Ã£o de fÃ©rias atualizada com sucesso!');
     await carregarPainelFerias();
   } catch (err) {
-    console.error('Erro ao atualizar férias:', err);
+    console.error('Erro ao atualizar fÃ©rias:', err);
     alert('Erro: ' + err.message);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações';
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar AlteraÃ§Ãµes';
     }
   }
 }
@@ -3524,7 +3524,7 @@ async function salvarEdicaoFerias(e) {
 async function cancelarFeriasProgramadas(idFromBtn) {
   const id = idFromBtn || parseInt(document.getElementById('editFeriasId').value, 10);
   if (!id) return;
-  if (!confirm('Deseja realmente cancelar/excluir esta programação de férias? Caso haja freelancer vinculado, a cobertura será removida e o colaborador retornará ao status normal.')) {
+  if (!confirm('Deseja realmente cancelar/excluir esta programaÃ§Ã£o de fÃ©rias? Caso haja freelancer vinculado, a cobertura serÃ¡ removida e o colaborador retornarÃ¡ ao status normal.')) {
     return;
   }
 
@@ -3533,13 +3533,13 @@ async function cancelarFeriasProgramadas(idFromBtn) {
       method: 'DELETE'
     });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao cancelar férias');
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao cancelar fÃ©rias');
 
     fecharModal('modalEditarProgramacaoFerias');
-    alert('Programação de férias cancelada com sucesso!');
+    alert('ProgramaÃ§Ã£o de fÃ©rias cancelada com sucesso!');
     await carregarPainelFerias();
   } catch (err) {
-    console.error('Erro ao cancelar férias:', err);
+    console.error('Erro ao cancelar fÃ©rias:', err);
     alert('Erro: ' + err.message);
   }
 }
@@ -3549,8 +3549,8 @@ async function avancarEtapaFerias(id, novaEtapa) {
   const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
   const payload = { etapa_processo: novaEtapa };
-  if (novaEtapa === 'Aviso de férias entregue') payload.data_aviso_entregue = hojeStr;
-  if (novaEtapa === 'Recibo de férias entregue') payload.data_recibo_entregue = hojeStr;
+  if (novaEtapa === 'Aviso de fÃ©rias entregue') payload.data_aviso_entregue = hojeStr;
+  if (novaEtapa === 'Recibo de fÃ©rias entregue') payload.data_recibo_entregue = hojeStr;
 
   try {
     const res = await fetch(`/api/ferias/programadas/${id}/etapa`, {
@@ -3559,11 +3559,11 @@ async function avancarEtapaFerias(id, novaEtapa) {
       body: JSON.stringify(payload)
     });
     const json = await res.json();
-    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao avançar etapa');
+    if (!res.ok || !json.success) throw new Error(json.error || json.message || 'Erro ao avanÃ§ar etapa');
 
     await carregarPainelFerias();
   } catch (err) {
-    console.error('Erro ao avançar etapa de férias:', err);
+    console.error('Erro ao avanÃ§ar etapa de fÃ©rias:', err);
     alert('Erro ao atualizar etapa: ' + err.message);
   }
 }
@@ -3595,7 +3595,7 @@ async function salvarNovaCoberturaFerias(e) {
     if (json.success) {
       fecharModal('modalNovaCoberturaFerias');
       carregarPainelFerias();
-      alert('Freelancer alocado para cobertura de férias com sucesso!');
+      alert('Freelancer alocado para cobertura de fÃ©rias com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
@@ -3635,7 +3635,7 @@ function atualizarBarraAcoesFerias() {
 async function excluirFeriasSelecionadas() {
   const ids = Array.from(state.feriasSelecionadas);
   if (ids.length === 0) return;
-  if (!confirm(`Deseja realmente excluir as ${ids.length} coberturas de férias selecionadas?`)) return;
+  if (!confirm(`Deseja realmente excluir as ${ids.length} coberturas de fÃ©rias selecionadas?`)) return;
 
   try {
     const res = await fetch('/api/batch-delete', {
@@ -3645,7 +3645,7 @@ async function excluirFeriasSelecionadas() {
     });
     const json = await res.json();
     if (json.success) {
-      alert(`${json.count} coberturas de férias excluídas com sucesso!`);
+      alert(`${json.count} coberturas de fÃ©rias excluÃ­das com sucesso!`);
       carregarPainelFerias();
     } else {
       alert('Erro ao excluir: ' + json.message);
@@ -3656,12 +3656,12 @@ async function excluirFeriasSelecionadas() {
 }
 
 // -------------------------------------------------------------
-// 5. SETOR DE BENEFÍCIOS (VT & VA COM DESCONTO DE FALTAS & CALENDÁRIO)
+// 5. SETOR DE BENEFÃCIOS (VT & VA COM DESCONTO DE FALTAS & CALENDÃRIO)
 // -------------------------------------------------------------
 async function carregarBeneficios() {
   const mes = document.getElementById('benefAnoMes')?.value || state.mesAtual;
   const tbody = document.getElementById('tabelaBeneficiosBody');
-  tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Calculando folha de benefícios com períodos de apuração e faltas integradas...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Calculando folha de benefÃ­cios com perÃ­odos de apuraÃ§Ã£o e faltas integradas...</td></tr>`;
 
   state.benefSelecionados.clear();
   atualizarBarraAcoesBeneficios();
@@ -3683,7 +3683,7 @@ async function carregarBeneficios() {
     }
 
     if (!data.itens || data.itens.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-slate-400 font-medium">Nenhum colaborador com apuração nesta competência.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-slate-400 font-medium">Nenhum colaborador com apuraÃ§Ã£o nesta competÃªncia.</td></tr>`;
       return;
     }
 
@@ -3691,7 +3691,7 @@ async function carregarBeneficios() {
     data.itens.forEach(item => {
       const totalGeralColab = (item.total_vt_final || 0) + (item.total_va_final || 0);
 
-      // Badge de período de apuração
+      // Badge de perÃ­odo de apuraÃ§Ã£o
       let periodoBadge = '';
       const inicioFormatado = formatarData(item.data_inicio_beneficio);
       const fimFormatado = formatarData(item.data_fim_beneficio);
@@ -3701,7 +3701,7 @@ async function carregarBeneficios() {
       } else if (item.eh_proporcional) {
         periodoBadge = `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200" title="${item.motivo_proporcional}"><i class="fa-solid fa-clock-rotate-left text-[9px]"></i>${item.motivo_proporcional || 'Proporcional'}</span>`;
       } else {
-        periodoBadge = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-full">Mês Integral</span>`;
+        periodoBadge = `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-full">MÃªs Integral</span>`;
       }
 
       tbody.innerHTML += `
@@ -3723,7 +3723,7 @@ async function carregarBeneficios() {
           <td class="px-4 py-3 text-xs text-slate-700">
             <div class="font-semibold text-slate-800 flex items-center gap-1">
               <i class="fa-regular fa-calendar text-slate-400"></i>
-              <span>${inicioFormatado} até ${fimFormatado}</span>
+              <span>${inicioFormatado} atÃ© ${fimFormatado}</span>
             </div>
             <div class="mt-0.5">${periodoBadge}</div>
           </td>
@@ -3733,7 +3733,7 @@ async function carregarBeneficios() {
           <td class="px-4 py-3 text-right font-black text-blue-700 whitespace-nowrap">${formatarMoeda(item.total_va_final)}</td>
           <td class="px-4 py-3 text-right font-black text-slate-900 whitespace-nowrap">${formatarMoeda(totalGeralColab)}</td>
           <td class="px-4 py-3 text-center whitespace-nowrap">
-            <button type="button" onclick="abrirModalAjustarBeneficio(${item.colaborador_id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 shadow-2xs transition" title="Ajustar Período, Tarifas e Calendário do Mês">
+            <button type="button" onclick="abrirModalAjustarBeneficio(${item.colaborador_id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 shadow-2xs transition" title="Ajustar PerÃ­odo, Tarifas e CalendÃ¡rio do MÃªs">
               <i class="fa-solid fa-calendar-days text-emerald-600"></i>
               <span>Ajustar</span>
             </button>
@@ -3742,8 +3742,8 @@ async function carregarBeneficios() {
       `;
     });
   } catch (err) {
-    console.error('Erro ao carregar benefícios:', err);
-    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-red-500 font-bold">Erro ao carregar folha de benefícios: ${err.message}</td></tr>`;
+    console.error('Erro ao carregar benefÃ­cios:', err);
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-red-500 font-bold">Erro ao carregar folha de benefÃ­cios: ${err.message}</td></tr>`;
   }
 }
 
@@ -3778,7 +3778,7 @@ function atualizarBarraAcoesBeneficios() {
 async function excluirBeneficiosSelecionados() {
   const ids = Array.from(state.benefSelecionados);
   if (ids.length === 0) return;
-  if (!confirm(`Deseja realmente zerar/remover o benefício (VT/VA) dos ${ids.length} colaboradores selecionados?`)) return;
+  if (!confirm(`Deseja realmente zerar/remover o benefÃ­cio (VT/VA) dos ${ids.length} colaboradores selecionados?`)) return;
 
   try {
     const res = await fetch('/api/batch-delete', {
@@ -3788,7 +3788,7 @@ async function excluirBeneficiosSelecionados() {
     });
     const json = await res.json();
     if (json.success) {
-      alert(`Benefícios zerados/removidos para ${json.count} colaboradores!`);
+      alert(`BenefÃ­cios zerados/removidos para ${json.count} colaboradores!`);
       carregarBeneficios();
     } else {
       alert('Erro ao atualizar: ' + json.message);
@@ -3819,7 +3819,7 @@ async function salvarConfigDiasBeneficios() {
 }
 
 // -------------------------------------------------------------
-// MODAL DE AJUSTE DE BENEFÍCIOS & CALENDÁRIO INTERATIVO DO MÊS
+// MODAL DE AJUSTE DE BENEFÃCIOS & CALENDÃRIO INTERATIVO DO MÃŠS
 // -------------------------------------------------------------
 async function abrirModalAjustarBeneficio(colabId) {
   const anoMes = document.getElementById('benefAnoMes')?.value || state.mesAtual;
@@ -3836,11 +3836,11 @@ async function abrirModalAjustarBeneficio(colabId) {
     const col = data.colaborador;
     const b = data.beneficio;
 
-    // Identificação
+    // IdentificaÃ§Ã£o
     document.getElementById('modalBenefColabId').value = col.id;
     document.getElementById('modalBenefAnoMes').value = data.ano_mes;
     document.getElementById('modalBenefColabNome').textContent = col.nome;
-    document.getElementById('modalBenefColabCpf').textContent = col.cpf || 'Não informado';
+    document.getElementById('modalBenefColabCpf').textContent = col.cpf || 'NÃ£o informado';
     document.getElementById('modalBenefColabLocal').textContent = `${col.cliente_nome} - ${col.nome_posto}`;
     document.getElementById('modalBenefColabEscala').textContent = col.escala;
     document.getElementById('modalBenefLinhasOnibus').textContent = col.linhas_onibus || 'Municipal';
@@ -3861,8 +3861,8 @@ async function abrirModalAjustarBeneficio(colabId) {
       elCustom.classList.add('hidden');
     }
 
-    // Datas admissão / demissão
-    const admStr = col.data_admissao ? formatarData(col.data_admissao) : 'Não inf.';
+    // Datas admissÃ£o / demissÃ£o
+    const admStr = col.data_admissao ? formatarData(col.data_admissao) : 'NÃ£o inf.';
     const demStr = col.data_demissao ? ` | Demitido em: ${formatarData(col.data_demissao)}` : '';
     document.getElementById('modalBenefColabDatas').textContent = `Adm: ${admStr}${demStr}`;
 
@@ -3871,15 +3871,15 @@ async function abrirModalAjustarBeneficio(colabId) {
     const alertaTexto = document.getElementById('modalBenefAlertaProporcionalTexto');
     if (data.eh_proporcional) {
       let mot = [];
-      if (data.default_inicio !== data.data_inicio_mes) mot.push(`Admissão no mês em ${formatarData(data.default_inicio)}`);
-      if (data.default_fim !== data.data_fim_mes) mot.push(`Demissão no mês em ${formatarData(data.default_fim)}`);
-      alertaTexto.innerHTML = `<b>Período Proporcional Detectado:</b> ${mot.join('; ')}. O sistema sugeriu o período de <b>${formatarData(data.default_inicio)} até ${formatarData(data.default_fim)}</b>.`;
+      if (data.default_inicio !== data.data_inicio_mes) mot.push(`AdmissÃ£o no mÃªs em ${formatarData(data.default_inicio)}`);
+      if (data.default_fim !== data.data_fim_mes) mot.push(`DemissÃ£o no mÃªs em ${formatarData(data.default_fim)}`);
+      alertaTexto.innerHTML = `<b>PerÃ­odo Proporcional Detectado:</b> ${mot.join('; ')}. O sistema sugeriu o perÃ­odo de <b>${formatarData(data.default_inicio)} atÃ© ${formatarData(data.default_fim)}</b>.`;
       alertaProporcional.classList.remove('hidden');
     } else {
       alertaProporcional.classList.add('hidden');
     }
 
-    // Período de apuração (A partir de / Até)
+    // PerÃ­odo de apuraÃ§Ã£o (A partir de / AtÃ©)
     document.getElementById('modalBenefDataInicio').value = b.data_inicio_beneficio || data.default_inicio;
     document.getElementById('modalBenefDataFim').value = b.data_fim_beneficio || data.default_fim;
 
@@ -3894,7 +3894,7 @@ async function abrirModalAjustarBeneficio(colabId) {
 
     document.getElementById('modalBenefObservacoes').value = b.observacoes || '';
 
-    // Salvar no state local para manipulação interativa do calendário
+    // Salvar no state local para manipulaÃ§Ã£o interativa do calendÃ¡rio
     state.beneficioModal = {
       colabId: col.id,
       anoMes: data.ano_mes,
@@ -3912,8 +3912,8 @@ async function abrirModalAjustarBeneficio(colabId) {
 
     document.getElementById('modalEditarBeneficioMes').classList.remove('hidden');
   } catch (err) {
-    console.error('Erro ao abrir modal de benefícios:', err);
-    alert('Erro ao carregar dados do benefício: ' + err.message);
+    console.error('Erro ao abrir modal de benefÃ­cios:', err);
+    alert('Erro ao carregar dados do benefÃ­cio: ' + err.message);
   }
 }
 
@@ -3925,11 +3925,11 @@ function renderizarGradeCalendario() {
   container.innerHTML = '';
 
   if (dias.length === 0) {
-    container.innerHTML = '<div class="col-span-7 text-center text-slate-400 py-4">Nenhum dia para este mês.</div>';
+    container.innerHTML = '<div class="col-span-7 text-center text-slate-400 py-4">Nenhum dia para este mÃªs.</div>';
     return;
   }
 
-  // Obter o primeiro dia da semana (0: Dom, 1: Seg, ..., 6: Sáb)
+  // Obter o primeiro dia da semana (0: Dom, 1: Seg, ..., 6: SÃ¡b)
   const primeiroDiaSemana = dias[0].dia_semana;
   for (let i = 0; i < primeiroDiaSemana; i++) {
     const empty = document.createElement('div');
@@ -3991,7 +3991,7 @@ function renderizarGradeCalendario() {
 }
 
 function obterDiaSemanaAbrev(diaSemana) {
-  const nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b'];
   return nomes[diaSemana] || '';
 }
 
@@ -4017,19 +4017,19 @@ function aplicarPeriodoAoCalendario() {
   const fim = document.getElementById('modalBenefDataFim')?.value;
 
   if (!inicio || !fim) {
-    alert('Por favor, informe as datas de Início e Fim do período.');
+    alert('Por favor, informe as datas de InÃ­cio e Fim do perÃ­odo.');
     return;
   }
 
   if (inicio > fim) {
-    alert('A data de início não pode ser posterior à data final.');
+    alert('A data de inÃ­cio nÃ£o pode ser posterior Ã  data final.');
     return;
   }
 
   // Ativa apenas os dias que:
-  // 1. Estão dentro do intervalo [inicio, fim]
-  // 2. São dias úteis de trabalho na escala do colaborador
-  // 3. NÁO são faltas registradas no RH
+  // 1. EstÃ£o dentro do intervalo [inicio, fim]
+  // 2. SÃ£o dias Ãºteis de trabalho na escala do colaborador
+  // 3. NÃO sÃ£o faltas registradas no RH
   state.beneficioModal.dias.forEach(d => {
     const dentroPeriodo = (d.data >= inicio && d.data <= fim);
     d.ativo = (dentroPeriodo && d.eh_util_escala && !d.eh_falta);
@@ -4100,7 +4100,7 @@ async function salvarAjusteBeneficioColaborador(e) {
   const anoMes = document.getElementById('modalBenefAnoMes')?.value;
 
   if (!colabId || !anoMes) {
-    alert('Identificação do colaborador ou competência inválida.');
+    alert('IdentificaÃ§Ã£o do colaborador ou competÃªncia invÃ¡lida.');
     return;
   }
 
@@ -4137,17 +4137,17 @@ async function salvarAjusteBeneficioColaborador(e) {
     if (json.success) {
       fecharModal('modalEditarBeneficioMes');
       await carregarBeneficios();
-      alert('Ajustes do benefício salvos com sucesso!');
+      alert('Ajustes do benefÃ­cio salvos com sucesso!');
     } else {
-      alert('Erro ao salvar benefício: ' + (json.message || 'Desconhecido'));
+      alert('Erro ao salvar benefÃ­cio: ' + (json.message || 'Desconhecido'));
     }
   } catch (err) {
-    console.error('Erro ao salvar ajuste de benefícios:', err);
-    alert('Erro de comunicação: ' + err.message);
+    console.error('Erro ao salvar ajuste de benefÃ­cios:', err);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   } finally {
     if (btnSalvar) {
       btnSalvar.disabled = false;
-      btnSalvar.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Ajustes do Benefício';
+      btnSalvar.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Ajustes do BenefÃ­cio';
     }
   }
 }
@@ -4157,7 +4157,7 @@ async function restaurarPadraoBeneficioColaborador() {
   const anoMes = document.getElementById('modalBenefAnoMes')?.value;
   const colabNome = document.getElementById('modalBenefColabNome')?.textContent || 'este colaborador';
 
-  if (!confirm(`Deseja restaurar o cálculo padrão do sistema para ${colabNome} na competência ${anoMes}?\n\nIsso cancelará todas as customizações manuais e retornará aos valores automáticos da escala e faltas.`)) {
+  if (!confirm(`Deseja restaurar o cÃ¡lculo padrÃ£o do sistema para ${colabNome} na competÃªncia ${anoMes}?\n\nIsso cancelarÃ¡ todas as customizaÃ§Ãµes manuais e retornarÃ¡ aos valores automÃ¡ticos da escala e faltas.`)) {
     return;
   }
 
@@ -4170,12 +4170,12 @@ async function restaurarPadraoBeneficioColaborador() {
     if (json.success) {
       fecharModal('modalEditarBeneficioMes');
       await carregarBeneficios();
-      alert('Padrão do sistema restaurado com sucesso!');
+      alert('PadrÃ£o do sistema restaurado com sucesso!');
     } else {
-      alert('Erro ao restaurar padrão: ' + (json.message || 'Desconhecido'));
+      alert('Erro ao restaurar padrÃ£o: ' + (json.message || 'Desconhecido'));
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -4189,7 +4189,7 @@ function exportarBeneficiosExcel() {
         'Colaborador': cols[1].querySelector('div')?.innerText.trim() || cols[1].innerText.trim(),
         'Cliente / Posto': cols[2].innerText.replace(/\n/g, ' - ').trim(),
         'Escala': cols[3].innerText.trim(),
-        'Período de Apuração': cols[4].innerText.replace(/\n/g, ' ').trim(),
+        'PerÃ­odo de ApuraÃ§Ã£o': cols[4].innerText.replace(/\n/g, ' ').trim(),
         'Dias VT': cols[5].innerText.trim(),
         'Total VT (R$)': cols[6].innerText.trim(),
         'Dias VA': cols[7].innerText.trim(),
@@ -4206,10 +4206,10 @@ function exportarBeneficiosExcel() {
 }
 
 // -------------------------------------------------------------
-// 6. COMPRAS: ORÇAMENTOS E APROVAÇÁO DA DIRETORIA
+// 6. COMPRAS: ORÃ‡AMENTOS E APROVAÃ‡ÃO DA DIRETORIA
 // -------------------------------------------------------------
 // -------------------------------------------------------------
-// 6. COMPRAS: ORÇAMENTOS, CONDIÇÕES DE PAGAMENTO & CALENDÁRIO
+// 6. COMPRAS: ORÃ‡AMENTOS, CONDIÃ‡Ã•ES DE PAGAMENTO & CALENDÃRIO
 // -------------------------------------------------------------
 async function carregarOrcamentosCompras() {
   try {
@@ -4233,17 +4233,17 @@ async function carregarOrcamentosCompras() {
     tbody.innerHTML = '';
 
     if (!Array.isArray(orcs) || orcs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhum orçamento encontrado com os filtros selecionados.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhum orÃ§amento encontrado com os filtros selecionados.</td></tr>`;
       return;
     }
 
     const podeAprovar = temPermissao('compras', 'aprovar') || state.usuarioLogado?.setor === 'diretoria' || isUsuarioAdminMaster();
 
     orcs.forEach(o => {
-      // 1. Badge de Status de Aprovação
+      // 1. Badge de Status de AprovaÃ§Ã£o
       let statusBadge = '';
-      if (o.status_aprovacao === 'Aguardando Aprovação Diretoria/Admin') {
-        statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full animate-pulse flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-clock"></i> Aguardando Autorização</span>`;
+      if (o.status_aprovacao === 'Aguardando AprovaÃ§Ã£o Diretoria/Admin') {
+        statusBadge = `<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full animate-pulse flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-clock"></i> Aguardando AutorizaÃ§Ã£o</span>`;
       } else if (o.status_aprovacao === 'Aprovado') {
         statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-max mx-auto"><i class="fa-solid fa-check-double"></i> Aprovado</span>`;
       } else {
@@ -4263,7 +4263,7 @@ async function carregarOrcamentosCompras() {
         financeiroBadge = `<span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded-full w-max mx-auto">${stFinan}</span>`;
       }
 
-      // 3. Resumo Visual de Condições e Prazos
+      // 3. Resumo Visual de CondiÃ§Ãµes e Prazos
       let condicaoHtml = '';
       const modo = o.condicao_pagamento || 'adiantamento_prazo';
       if (modo === 'adiantamento_prazo') {
@@ -4299,7 +4299,7 @@ async function carregarOrcamentosCompras() {
         condicaoHtml = `
           <div class="text-xs text-slate-700">
             <span class="bg-emerald-50 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[11px]">
-              <i class="fa-solid fa-bolt mr-1"></i>À Vista
+              <i class="fa-solid fa-bolt mr-1"></i>Ã€ Vista
             </span>
             <div class="text-[10px] text-slate-400 mt-0.5">Vencimento: ${formatarData(o.data_vencimento_restante || o.data_adiantamento)}</div>
           </div>
@@ -4308,31 +4308,31 @@ async function carregarOrcamentosCompras() {
         condicaoHtml = `<div class="text-xs text-slate-500">${modo}</div>`;
       }
 
-      // 4. Forma de Pagamento com Ícone
+      // 4. Forma de Pagamento com Ãcone
       let formaHtml = '';
       const forma = o.forma_pagamento || 'PIX';
       if (forma === 'PIX') {
         formaHtml = `<span class="bg-teal-50 text-teal-800 border border-teal-200 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-brands fa-pix text-teal-600"></i> PIX</span>`;
-      } else if (forma === 'Boleto Bancário') {
+      } else if (forma === 'Boleto BancÃ¡rio') {
         formaHtml = `<span class="bg-slate-100 text-slate-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-barcode text-slate-600"></i> Boleto</span>`;
-      } else if (forma.includes('TED') || forma.includes('Transferência')) {
+      } else if (forma.includes('TED') || forma.includes('TransferÃªncia')) {
         formaHtml = `<span class="bg-blue-50 text-blue-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-money-bill-transfer text-blue-600"></i> TED</span>`;
       } else {
-        formaHtml = `<span class="bg-purple-50 text-purple-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-credit-card text-purple-600"></i> Cartão</span>`;
+        formaHtml = `<span class="bg-purple-50 text-purple-800 text-xs px-2 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="fa-solid fa-credit-card text-purple-600"></i> CartÃ£o</span>`;
       }
 
-      // 5. Ações Disponíveis
+      // 5. AÃ§Ãµes DisponÃ­veis
       let acoesHtml = `
         <div class="flex items-center justify-end gap-1">
           <button onclick="abrirEspelhoPedido(${o.id})" class="text-slate-600 hover:text-teal-700 bg-slate-100 hover:bg-teal-50 p-1.5 rounded transition" title="Visualizar & Imprimir Pedido Oficial">
             <i class="fa-solid fa-file-invoice"></i>
           </button>
-          <button onclick="abrirModalCondicoesPagamento(${o.id})" class="text-slate-600 hover:text-amber-700 bg-slate-100 hover:bg-amber-50 p-1.5 rounded transition" title="Ajustar Condições de Pagamento & Prazos">
+          <button onclick="abrirModalCondicoesPagamento(${o.id})" class="text-slate-600 hover:text-amber-700 bg-slate-100 hover:bg-amber-50 p-1.5 rounded transition" title="Ajustar CondiÃ§Ãµes de Pagamento & Prazos">
             <i class="fa-solid fa-sliders"></i>
           </button>
       `;
 
-      if (o.status_aprovacao === 'Aguardando Aprovação Diretoria/Admin' && podeAprovar) {
+      if (o.status_aprovacao === 'Aguardando AprovaÃ§Ã£o Diretoria/Admin' && podeAprovar) {
         acoesHtml += `
           <button onclick="autorizarOrcamento(${o.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-2 py-1 rounded shadow-xs ml-1" title="Autorizar Pedido de Compra">
             <i class="fa-solid fa-check"></i>
@@ -4348,7 +4348,7 @@ async function carregarOrcamentosCompras() {
         <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
           <td class="px-4 py-3">
             <div class="font-bold text-slate-900">${o.titulo_orcamento}</div>
-            <div class="text-[11px] text-slate-400">${o.ano_mes} ${o.detalhes_itens ? '• ' + o.detalhes_itens.slice(0, 40) + '...' : ''}</div>
+            <div class="text-[11px] text-slate-400">${o.ano_mes} ${o.detalhes_itens ? 'â€¢ ' + o.detalhes_itens.slice(0, 40) + '...' : ''}</div>
           </td>
           <td class="px-4 py-3"><span class="bg-teal-50 text-teal-700 border border-teal-200 text-xs px-2 py-0.5 rounded font-bold">${o.categoria_compra}</span></td>
           <td class="px-4 py-3">
@@ -4365,12 +4365,12 @@ async function carregarOrcamentosCompras() {
       `;
     });
   } catch (err) {
-    console.error('Erro ao carregar orçamentos:', err);
+    console.error('Erro ao carregar orÃ§amentos:', err);
   }
 }
 
 // -------------------------------------------------------------
-// LÓGICA DE CÁLCULO E CONDIÇÕES DE PAGAMENTO (COMPRAS)
+// LÃ“GICA DE CÃLCULO E CONDIÃ‡Ã•ES DE PAGAMENTO (COMPRAS)
 // -------------------------------------------------------------
 function trocarModoCondicaoPagamento(prefix) {
   const radio = document.querySelector(`input[name="orcModoCondicao${prefix === 'edit' ? '_edit' : ''}"]:checked`);
@@ -4518,28 +4518,28 @@ function gerarGradeParcelasPredefinida(prefix, tipo) {
   if (tipo === 'entrada_30d') {
     const p1 = Math.round(total * 0.5 * 100) / 100;
     const p2 = Math.round((total - p1) * 100) / 100;
-    parcelas.push({ numero: 1, descricao: '1ª Entrada / Adiantamento', valor: p1, data_vencimento: hoje });
-    parcelas.push({ numero: 2, descricao: '2ª Parcela (+30 dias)', valor: p2, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 1, descricao: '1Âª Entrada / Adiantamento', valor: p1, data_vencimento: hoje });
+    parcelas.push({ numero: 2, descricao: '2Âª Parcela (+30 dias)', valor: p2, data_vencimento: somarDias(hoje, 30) });
   } else if (tipo === 'entrada_30_60d') {
     const valorPadrao = Math.floor((total / 3) * 100) / 100;
     const p3 = Math.round((total - valorPadrao * 2) * 100) / 100;
-    parcelas.push({ numero: 1, descricao: '1ª Entrada', valor: valorPadrao, data_vencimento: hoje });
-    parcelas.push({ numero: 2, descricao: '2ª Parcela (+30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
-    parcelas.push({ numero: 3, descricao: '3ª Parcela (+60 dias)', valor: p3, data_vencimento: somarDias(hoje, 60) });
+    parcelas.push({ numero: 1, descricao: '1Âª Entrada', valor: valorPadrao, data_vencimento: hoje });
+    parcelas.push({ numero: 2, descricao: '2Âª Parcela (+30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 3, descricao: '3Âª Parcela (+60 dias)', valor: p3, data_vencimento: somarDias(hoje, 60) });
   } else if (tipo === 'entrada_30_60_90d') {
     const valorPadrao = Math.floor((total / 4) * 100) / 100;
     const p4 = Math.round((total - valorPadrao * 3) * 100) / 100;
-    parcelas.push({ numero: 1, descricao: '1ª Entrada', valor: valorPadrao, data_vencimento: hoje });
-    parcelas.push({ numero: 2, descricao: '2ª Parcela (+30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
-    parcelas.push({ numero: 3, descricao: '3ª Parcela (+60 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 60) });
-    parcelas.push({ numero: 4, descricao: '4ª Parcela (+90 dias)', valor: p4, data_vencimento: somarDias(hoje, 90) });
+    parcelas.push({ numero: 1, descricao: '1Âª Entrada', valor: valorPadrao, data_vencimento: hoje });
+    parcelas.push({ numero: 2, descricao: '2Âª Parcela (+30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 3, descricao: '3Âª Parcela (+60 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 60) });
+    parcelas.push({ numero: 4, descricao: '4Âª Parcela (+90 dias)', valor: p4, data_vencimento: somarDias(hoje, 90) });
   } else if (tipo === '30_45_60_90d') {
     const valorPadrao = Math.floor((total / 4) * 100) / 100;
     const p4 = Math.round((total - valorPadrao * 3) * 100) / 100;
-    parcelas.push({ numero: 1, descricao: '1ª Parcela (30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
-    parcelas.push({ numero: 2, descricao: '2ª Parcela (45 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 45) });
-    parcelas.push({ numero: 3, descricao: '3ª Parcela (60 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 60) });
-    parcelas.push({ numero: 4, descricao: '4ª Parcela (90 dias)', valor: p4, data_vencimento: somarDias(hoje, 90) });
+    parcelas.push({ numero: 1, descricao: '1Âª Parcela (30 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 30) });
+    parcelas.push({ numero: 2, descricao: '2Âª Parcela (45 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 45) });
+    parcelas.push({ numero: 3, descricao: '3Âª Parcela (60 dias)', valor: valorPadrao, data_vencimento: somarDias(hoje, 60) });
+    parcelas.push({ numero: 4, descricao: '4Âª Parcela (90 dias)', valor: p4, data_vencimento: somarDias(hoje, 90) });
   }
 
   if (prefix === 'novo') {
@@ -4563,7 +4563,7 @@ function renderizarGradeParcelas(prefix) {
         <span class="w-6 h-6 rounded-full bg-teal-100 text-teal-800 font-black text-[10px] flex items-center justify-center shrink-0">
           ${idx + 1}
         </span>
-        <input type="text" value="${escapeJsString(p.descricao || `Parcela ${idx + 1}`)}" onchange="atualizarCampoParcela('${prefix}', ${idx}, 'descricao', this.value)" placeholder="Descrição da parcela" class="flex-1 border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none">
+        <input type="text" value="${escapeJsString(p.descricao || `Parcela ${idx + 1}`)}" onchange="atualizarCampoParcela('${prefix}', ${idx}, 'descricao', this.value)" placeholder="DescriÃ§Ã£o da parcela" class="flex-1 border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none">
         <div class="flex items-center gap-1">
           <span class="text-slate-400 font-bold">R$</span>
           <input type="number" step="0.01" value="${p.valor || 0}" oninput="atualizarCampoParcela('${prefix}', ${idx}, 'valor', parseFloat(this.value) || 0)" class="w-24 border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none text-right">
@@ -4638,7 +4638,7 @@ function recalcularSomaParcelas(prefix) {
     if (Math.abs(dif) <= 0.02) {
       elSoma.innerHTML = `<span class="text-emerald-700 flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Soma: ${formatarMoeda(soma)} (100% Conferido)</span>`;
     } else {
-      elSoma.innerHTML = `<span class="text-amber-700 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Soma: ${formatarMoeda(soma)} (Diferença: ${formatarMoeda(dif)})</span>`;
+      elSoma.innerHTML = `<span class="text-amber-700 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Soma: ${formatarMoeda(soma)} (DiferenÃ§a: ${formatarMoeda(dif)})</span>`;
     }
   }
 }
@@ -4679,13 +4679,13 @@ function aoSelecionarFornecedorOrcamento(prefix) {
     if (elForma) elForma.value = 'PIX';
     if (elDados) elDados.value = forn.chave_pix;
   } else if (forn.dados_bancarios) {
-    if (elForma) elForma.value = 'Transferência Bancária (TED)';
+    if (elForma) elForma.value = 'TransferÃªncia BancÃ¡ria (TED)';
     if (elDados) elDados.value = forn.dados_bancarios;
   }
 }
 
 // -------------------------------------------------------------
-// CRUD DE ORÇAMENTOS E AUTORIZAÇÕES
+// CRUD DE ORÃ‡AMENTOS E AUTORIZAÃ‡Ã•ES
 // -------------------------------------------------------------
 function abrirModalNovoOrcamento() {
   popularSelectsGlobais();
@@ -4709,7 +4709,7 @@ async function salvarNovoOrcamento(e) {
   e.preventDefault();
   const valorTotal = parseFloat(document.getElementById('orcValorTotal').value) || 0;
   if (valorTotal <= 0) {
-    alert('Por favor, informe um valor total válido para a compra.');
+    alert('Por favor, informe um valor total vÃ¡lido para a compra.');
     return;
   }
 
@@ -4739,12 +4739,12 @@ async function salvarNovoOrcamento(e) {
     }
   } else if (modo === 'multiplas_datas') {
     if (!state.comprasParcelasTemp || state.comprasParcelasTemp.length === 0) {
-      alert('Gere ou adicione pelo menos uma parcela na grade de múltiplas datas.');
+      alert('Gere ou adicione pelo menos uma parcela na grade de mÃºltiplas datas.');
       return;
     }
     const soma = state.comprasParcelasTemp.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
     if (Math.abs(soma - valorTotal) > 0.05) {
-      alert(`A soma das parcelas (R$ ${soma.toFixed(2)}) deve ser igual ao valor total do orçamento (R$ ${valorTotal.toFixed(2)}).`);
+      alert(`A soma das parcelas (R$ ${soma.toFixed(2)}) deve ser igual ao valor total do orÃ§amento (R$ ${valorTotal.toFixed(2)}).`);
       return;
     }
     parcelasJson = JSON.stringify(state.comprasParcelasTemp);
@@ -4789,12 +4789,12 @@ async function salvarNovoOrcamento(e) {
       trocarSubAbaCompras('sub-orcamentos-aprovacao');
       carregarOrcamentosCompras();
       atualizarBadgeFinanceiro();
-      alert('Orçamento criado com sucesso e programação de pagamentos gerada para o Financeiro!');
+      alert('OrÃ§amento criado com sucesso e programaÃ§Ã£o de pagamentos gerada para o Financeiro!');
     } else {
-      alert('Erro ao salvar orçamento: ' + (json.error || 'Falha na gravação.'));
+      alert('Erro ao salvar orÃ§amento: ' + (json.error || 'Falha na gravaÃ§Ã£o.'));
     }
   } catch (err) {
-    alert('Erro de conexão: ' + err.message);
+    alert('Erro de conexÃ£o: ' + err.message);
   }
 }
 
@@ -4907,7 +4907,7 @@ async function salvarEdicaoCondicoesPagamento(e) {
       carregarOrcamentosCompras();
       if (state.abaAtiva === 'financeiro') carregarFinanceiro();
       atualizarBadgeFinanceiro();
-      alert('Condições e datas de vencimento sincronizadas com sucesso com o Financeiro!');
+      alert('CondiÃ§Ãµes e datas de vencimento sincronizadas com sucesso com o Financeiro!');
     } else {
       alert('Erro ao atualizar: ' + (json.error || 'Falha'));
     }
@@ -4917,7 +4917,7 @@ async function salvarEdicaoCondicoesPagamento(e) {
 }
 
 async function autorizarOrcamento(id) {
-  if (!confirm('Confirmar autorização desta compra? Seu nome e data serão gravados digitalmente no pedido e as parcelas liberadas no Financeiro.')) return;
+  if (!confirm('Confirmar autorizaÃ§Ã£o desta compra? Seu nome e data serÃ£o gravados digitalmente no pedido e as parcelas liberadas no Financeiro.')) return;
   try {
     const res = await fetch(`/api/compras/orcamentos/${id}/autorizar`, {
       method: 'POST',
@@ -4939,7 +4939,7 @@ async function autorizarOrcamento(id) {
 }
 
 async function rejeitarOrcamento(id) {
-  const motivo = prompt('Digite a justificativa para rejeição do orçamento:');
+  const motivo = prompt('Digite a justificativa para rejeiÃ§Ã£o do orÃ§amento:');
   if (!motivo) return;
   try {
     await fetch(`/api/compras/orcamentos/${id}/rejeitar`, {
@@ -4958,7 +4958,7 @@ async function rejeitarOrcamento(id) {
 }
 
 // -------------------------------------------------------------
-// ESPELHO OFICIAL DO PEDIDO DE COMPRA (DOCUMENTO DE IMPRESSÁO)
+// ESPELHO OFICIAL DO PEDIDO DE COMPRA (DOCUMENTO DE IMPRESSÃO)
 // -------------------------------------------------------------
 async function abrirEspelhoPedido(id) {
   try {
@@ -4977,11 +4977,11 @@ async function abrirEspelhoPedido(id) {
             <span class="text-xl font-black tracking-wider text-slate-900">SISFAC 2.0</span>
             <span class="bg-teal-100 text-teal-900 font-bold px-2 py-0.5 rounded text-[10px] uppercase">Ordem de Compra</span>
           </div>
-          <p class="text-slate-500 text-xs">Sistema Integrado de Terceirização, Facilities & Suprimentos</p>
+          <p class="text-slate-500 text-xs">Sistema Integrado de TerceirizaÃ§Ã£o, Facilities & Suprimentos</p>
         </div>
         <div class="text-right">
-          <div class="text-base font-black text-slate-900">PEDIDO Nº ${String(o.id).padStart(5, '0')}</div>
-          <div class="text-xs text-slate-500">Emissão: ${new Date(o.data_criacao || Date.now()).toLocaleDateString('pt-BR')}</div>
+          <div class="text-base font-black text-slate-900">PEDIDO NÂº ${String(o.id).padStart(5, '0')}</div>
+          <div class="text-xs text-slate-500">EmissÃ£o: ${new Date(o.data_criacao || Date.now()).toLocaleDateString('pt-BR')}</div>
           <div class="mt-1">
             <span class="px-2 py-0.5 rounded-full text-xs font-bold ${o.status_aprovacao === 'Aprovado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
               ${o.status_aprovacao}
@@ -4993,36 +4993,36 @@ async function abrirEspelhoPedido(id) {
       <div class="grid grid-cols-2 gap-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
         <div>
           <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fornecedor / Distribuidor:</span>
-          <div class="font-bold text-sm text-slate-800">${o.fornecedor_nome || 'Distribuidor Padrão'}</div>
+          <div class="font-bold text-sm text-slate-800">${o.fornecedor_nome || 'Distribuidor PadrÃ£o'}</div>
           <div class="text-slate-600">${o.fornecedor_tipo ? `Ramo: ${o.fornecedor_tipo}` : ''}</div>
           <div class="text-slate-600 font-mono text-[11px] mt-1">Forma de Pagamento: <b>${o.forma_pagamento || 'PIX'}</b></div>
           <div class="text-slate-500 font-mono text-[11px]">Dados: <b>${o.dados_pagamento || 'Conforme cadastro'}</b></div>
         </div>
         <div>
           <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cliente / Destino da Compra:</span>
-          <div class="font-bold text-sm text-slate-800">${o.cliente_nome || 'Alocação Operacional Geral'}</div>
+          <div class="font-bold text-sm text-slate-800">${o.cliente_nome || 'AlocaÃ§Ã£o Operacional Geral'}</div>
           <div class="text-slate-600">Categoria: <span class="font-bold text-teal-800">${o.categoria_compra}</span></div>
-          <div class="text-slate-600">Competência: <b>${o.ano_mes}</b></div>
+          <div class="text-slate-600">CompetÃªncia: <b>${o.ano_mes}</b></div>
         </div>
       </div>
 
       <div class="space-y-2">
-        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">Descrição & Detalhamento dos Itens Solicitados</h4>
+        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">DescriÃ§Ã£o & Detalhamento dos Itens Solicitados</h4>
         <div class="p-3 border border-slate-200 rounded-lg bg-white whitespace-pre-wrap font-mono text-slate-700">
           ${escapeJsString(o.detalhes_itens || o.titulo_orcamento)}
         </div>
       </div>
 
       <div class="space-y-2">
-        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">Programação Financeira & Cronograma de Vencimentos</h4>
+        <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">ProgramaÃ§Ã£o Financeira & Cronograma de Vencimentos</h4>
         <table class="w-full text-left border border-slate-200 rounded-lg overflow-hidden">
           <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[10px]">
             <tr>
-              <th class="p-2">Parcela / Descrição</th>
+              <th class="p-2">Parcela / DescriÃ§Ã£o</th>
               <th class="p-2">Data Vencimento</th>
               <th class="p-2 text-right">Valor (R$)</th>
-              <th class="p-2 text-center">Situação Financeira</th>
-              <th class="p-2">Data / Autenticação Quitação</th>
+              <th class="p-2 text-center">SituaÃ§Ã£o Financeira</th>
+              <th class="p-2">Data / AutenticaÃ§Ã£o QuitaÃ§Ã£o</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-200 text-xs">
@@ -5037,12 +5037,12 @@ async function abrirEspelhoPedido(id) {
                   </span>
                 </td>
                 <td class="p-2 text-[11px] font-mono text-slate-500">
-                  ${p.data_pagamento ? `${formatarData(p.data_pagamento)} ${p.comprovante ? '• ' + p.comprovante : ''}` : '-'}
+                  ${p.data_pagamento ? `${formatarData(p.data_pagamento)} ${p.comprovante ? 'â€¢ ' + p.comprovante : ''}` : '-'}
                 </td>
               </tr>
             `).join('') : `
               <tr>
-                <td class="p-2">Total à Pagar</td>
+                <td class="p-2">Total Ã  Pagar</td>
                 <td class="p-2 font-mono font-bold">${formatarData(o.data_vencimento_restante || o.data_adiantamento)}</td>
                 <td class="p-2 text-right font-black text-slate-900">${formatarMoeda(o.valor_total)}</td>
                 <td class="p-2 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">${o.status_financeiro || 'Pendente'}</span></td>
@@ -5052,7 +5052,7 @@ async function abrirEspelhoPedido(id) {
           </tbody>
           <tfoot class="bg-slate-50 font-bold border-t border-slate-200">
             <tr>
-              <td colspan="2" class="p-2 text-right uppercase text-[11px]">Valor Total da Operação:</td>
+              <td colspan="2" class="p-2 text-right uppercase text-[11px]">Valor Total da OperaÃ§Ã£o:</td>
               <td class="p-2 text-right text-sm font-black text-teal-900">${formatarMoeda(o.valor_total)}</td>
               <td colspan="2"></td>
             </tr>
@@ -5070,12 +5070,12 @@ async function abrirEspelhoPedido(id) {
             ${o.autorizado_por_nome || 'Diretoria / Administrador'}
           </div>
           <div class="text-[10px] text-emerald-700 font-semibold mt-1">
-            ${o.data_autorizacao ? `Autorizado em ${new Date(o.data_autorizacao).toLocaleDateString('pt-BR')}` : 'Aguardando autorização'}
+            ${o.data_autorizacao ? `Autorizado em ${new Date(o.data_autorizacao).toLocaleDateString('pt-BR')}` : 'Aguardando autorizaÃ§Ã£o'}
           </div>
         </div>
         <div>
           <div class="border-b border-slate-300 pb-1 font-bold text-slate-700">Tesouraria & Financeiro</div>
-          <div class="text-[10px] text-slate-400 mt-1">Quitação & Baixa Digital</div>
+          <div class="text-[10px] text-slate-400 mt-1">QuitaÃ§Ã£o & Baixa Digital</div>
         </div>
       </div>
     `;
@@ -5087,7 +5087,7 @@ async function abrirEspelhoPedido(id) {
 }
 
 // =============================================================
-// NOVO MÓDULO: FINANCEIRO, CONTAS A PAGAR & VENCIMENTOS
+// NOVO MÃ“DULO: FINANCEIRO, CONTAS A PAGAR & VENCIMENTOS
 // =============================================================
 let timerBuscaFinanceiro = null;
 
@@ -5181,7 +5181,7 @@ function renderizarTabelaFinanceiro(contas, kpis) {
       <tr>
         <td colspan="7" class="text-center py-12 text-slate-400">
           <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300 block"></i>
-          Nenhuma obrigação financeira a pagar encontrada com os filtros atuais.
+          Nenhuma obrigaÃ§Ã£o financeira a pagar encontrada com os filtros atuais.
         </td>
       </tr>
     `;
@@ -5204,7 +5204,7 @@ function renderizarTabelaFinanceiro(contas, kpis) {
       totalPendente += (parseFloat(c.valor) || 0);
     }
 
-    // Cálculo de dias até vencimento
+    // CÃ¡lculo de dias atÃ© vencimento
     const dtVenc = new Date(c.data_vencimento + 'T12:00:00');
     const diffDias = Math.round((dtVenc - hojeDt) / (1000 * 60 * 60 * 24));
 
@@ -5226,35 +5226,35 @@ function renderizarTabelaFinanceiro(contas, kpis) {
       situacaoBadge = `<span class="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-full w-max mx-auto">Em ${diffDias} dias</span>`;
     }
 
-    // Forma de Pagamento com Botão de Copiar
+    // Forma de Pagamento com BotÃ£o de Copiar
     let formaHtml = '';
     const forma = c.forma_pagamento || 'PIX';
     if (forma === 'PIX') {
       formaHtml = `<span class="font-bold text-teal-800 flex items-center gap-1"><i class="fa-brands fa-pix text-teal-600"></i> PIX</span>`;
-    } else if (forma === 'Boleto Bancário') {
+    } else if (forma === 'Boleto BancÃ¡rio') {
       formaHtml = `<span class="font-bold text-slate-800 flex items-center gap-1"><i class="fa-solid fa-barcode text-slate-600"></i> Boleto</span>`;
-    } else if (forma.includes('TED') || forma.includes('Transferência')) {
+    } else if (forma.includes('TED') || forma.includes('TransferÃªncia')) {
       formaHtml = `<span class="font-bold text-blue-800 flex items-center gap-1"><i class="fa-solid fa-money-bill-transfer text-blue-600"></i> TED</span>`;
     } else {
-      formaHtml = `<span class="font-bold text-purple-800 flex items-center gap-1"><i class="fa-solid fa-credit-card text-purple-600"></i> Cartão</span>`;
+      formaHtml = `<span class="font-bold text-purple-800 flex items-center gap-1"><i class="fa-solid fa-credit-card text-purple-600"></i> CartÃ£o</span>`;
     }
 
     if (c.dados_pagamento) {
       formaHtml += `
         <div class="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5" title="${escapeJsString(c.dados_pagamento)}">
           <span class="truncate max-w-[140px]">${c.dados_pagamento}</span>
-          <button type="button" onclick="copiarTexto('${escapeJsString(c.dados_pagamento)}', 'Chave ou código de barras copiado!')" class="text-slate-400 hover:text-teal-700 transition" title="Copiar Chave/Código">
+          <button type="button" onclick="copiarTexto('${escapeJsString(c.dados_pagamento)}', 'Chave ou cÃ³digo de barras copiado!')" class="text-slate-400 hover:text-teal-700 transition" title="Copiar Chave/CÃ³digo">
             <i class="fa-regular fa-copy"></i>
           </button>
         </div>
       `;
     }
 
-    // Ações
+    // AÃ§Ãµes
     let acoesHtml = `<div class="flex items-center justify-end gap-1.5">`;
     if (c.status === 'Pago') {
       acoesHtml += `
-        <button type="button" onclick="estornarPagamentoFinanceiro(${c.id})" class="text-slate-500 hover:text-amber-700 bg-white hover:bg-amber-50 border border-slate-200 px-2 py-1 rounded text-xs font-semibold transition" title="Estornar Quitação">
+        <button type="button" onclick="estornarPagamentoFinanceiro(${c.id})" class="text-slate-500 hover:text-amber-700 bg-white hover:bg-amber-50 border border-slate-200 px-2 py-1 rounded text-xs font-semibold transition" title="Estornar QuitaÃ§Ã£o">
           <i class="fa-solid fa-rotate-left mr-1"></i>Estornar
         </button>
       `;
@@ -5274,7 +5274,7 @@ function renderizarTabelaFinanceiro(contas, kpis) {
       `;
     } else {
       acoesHtml += `
-        <button type="button" onclick="excluirContaAvulsa(${c.id})" class="text-slate-400 hover:text-red-600 p-1.5 transition" title="Excluir Lançamento Avulso">
+        <button type="button" onclick="excluirContaAvulsa(${c.id})" class="text-slate-400 hover:text-red-600 p-1.5 transition" title="Excluir LanÃ§amento Avulso">
           <i class="fa-solid fa-trash-can"></i>
         </button>
       `;
@@ -5285,7 +5285,7 @@ function renderizarTabelaFinanceiro(contas, kpis) {
       <tr class="${linhaBg} hover:bg-slate-50 transition text-xs">
         <td class="px-4 py-3">
           <div class="font-mono font-black text-slate-900 text-sm">${formatarData(c.data_vencimento)}</div>
-          <div class="text-[10px] text-slate-400">Emissão: ${formatarData(c.data_emissao)}</div>
+          <div class="text-[10px] text-slate-400">EmissÃ£o: ${formatarData(c.data_emissao)}</div>
         </td>
         <td class="px-4 py-3">
           <div class="font-bold text-slate-800">${c.fornecedor_nome || 'Geral'}</div>
@@ -5295,7 +5295,7 @@ function renderizarTabelaFinanceiro(contas, kpis) {
           <div class="font-semibold text-slate-800">${c.descricao}</div>
           <div class="text-[11px] text-slate-400">
             ${c.pedido_compra_id ? `<span class="text-teal-700 font-bold">Pedido #${c.pedido_compra_id}</span>` : '<span class="text-amber-700">Despesa Avulsa</span>'}
-            ${c.numero_parcela ? `• Parcela ${c.numero_parcela}/${c.total_parcelas}` : ''}
+            ${c.numero_parcela ? `â€¢ Parcela ${c.numero_parcela}/${c.total_parcelas}` : ''}
           </div>
         </td>
         <td class="px-4 py-3">${formaHtml}</td>
@@ -5310,7 +5310,7 @@ function renderizarTabelaFinanceiro(contas, kpis) {
     tfoot.innerHTML = `
       <tr>
         <td colspan="4" class="px-4 py-3 text-right uppercase tracking-wider text-[11px]">
-          Total (${contas.length} lançamentos):
+          Total (${contas.length} lanÃ§amentos):
         </td>
         <td class="px-4 py-3 text-right text-sm font-black">${formatarMoeda(totalGeral)}</td>
         <td colspan="2" class="px-4 py-3 text-right text-[11px] font-medium text-slate-300">
@@ -5404,7 +5404,7 @@ async function salvarBaixaPagamento(e) {
       carregarFinanceiro();
       carregarOrcamentosCompras();
       atualizarBadgeFinanceiro();
-      alert('Quitação registrada com sucesso no Financeiro!');
+      alert('QuitaÃ§Ã£o registrada com sucesso no Financeiro!');
     } else {
       alert('Erro ao registrar baixa: ' + (json.error || 'Falha'));
     }
@@ -5414,7 +5414,7 @@ async function salvarBaixaPagamento(e) {
 }
 
 async function estornarPagamentoFinanceiro(id) {
-  if (!confirm('Deseja realmente estornar a quitação desta conta? Ela voltará para a situação pendente.')) return;
+  if (!confirm('Deseja realmente estornar a quitaÃ§Ã£o desta conta? Ela voltarÃ¡ para a situaÃ§Ã£o pendente.')) return;
   try {
     const res = await fetch(`/api/financeiro/contas-pagar/${id}/estornar`, {
       method: 'PUT',
@@ -5449,7 +5449,7 @@ async function salvarNovaContaAvulsa(e) {
   e.preventDefault();
   const valor = parseFloat(document.getElementById('avulsaValor').value) || 0;
   if (valor <= 0) {
-    alert('Informe um valor válido.');
+    alert('Informe um valor vÃ¡lido.');
     return;
   }
 
@@ -5474,7 +5474,7 @@ async function salvarNovaContaAvulsa(e) {
       fecharModal('modalNovaContaAvulsa');
       carregarFinanceiro();
       atualizarBadgeFinanceiro();
-      alert('Lançamento avulso cadastrado com sucesso no Financeiro!');
+      alert('LanÃ§amento avulso cadastrado com sucesso no Financeiro!');
     } else {
       alert('Erro: ' + (json.error || 'Falha'));
     }
@@ -5484,7 +5484,7 @@ async function salvarNovaContaAvulsa(e) {
 }
 
 async function excluirContaAvulsa(id) {
-  if (!confirm('Deseja excluir este lançamento financeiro avulso?')) return;
+  if (!confirm('Deseja excluir este lanÃ§amento financeiro avulso?')) return;
   try {
     const res = await fetch(`/api/financeiro/contas-pagar/${id}`, { method: 'DELETE' });
     const json = await res.json();
@@ -5492,7 +5492,7 @@ async function excluirContaAvulsa(id) {
       carregarFinanceiro();
       atualizarBadgeFinanceiro();
     } else {
-      alert('Erro: ' + (json.error || 'Não é possível excluir esta obrigação'));
+      alert('Erro: ' + (json.error || 'NÃ£o Ã© possÃ­vel excluir esta obrigaÃ§Ã£o'));
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -5503,7 +5503,7 @@ function copiarTexto(texto, mensagemSucesso) {
   if (!texto) return;
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(texto).then(() => {
-      alert(mensagemSucesso || 'Copiado para a área de transferência!');
+      alert(mensagemSucesso || 'Copiado para a Ã¡rea de transferÃªncia!');
     }).catch(() => {
       prompt('Copie o texto abaixo:', texto);
     });
@@ -5515,22 +5515,22 @@ function copiarTexto(texto, mensagemSucesso) {
 function exportarExcelFinanceiro() {
   const contas = state.financeiro.contas || [];
   if (contas.length === 0) {
-    alert('Não há dados para exportar com os filtros atuais.');
+    alert('NÃ£o hÃ¡ dados para exportar com os filtros atuais.');
     return;
   }
 
   const rows = contas.map(c => ({
     'Data de Vencimento': formatarData(c.data_vencimento),
     'Fornecedor / Favorecido': c.fornecedor_nome || 'Geral',
-    'Descrição da Obrigação': c.descricao,
+    'DescriÃ§Ã£o da ObrigaÃ§Ã£o': c.descricao,
     'Categoria': c.categoria || 'Suprimentos',
-    'Parcela': c.numero_parcela ? `${c.numero_parcela}/${c.total_parcelas}` : 'Única',
+    'Parcela': c.numero_parcela ? `${c.numero_parcela}/${c.total_parcelas}` : 'Ãšnica',
     'Forma de Pagamento': c.forma_pagamento || 'PIX',
     'Dados Pagamento (PIX/Boleto)': c.dados_pagamento || '',
     'Valor (R$)': parseFloat(c.valor) || 0,
-    'Situação': c.status,
-    'Data da Quitação': c.data_pagamento ? formatarData(c.data_pagamento) : '',
-    'Nº Comprovante / Autenticação': c.comprovante || '',
+    'SituaÃ§Ã£o': c.status,
+    'Data da QuitaÃ§Ã£o': c.data_pagamento ? formatarData(c.data_pagamento) : '',
+    'NÂº Comprovante / AutenticaÃ§Ã£o': c.comprovante || '',
     'Pedido de Compra Vinculado': c.pedido_compra_id ? `#${c.pedido_compra_id}` : 'Avulso'
   }));
 
@@ -5546,7 +5546,7 @@ function imprimirCronogramaFinanceiro() {
 }
 
 // -------------------------------------------------------------
-// 7. IMPORTAÇÁO EM MASSA POR PLANILHA (CLIENTES & COLABORADORES)
+// 7. IMPORTAÃ‡ÃO EM MASSA POR PLANILHA (CLIENTES & COLABORADORES)
 // -------------------------------------------------------------
 function abrirModalImportarColaboradores() {
   state.tipoImportacaoAtual = 'colaboradores';
@@ -5579,10 +5579,10 @@ function renderizarGuiaIdsImportacao(filtroCliente = '', filtroPosto = '') {
   const elQtdCargos = document.getElementById('qtdGuiaCargos');
   if (containerCargos) {
     if (!state.cargos || state.cargos.length === 0) {
-      containerCargos.innerHTML = '<div class="text-slate-400 text-center py-2 font-sans">Nenhuma função cadastrada.</div>';
+      containerCargos.innerHTML = '<div class="text-slate-400 text-center py-2 font-sans">Nenhuma funÃ§Ã£o cadastrada.</div>';
       if (elQtdCargos) elQtdCargos.textContent = '0';
     } else {
-      if (elQtdCargos) elQtdCargos.textContent = `${state.cargos.length} funções`;
+      if (elQtdCargos) elQtdCargos.textContent = `${state.cargos.length} funÃ§Ãµes`;
       containerCargos.innerHTML = state.cargos.map(c => `
         <div class="flex items-center justify-between py-1 px-1.5 bg-slate-50 hover:bg-indigo-50/60 rounded border border-slate-100 transition">
           <span class="text-slate-800 truncate font-sans text-xs" title="${c.nome_cargo}">${c.nome_cargo}</span>
@@ -5669,7 +5669,7 @@ function extrairCampoPlanilha(row, chavesPossiveis, padrao = null) {
 
   const alvosNormalizados = chavesPossiveis.map(normalizar);
 
-  // 1. Busca exata de chave após normalização
+  // 1. Busca exata de chave apÃ³s normalizaÃ§Ã£o
   for (const chave of chavesRow) {
     const chaveNorm = normalizar(chave);
     if (alvosNormalizados.includes(chaveNorm)) {
@@ -5727,7 +5727,7 @@ function baixarModeloPlanilha() {
     const primeiroClienteId = state.clientes && state.clientes.length > 0 ? state.clientes[0].id : 1;
     const primeiroPostoId = state.postos && state.postos.length > 0 ? state.postos[0].id : 1;
 
-    // Aba 1: Modelo Principal com exemplos práticos
+    // Aba 1: Modelo Principal com exemplos prÃ¡ticos
     const dadosModelo = [
       {
         'Nome': 'Carlos Eduardo da Silva',
@@ -5768,7 +5768,7 @@ function baixarModeloPlanilha() {
       'Razao_Social': c.nome_razao_social || '',
       'CNPJ': c.cnpj || ''
     }));
-    const wsClientes = XLSX.utils.json_to_sheet(dadosClientes.length > 0 ? dadosClientes : [{ 'ClienteID': 1, 'Nome_Fantasia': 'Cliente Padrão' }]);
+    const wsClientes = XLSX.utils.json_to_sheet(dadosClientes.length > 0 ? dadosClientes : [{ 'ClienteID': 1, 'Nome_Fantasia': 'Cliente PadrÃ£o' }]);
     XLSX.utils.book_append_sheet(wb, wsClientes, 'Guia_Clientes_IDs');
 
     // Aba 3: Guia de Postos de Trabalho e IDs
@@ -5799,10 +5799,10 @@ function baixarModeloPlanilha() {
   } else {
     const dadosModelo = [
       {
-        'RazaoSocial': 'Condomínio Residencial Parque das Flores',
-        'NomeFantasia': 'Condomínio Parque das Flores',
+        'RazaoSocial': 'CondomÃ­nio Residencial Parque das Flores',
+        'NomeFantasia': 'CondomÃ­nio Parque das Flores',
         'CNPJ': '12.345.678/0001-99',
-        'Contato': 'Síndico Marcos',
+        'Contato': 'SÃ­ndico Marcos',
         'Telefone': '(11) 3333-4444',
         'Email': 'sindico@parquedasflores.com.br',
         'CotaInsumos': 5000.00
@@ -5831,7 +5831,7 @@ async function processarImportacaoPlanilha() {
       const rows = XLSX.utils.sheet_to_json(firstSheet);
 
 
-      if (rows.length === 0) return alert('A planilha selecionada está vazia.');
+      if (rows.length === 0) return alert('A planilha selecionada estÃ¡ vazia.');
 
       if (state.tipoImportacaoAtual === 'colaboradores') {
         const payload = rows.map(r => ({
@@ -5854,10 +5854,10 @@ async function processarImportacaoPlanilha() {
         })).filter(col => col.nome && String(col.nome).trim() !== '');
 
         if (payload.length === 0) {
-          return alert('Nenhum colaborador válido com coluna "Nome" foi identificado na planilha.');
+          return alert('Nenhum colaborador vÃ¡lido com coluna "Nome" foi identificado na planilha.');
         }
 
-        // Abre a tela de conferência, validação de cliente/posto e criação imediata de postos
+        // Abre a tela de conferÃªncia, validaÃ§Ã£o de cliente/posto e criaÃ§Ã£o imediata de postos
         await iniciarConferenciaImportacaoColaboradores(payload);
       } else {
         const payload = rows.map(r => ({
@@ -5871,7 +5871,7 @@ async function processarImportacaoPlanilha() {
         })).filter(cli => cli.nome_razao_social || cli.nome_fantasia);
 
         if (payload.length === 0) {
-          return alert('Nenhum cliente válido identificado na planilha.');
+          return alert('Nenhum cliente vÃ¡lido identificado na planilha.');
         }
 
         const res = await fetch('/api/importar/clientes', {
@@ -5898,7 +5898,7 @@ async function processarImportacaoPlanilha() {
 }
 
 // -------------------------------------------------------------
-// CONFERÊNCIA, VALIDAÇÁO & CRIAÇÁO DE POSTOS ANTES DE IMPORTAR
+// CONFERÃŠNCIA, VALIDAÃ‡ÃO & CRIAÃ‡ÃO DE POSTOS ANTES DE IMPORTAR
 // -------------------------------------------------------------
 
 function normalizarTextoPrevia(s) {
@@ -5914,7 +5914,7 @@ function resolverClientePrevia(rawCli) {
   const str = String(rawCli).trim();
   const num = parseInt(str, 10);
 
-  // 1. Match numérico por ID
+  // 1. Match numÃ©rico por ID
   if (!isNaN(num) && /^\d+$/.test(str)) {
     const cli = (state.clientes || []).find(c => c.id === num);
     if (cli) return cli;
@@ -5930,7 +5930,7 @@ function resolverClientePrevia(rawCli) {
     if (cli) return cli;
   }
 
-  // 3. Match exato por Nome Fantasia ou Razão Social
+  // 3. Match exato por Nome Fantasia ou RazÃ£o Social
   const strNorm = normalizarTextoPrevia(str);
   let cli = (state.clientes || []).find(c => {
     const fNorm = normalizarTextoPrevia(c.nome_fantasia);
@@ -6033,7 +6033,7 @@ async function iniciarConferenciaImportacaoColaboradores(colaboradoresBrutos) {
       nome: String(col.nome || '').trim(),
       cpf: String(col.cpf || '').trim(),
       cargo_id: cargoId,
-      cargo_nome: cg ? cg.nome_cargo : 'Cargo Padrão',
+      cargo_nome: cg ? cg.nome_cargo : 'Cargo PadrÃ£o',
       cliente_id: clienteId,
       cliente_nome_original: col.cliente_id ? String(col.cliente_id) : '',
       posto_id: posto ? posto.id : null,
@@ -6083,7 +6083,7 @@ function renderizarTabelaPreviaImportacao() {
       <tr>
         <td colspan="8" class="text-center py-12 text-slate-400">
           <i class="fa-solid fa-folder-open text-3xl block mb-2 text-slate-300"></i>
-          Nenhum colaborador carregado para conferência.
+          Nenhum colaborador carregado para conferÃªncia.
         </td>
       </tr>
     `;
@@ -6133,7 +6133,7 @@ function renderizarTabelaPreviaImportacao() {
                   const pLotado = p.total_ocupados >= p.quantidade_vagas_limite;
                   return `
                     <option value="${p.id}" ${p.id === linha.posto_id ? 'selected' : ''} class="${pLotado ? 'text-red-600 font-bold bg-red-50' : ''}">
-                      ${p.nome_posto} (${p.total_ocupados}/${p.quantidade_vagas_limite} vagas) ${pLotado ? '⚠️ LOTADO' : ''}
+                      ${p.nome_posto} (${p.total_ocupados}/${p.quantidade_vagas_limite} vagas) ${pLotado ? 'âš ï¸ LOTADO' : ''}
                     </option>
                   `;
                 }).join('')}
@@ -6198,13 +6198,13 @@ function renderizarTabelaPreviaImportacao() {
         <td class="py-2.5 px-3">
           <div class="flex items-center gap-1.5 flex-wrap">
             <span class="font-bold text-slate-800 text-xs">${linha.nome}</span>
-            ${linha.id ? `<span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs" title="Atualizará colaborador existente ID #${linha.id} sem criar duplicidade"><i class="fa-solid fa-arrows-rotate text-[9px]"></i>#${linha.id} ATUALIZAÇÁO</span>` : ''}
+            ${linha.id ? `<span class="bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-2xs" title="AtualizarÃ¡ colaborador existente ID #${linha.id} sem criar duplicidade"><i class="fa-solid fa-arrows-rotate text-[9px]"></i>#${linha.id} ATUALIZAÃ‡ÃO</span>` : ''}
           </div>
           <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
             <span class="font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${linha.cpf || 'Sem CPF'}</span>
             ${linha.telefone ? `<span><i class="fa-solid fa-phone text-[9px] text-slate-400 mr-0.5"></i>${linha.telefone}</span>` : ''}
           </div>
-          ${linha.data_admissao ? `<div class="text-[9px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>Admissão: ${linha.data_admissao.split('-').reverse().join('/')}</div>` : ''}
+          ${linha.data_admissao ? `<div class="text-[9px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>AdmissÃ£o: ${linha.data_admissao.split('-').reverse().join('/')}</div>` : ''}
         </td>
         <td class="py-2.5 px-3">
           <div class="space-y-1">
@@ -6242,7 +6242,7 @@ function renderizarTabelaPreviaImportacao() {
               <span class="text-[11px] font-bold text-emerald-800">
                 VT: ${linha.quantidade_passagens_dia || 2}x R$ ${Number(linha.valor_passagem_unitaria || 0).toFixed(2).replace('.', ',')}
               </span>
-              <button type="button" onclick="abrirModalEditarBeneficiosPrevia(${realIdx})" class="px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0 transition flex items-center gap-1" title="Editar Vale Transporte e Alimentação deste colaborador">
+              <button type="button" onclick="abrirModalEditarBeneficiosPrevia(${realIdx})" class="px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0 transition flex items-center gap-1" title="Editar Vale Transporte e AlimentaÃ§Ã£o deste colaborador">
                 <i class="fa-solid fa-pen-to-square text-[9px]"></i> Editar
               </button>
             </div>
@@ -6258,7 +6258,7 @@ function renderizarTabelaPreviaImportacao() {
           ${statusBadge}
         </td>
         <td class="py-2.5 px-3 text-center">
-          <button type="button" title="Remover esta linha da importação" onclick="removerLinhaPrevia(${realIdx})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition">
+          <button type="button" title="Remover esta linha da importaÃ§Ã£o" onclick="removerLinhaPrevia(${realIdx})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition">
             <i class="fa-solid fa-trash-can text-xs"></i>
           </button>
         </td>
@@ -6318,18 +6318,18 @@ function aoMudarPostoPrevia(realIdx, novoPostoIdStr) {
     const p = (state.postos || []).find(x => x.id === pId);
     if (p && p.total_ocupados >= p.quantidade_vagas_limite) {
       const outrosComVagas = (state.postos || []).filter(x => x.cliente_id === p.cliente_id && x.id !== p.id && x.total_ocupados < x.quantidade_vagas_limite);
-      let msg = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO NESTE SETOR!\n\n` +
-        `O setor "${p.nome_posto}" já possui a quantidade total de ${p.quantidade_vagas_limite} colaboradores alocados (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
+      let msg = `âš ï¸ ALERTA: LIMITE DE FUNCIONÃRIOS ATINGIDO NESTE SETOR!\n\n` +
+        `O setor "${p.nome_posto}" jÃ¡ possui a quantidade total de ${p.quantidade_vagas_limite} colaboradores alocados (${p.total_ocupados}/${p.quantidade_vagas_limite}).\n\n`;
 
       if (outrosComVagas.length > 0) {
-        msg += `Outros setores deste mesmo cliente com vagas disponíveis:\n` +
-          outrosComVagas.map(o => ` • ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
-          `\n\nDeseja vincular este colaborador em outro setor disponível ou criar um novo posto?`;
+        msg += `Outros setores deste mesmo cliente com vagas disponÃ­veis:\n` +
+          outrosComVagas.map(o => ` â€¢ ${o.nome_posto} (${o.quantidade_vagas_limite - o.total_ocupados} vaga(s) livre(s))`).join('\n') +
+          `\n\nDeseja vincular este colaborador em outro setor disponÃ­vel ou criar um novo posto?`;
       } else {
-        msg += `Não há outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
+        msg += `NÃ£o hÃ¡ outros setores com vagas livres para este cliente.\n\nDeseja criar um novo posto de trabalho com novas vagas agora?`;
       }
 
-      const trocar = confirm(msg + `\n\nClique em [OK] para escolher outro setor ou criar um novo posto.\nClique em [CANCELAR] para manter a seleção.`);
+      const trocar = confirm(msg + `\n\nClique em [OK] para escolher outro setor ou criar um novo posto.\nClique em [CANCELAR] para manter a seleÃ§Ã£o.`);
       if (trocar) {
         state.previaImportacao[realIdx].posto_id = null;
         renderizarTabelaPreviaImportacao();
@@ -6376,12 +6376,12 @@ function abrirModalTrocarSetorPrevia(realIdx) {
               <input type="radio" name="radioTrocarSetorPrevia" value="${p.id}" ${ehAtual ? 'checked' : ''} class="w-4 h-4 text-indigo-600">
               <div>
                 <span class="font-bold text-slate-800 text-xs block">${p.nome_posto}</span>
-                <span class="text-[11px] text-slate-500">${p.nome_cargo || 'Geral'} • Escala: ${p.escala || '12x36'}</span>
+                <span class="text-[11px] text-slate-500">${p.nome_cargo || 'Geral'} â€¢ Escala: ${p.escala || '12x36'}</span>
               </div>
             </div>
             <div class="text-right">
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ehLotado ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}">
-                ${ehLotado ? '⚠️ Lotado' : `${vagasLivres} vaga(s) livre(s)`}
+                ${ehLotado ? 'âš ï¸ Lotado' : `${vagasLivres} vaga(s) livre(s)`}
               </span>
               <span class="block text-[10px] text-slate-400 font-mono mt-0.5">${p.total_ocupados}/${p.quantidade_vagas_limite} ocupadas</span>
             </div>
@@ -6471,7 +6471,7 @@ async function salvarPostoCriadoPrevia(e) {
   const turno = document.getElementById('postoPreviaTurno').value;
 
   if (!cliente_id || !nome_posto || !cargo_id) {
-    return alert('Preencha os campos obrigatórios do posto.');
+    return alert('Preencha os campos obrigatÃ³rios do posto.');
   }
 
   try {
@@ -6485,7 +6485,7 @@ async function salvarPostoCriadoPrevia(e) {
         quantidade_vagas_limite,
         escala,
         turno,
-        observacoes: 'Criado via Assistente de Importação de Planilha'
+        observacoes: 'Criado via Assistente de ImportaÃ§Ã£o de Planilha'
       })
     });
     const json = await res.json();
@@ -6498,7 +6498,7 @@ async function salvarPostoCriadoPrevia(e) {
     // Recarrega postos e dados base
     await carregarDadosBase();
 
-    // Vincula à linha atual
+    // Vincula Ã  linha atual
     if (state.previaImportacao[realIdx]) {
       state.previaImportacao[realIdx].posto_id = novoPostoId;
       state.previaImportacao[realIdx].cargo_id = cargo_id;
@@ -6518,18 +6518,18 @@ async function salvarPostoCriadoPrevia(e) {
 
     let msg = `Posto "${nome_posto}" criado e vinculado com sucesso!`;
     if (extrasVinculados > 0) {
-      msg += `\nAlém disso, mais ${extrasVinculados} colaborador(es) deste mesmo cliente e função foram vinculados automaticamente.`;
+      msg += `\nAlÃ©m disso, mais ${extrasVinculados} colaborador(es) deste mesmo cliente e funÃ§Ã£o foram vinculados automaticamente.`;
     }
     alert(msg);
   } catch (err) {
-    alert('Erro de conexão ao criar posto: ' + err.message);
+    alert('Erro de conexÃ£o ao criar posto: ' + err.message);
   }
 }
 
 async function criarPostosAutomaticosPrevia() {
   const semPostoComCliente = state.previaImportacao.filter(l => l.cliente_id && !l.posto_id);
   if (semPostoComCliente.length === 0) {
-    return alert('Todos os colaboradores com cliente selecionado já possuem um posto de trabalho vinculado!');
+    return alert('Todos os colaboradores com cliente selecionado jÃ¡ possuem um posto de trabalho vinculado!');
   }
 
   const pares = new Map();
@@ -6540,7 +6540,7 @@ async function criarPostosAutomaticosPrevia() {
     }
   });
 
-  const confirmou = confirm(`Foram identificados ${semPostoComCliente.length} colaboradores sem posto vinculado.\n\nDeseja criar automaticamente ${pares.size} novo(s) posto(s) operacional(is) para atendê-los agora?`);
+  const confirmou = confirm(`Foram identificados ${semPostoComCliente.length} colaboradores sem posto vinculado.\n\nDeseja criar automaticamente ${pares.size} novo(s) posto(s) operacional(is) para atendÃª-los agora?`);
   if (!confirmou) return;
 
   let criados = 0;
@@ -6560,7 +6560,7 @@ async function criarPostosAutomaticosPrevia() {
           quantidade_vagas_limite: 10,
           escala: item.escala,
           turno: 'Diurno',
-          observacoes: 'Criado em lote automaticamente via Assistente de Importação'
+          observacoes: 'Criado em lote automaticamente via Assistente de ImportaÃ§Ã£o'
         })
       });
       const json = await res.json();
@@ -6583,7 +6583,7 @@ async function criarPostosAutomaticosPrevia() {
 }
 
 function removerLinhaPrevia(realIdx) {
-  if (confirm('Deseja realmente remover esta linha da lista de importação?')) {
+  if (confirm('Deseja realmente remover esta linha da lista de importaÃ§Ã£o?')) {
     state.previaImportacao.splice(realIdx, 1);
     renderizarTabelaPreviaImportacao();
   }
@@ -6601,17 +6601,17 @@ async function executarImportacaoConfirmada() {
 
   const semCliente = state.previaImportacao.filter(l => !l.cliente_id);
   if (semCliente.length > 0) {
-    const c = confirm(`Atenção: Existem ${semCliente.length} colaboradores sem cliente selecionado. Deseja continuar mesmo assim?\n\n(Colaboradores sem cliente não poderão ser vinculados a postos de trabalho até que você os edite).`);
+    const c = confirm(`AtenÃ§Ã£o: Existem ${semCliente.length} colaboradores sem cliente selecionado. Deseja continuar mesmo assim?\n\n(Colaboradores sem cliente nÃ£o poderÃ£o ser vinculados a postos de trabalho atÃ© que vocÃª os edite).`);
     if (!c) return;
   }
 
   const semPosto = state.previaImportacao.filter(l => l.cliente_id && !l.posto_id);
   if (semPosto.length > 0) {
-    const c = confirm(`Aviso: Existem ${semPosto.length} colaboradores que possuem cliente mas ainda não têm um posto de trabalho definido.\n\nSe continuar, o sistema vinculará automaticamente ao primeiro posto livre desse cliente ou criará um posto operacional.\n\nDeseja prosseguir com a gravação?`);
+    const c = confirm(`Aviso: Existem ${semPosto.length} colaboradores que possuem cliente mas ainda nÃ£o tÃªm um posto de trabalho definido.\n\nSe continuar, o sistema vincularÃ¡ automaticamente ao primeiro posto livre desse cliente ou criarÃ¡ um posto operacional.\n\nDeseja prosseguir com a gravaÃ§Ã£o?`);
     if (!c) return;
   }
 
-  // Validação de limite de capacidade contratada dos setores
+  // ValidaÃ§Ã£o de limite de capacidade contratada dos setores
   const postosLotados = [];
   const contagemPorPosto = new Map();
   state.previaImportacao.forEach(l => {
@@ -6635,9 +6635,9 @@ async function executarImportacaoConfirmada() {
   }
 
   if (postosLotados.length > 0) {
-    let aviso = `⚠️ ALERTA: LIMITE DE FUNCIONÁRIOS ATINGIDO EM SETOR(ES)!\n\n` +
-      `Os seguintes setores atingirão ou já atingiram a quantidade total de colaboradores alocados:\n\n` +
-      postosLotados.map(pl => ` • ${pl.cliente} - ${pl.nome}: ${pl.totalFinal} alocados (Limite Contratual: ${pl.limite} vagas)`).join('\n') +
+    let aviso = `âš ï¸ ALERTA: LIMITE DE FUNCIONÃRIOS ATINGIDO EM SETOR(ES)!\n\n` +
+      `Os seguintes setores atingirÃ£o ou jÃ¡ atingiram a quantidade total de colaboradores alocados:\n\n` +
+      postosLotados.map(pl => ` â€¢ ${pl.cliente} - ${pl.nome}: ${pl.totalFinal} alocados (Limite Contratual: ${pl.limite} vagas)`).join('\n') +
       `\n\nDeseja revisar a planilha e vincular os colaboradores a outro setor ou criar novos postos?\n\n` +
       `[CANCELAR] = Revisar e vincular a outro setor antes de importar\n` +
       `[OK] = Gravar no banco mesmo assim`;
@@ -6681,26 +6681,26 @@ async function executarImportacaoConfirmada() {
       fecharModal('modalConfirmarImportacaoColab');
       state.previaImportacao = [];
       const msg = json.atualizados > 0 
-        ? `Importação Concluída com Sucesso!\n\n• Total processados: ${json.total}\n• Novos cadastrados: ${json.inseridos}\n• Atualizados e vinculados: ${json.atualizados}`
-        : `Importação Concluída!\n\n${json.inseridos} colaboradores importados e vinculados aos respectivos postos de trabalho com sucesso!`;
+        ? `ImportaÃ§Ã£o ConcluÃ­da com Sucesso!\n\nâ€¢ Total processados: ${json.total}\nâ€¢ Novos cadastrados: ${json.inseridos}\nâ€¢ Atualizados e vinculados: ${json.atualizados}`
+        : `ImportaÃ§Ã£o ConcluÃ­da!\n\n${json.inseridos} colaboradores importados e vinculados aos respectivos postos de trabalho com sucesso!`;
       alert(msg);
       await carregarDadosBase();
       if (typeof carregarColaboradores === 'function') carregarColaboradores();
       if (typeof carregarClientesComPostos === 'function') carregarClientesComPostos();
       if (typeof carregarPostosTrabalho === 'function') carregarPostosTrabalho();
     } else {
-      alert('Erro ao concluir importação: ' + (json.message || 'Falha desconhecida.'));
+      alert('Erro ao concluir importaÃ§Ã£o: ' + (json.message || 'Falha desconhecida.'));
     }
   } catch (err) {
-    alert('Erro de conexão durante importação: ' + err.message);
+    alert('Erro de conexÃ£o durante importaÃ§Ã£o: ' + err.message);
   } finally {
     if (btn) btn.disabled = false;
-    if (txt) txt.textContent = 'Confirmar e Concluir Importação';
+    if (txt) txt.textContent = 'Confirmar e Concluir ImportaÃ§Ã£o';
   }
 }
 
 // -------------------------------------------------------------
-// EDIÇÁO DE BENEFÍCIOS (VT E VA) NA PRÉVIA DA PLANILHA E PÓS-IMPORTAÇÁO
+// EDIÃ‡ÃO DE BENEFÃCIOS (VT E VA) NA PRÃ‰VIA DA PLANILHA E PÃ“S-IMPORTAÃ‡ÃO
 // -------------------------------------------------------------
 
 function abrirModalEditarBeneficiosPrevia(realIdx) {
@@ -6776,9 +6776,9 @@ function salvarBeneficiosEditadosPrevia(e) {
   fecharModal('modalEditarBeneficiosPrevia');
   renderizarTabelaPreviaImportacao();
 
-  let msg = `Benefícios de ${linha.nome} atualizados com sucesso!`;
+  let msg = `BenefÃ­cios de ${linha.nome} atualizados com sucesso!`;
   if (replicados > 0) {
-    msg += `\nEstes mesmos valores foram replicados para mais ${replicados} colaborador(es) com a função "${linha.cargo_nome}".`;
+    msg += `\nEstes mesmos valores foram replicados para mais ${replicados} colaborador(es) com a funÃ§Ã£o "${linha.cargo_nome}".`;
   }
   alert(msg);
 }
@@ -6790,13 +6790,13 @@ async function abrirModalEditarBeneficiosRapido(colabId) {
       const res = await fetch(`/api/colaboradores/${colabId}`);
       if (res.ok) colab = await res.json();
     }
-    if (!colab) return alert('Colaborador não encontrado.');
+    if (!colab) return alert('Colaborador nÃ£o encontrado.');
 
     document.getElementById('rapidoBenefColabId').value = colab.id;
     document.getElementById('rapidoBenefColabNome').textContent = colab.nome;
     document.getElementById('rapidoBenefColabCpf').textContent = colab.cpf || 'Sem CPF';
-    document.getElementById('rapidoBenefColabCargo').textContent = colab.nome_cargo || 'Função Padrão';
-    document.getElementById('rapidoBenefColabLocal').textContent = `${colab.cliente_nome || 'Sem Cliente'} • ${colab.nome_posto || 'Sem Posto'}`;
+    document.getElementById('rapidoBenefColabCargo').textContent = colab.nome_cargo || 'FunÃ§Ã£o PadrÃ£o';
+    document.getElementById('rapidoBenefColabLocal').textContent = `${colab.cliente_nome || 'Sem Cliente'} â€¢ ${colab.nome_posto || 'Sem Posto'}`;
 
     document.getElementById('rapidoBenefLinhasOnibus').value = colab.linhas_onibus || 'Municipal';
     document.getElementById('rapidoBenefQtdPassagens').value = (colab.quantidade_passagens_dia !== undefined && colab.quantidade_passagens_dia !== null) ? colab.quantidade_passagens_dia : 2;
@@ -6806,7 +6806,7 @@ async function abrirModalEditarBeneficiosRapido(colabId) {
     calcularRapidoAoVivoBeneficios();
     abrirModal('modalEditarBeneficiosRapido');
   } catch (err) {
-    alert('Erro ao abrir edição de benefícios: ' + err.message);
+    alert('Erro ao abrir ediÃ§Ã£o de benefÃ­cios: ' + err.message);
   }
 }
 
@@ -6842,7 +6842,7 @@ async function salvarEdicaoBeneficiosRapido(e) {
       if (res.ok) colab = await res.json();
     } catch (err) {}
   }
-  if (!colab) return alert('Colaborador não encontrado.');
+  if (!colab) return alert('Colaborador nÃ£o encontrado.');
 
   const linhas_onibus = document.getElementById('rapidoBenefLinhasOnibus').value.trim() || 'Municipal';
   const quantidade_passagens_dia = parseInt(document.getElementById('rapidoBenefQtdPassagens').value, 10) || 2;
@@ -6876,10 +6876,10 @@ async function salvarEdicaoBeneficiosRapido(e) {
     });
     const json = await res.json();
     if (!json.success) {
-      return alert('Erro ao atualizar benefícios: ' + (json.message || 'Falha na gravação'));
+      return alert('Erro ao atualizar benefÃ­cios: ' + (json.message || 'Falha na gravaÃ§Ã£o'));
     }
 
-    // Se solicitado sincronizar com o mês atual da folha de benefícios
+    // Se solicitado sincronizar com o mÃªs atual da folha de benefÃ­cios
     if (sincMesAtual) {
       try {
         await fetch(`/api/beneficios/colaborador/${id}?ano_mes=${state.mesAtual}`, {
@@ -6895,14 +6895,14 @@ async function salvarEdicaoBeneficiosRapido(e) {
     if (state.abaAtiva === 'colaboradores') carregarColaboradores();
     if (state.abaAtiva === 'beneficios') carregarBeneficios();
 
-    alert(`Benefícios de ${colab.nome} atualizados com sucesso!\n\n• Passagens/dia: ${quantidade_passagens_dia}\n• Tarifa VT: R$ ${valor_passagem_unitaria.toFixed(2).replace('.', ',')}\n• Diária VA: R$ ${valor_diario_va.toFixed(2).replace('.', ',')}\n• Linhas: ${linhas_onibus}`);
+    alert(`BenefÃ­cios de ${colab.nome} atualizados com sucesso!\n\nâ€¢ Passagens/dia: ${quantidade_passagens_dia}\nâ€¢ Tarifa VT: R$ ${valor_passagem_unitaria.toFixed(2).replace('.', ',')}\nâ€¢ DiÃ¡ria VA: R$ ${valor_diario_va.toFixed(2).replace('.', ',')}\nâ€¢ Linhas: ${linhas_onibus}`);
   } catch (err) {
-    alert('Erro de conexão ao salvar benefícios: ' + err.message);
+    alert('Erro de conexÃ£o ao salvar benefÃ­cios: ' + err.message);
   }
 }
 
 // -------------------------------------------------------------
-// 8. ADMIN: GESTÁO DE USUÁRIOS, SUPERVISORES DE CAMPO E SETORES
+// 8. ADMIN: GESTÃO DE USUÃRIOS, SUPERVISORES DE CAMPO E SETORES
 // -------------------------------------------------------------
 
 async function carregarPainelAdminMaster() {
@@ -6952,7 +6952,7 @@ function mudarSubAbaAdmin(subAba) {
 }
 
 // -------------------------------------------------------------
-// 8.1 GESTÁO DE USUÁRIOS OPERACIONAIS & PERMISSÕES
+// 8.1 GESTÃO DE USUÃRIOS OPERACIONAIS & PERMISSÃ•ES
 // -------------------------------------------------------------
 async function carregarUsuarios() {
   const tbody = document.getElementById('tabelaUsuariosBody');
@@ -6969,8 +6969,8 @@ async function carregarUsuarios() {
 
     renderizarTabelaUsuariosAdmin(state.usuarios);
   } catch (err) {
-    console.error('Erro ao carregar usuários:', err);
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-500 font-medium">Erro ao carregar usuários: ${err.message}</td></tr>`;
+    console.error('Erro ao carregar usuÃ¡rios:', err);
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-red-500 font-medium">Erro ao carregar usuÃ¡rios: ${err.message}</td></tr>`;
   }
 }
 
@@ -7002,7 +7002,7 @@ function renderizarTabelaUsuariosAdmin(lista) {
   if (!tbody) return;
 
   if (lista.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Nenhum operador encontrado com os critérios de busca.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Nenhum operador encontrado com os critÃ©rios de busca.</td></tr>`;
     return;
   }
 
@@ -7025,7 +7025,7 @@ function renderizarTabelaUsuariosAdmin(lista) {
           <span class="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">${u.login}</span>
         </td>
         <td class="px-4 py-3">${obterBadgeSetor(u.setor)}</td>
-        <td class="px-4 py-3 max-w-xs">${permissoesBadges || '<span class="text-slate-400 text-xs italic">Sem permissões específicas</span>'}</td>
+        <td class="px-4 py-3 max-w-xs">${permissoesBadges || '<span class="text-slate-400 text-xs italic">Sem permissÃµes especÃ­ficas</span>'}</td>
         <td class="px-4 py-3 text-center">
           <span class="${u.ativo ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-red-100 text-red-800 border border-red-200'} text-xs font-bold px-2.5 py-0.5 rounded-full">
             ${u.ativo ? 'Ativo' : 'Inativo'}
@@ -7087,7 +7087,7 @@ async function editarUsuario(id) {
     const res = await fetch('/api/usuarios');
     const usuarios = await res.json();
     const u = (usuarios || []).find(x => Number(x.id) === Number(id));
-    if (!u) return alert('Usuário não encontrado');
+    if (!u) return alert('UsuÃ¡rio nÃ£o encontrado');
 
     await popularSelectSetores('usrSetor', u.setor);
 
@@ -7115,7 +7115,7 @@ async function editarUsuario(id) {
 
     document.getElementById('modalNovoUsuario').classList.remove('hidden');
   } catch (err) {
-    alert('Erro ao carregar usuário: ' + err.message);
+    alert('Erro ao carregar usuÃ¡rio: ' + err.message);
   }
 }
 
@@ -7166,7 +7166,7 @@ async function salvarNovoUsuario(e) {
       fecharModal('modalNovoUsuario');
       await carregarUsuarios();
 
-      // Se o operador editado for a própria conta em uso, sincronizar a sessão no localStorage
+      // Se o operador editado for a prÃ³pria conta em uso, sincronizar a sessÃ£o no localStorage
       if (id && state.usuarioLogado && Number(id) === Number(state.usuarioLogado.id)) {
         if (json.usuario) {
           state.usuarioLogado = { ...state.usuarioLogado, ...json.usuario };
@@ -7195,12 +7195,12 @@ async function salvarNovoUsuario(e) {
         aplicarPermissoesUI();
       }
 
-      alert(id ? 'Usuário e permissões atualizados com sucesso!' : 'Novo usuário cadastrado com sucesso!');
+      alert(id ? 'UsuÃ¡rio e permissÃµes atualizados com sucesso!' : 'Novo usuÃ¡rio cadastrado com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao salvar usuário: ' + err.message);
+    alert('Erro ao salvar usuÃ¡rio: ' + err.message);
   }
 }
 
@@ -7211,7 +7211,7 @@ async function excluirUsuarioAdmin(id, nome) {
     const json = await res.json();
     if (json.success) {
       await carregarUsuarios();
-      alert('Usuário removido com sucesso!');
+      alert('UsuÃ¡rio removido com sucesso!');
     } else {
       alert('Erro ao excluir: ' + json.message);
     }
@@ -7221,7 +7221,7 @@ async function excluirUsuarioAdmin(id, nome) {
 }
 
 // -------------------------------------------------------------
-// 8.2 GESTÁO DE SUPERVISORES DE CAMPO (APP MÓVEL / EXTERNO)
+// 8.2 GESTÃO DE SUPERVISORES DE CAMPO (APP MÃ“VEL / EXTERNO)
 // -------------------------------------------------------------
 async function carregarSupervisoresAdmin() {
   const tbody = document.getElementById('tabelaSupervisoresAdminBody');
@@ -7252,7 +7252,7 @@ async function carregarSupervisoresAdmin() {
     }
 
     if (state.supervisores.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-medium">Nenhum supervisor cadastrado. Clique no botão acima para adicionar.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-medium">Nenhum supervisor cadastrado. Clique no botÃ£o acima para adicionar.</td></tr>`;
       return;
     }
 
@@ -7285,10 +7285,10 @@ async function carregarSupervisoresAdmin() {
                 <i class="fa-brands fa-whatsapp text-emerald-500 text-sm"></i>
                 <span>${s.telefone}</span>
               </a>
-            ` : '<span class="text-slate-400 text-xs italic">Não informado</span>'}
+            ` : '<span class="text-slate-400 text-xs italic">NÃ£o informado</span>'}
           </td>
           <td class="px-4 py-3 text-center">
-            <div class="font-bold text-xs text-slate-800">${stats.total} lançamento(s)</div>
+            <div class="font-bold text-xs text-slate-800">${stats.total} lanÃ§amento(s)</div>
             <div class="text-[10px] space-x-1 mt-0.5">
               <span class="text-emerald-700 font-bold">${stats.cobertos} cobertos</span>
               <span class="text-slate-300">|</span>
@@ -7341,7 +7341,7 @@ function sugerirLoginSupervisor() {
 
 async function editarSupervisor(id) {
   const s = (state.supervisores || []).find(x => x.id === id);
-  if (!s) return alert('Supervisor não encontrado');
+  if (!s) return alert('Supervisor nÃ£o encontrado');
 
   document.getElementById('supEditId').value = s.id;
   document.getElementById('supNome').value = s.nome || '';
@@ -7365,7 +7365,7 @@ async function salvarSupervisorModalAdmin(e) {
   const ativo = document.getElementById('supAtivo').value === '1';
 
   if (!nome) {
-    alert('Nome do supervisor é obrigatório.');
+    alert('Nome do supervisor Ã© obrigatÃ³rio.');
     return;
   }
   if (!login) {
@@ -7397,7 +7397,7 @@ async function salvarSupervisorModalAdmin(e) {
       if (typeof carregarSupervisoresModal === 'function') {
         try { await carregarSupervisoresModal(); } catch (e) {}
       }
-      alert(id ? 'Supervisor atualizado com sucesso!' : 'Novo supervisor cadastrado com sucesso! As credenciais já estão ativas para acesso.');
+      alert(id ? 'Supervisor atualizado com sucesso!' : 'Novo supervisor cadastrado com sucesso! As credenciais jÃ¡ estÃ£o ativas para acesso.');
     } else {
       alert('Aviso: ' + (json.message || json.error || 'Erro ao salvar supervisor.'));
     }
@@ -7415,7 +7415,7 @@ async function excluirSupervisor(id, nome) {
     const json = await res.json();
     if (json.success) {
       await carregarSupervisoresAdmin();
-      alert(json.message || 'Operação realizada com sucesso!');
+      alert(json.message || 'OperaÃ§Ã£o realizada com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
@@ -7428,14 +7428,14 @@ function copiarCredenciaisSupervisor(id) {
   const s = (state.supervisores || []).find(x => x.id === id);
   if (!s) return;
   const linkApp = state.urlPortalGlobalSupervisor || document.getElementById('inputLinkSupervisorGlobal')?.value || (state.urlTunnelGlobal ? `${state.urlTunnelGlobal}/supervisor` : 'https://melissa-compile-teenage-sapphire.trycloudflare.com/supervisor');
-  const msg = `Olá ${s.nome}!\n\nSegue seu acesso ao aplicativo móvel do SISFAC para lançamento de faltas e coberturas em tempo real:\n\n🔗 Link de Acesso (4G e Wi-Fi): ${linkApp}\n👤 Usuário: ${s.login}\n🔑 Senha: ${s.senha}\n\nAbra o link pelo celular e faça login para começar.`;
+  const msg = `OlÃ¡ ${s.nome}!\n\nSegue seu acesso ao aplicativo mÃ³vel do SISFAC para lanÃ§amento de faltas e coberturas em tempo real:\n\nðŸ”— Link de Acesso (4G e Wi-Fi): ${linkApp}\nðŸ‘¤ UsuÃ¡rio: ${s.login}\nðŸ”‘ Senha: ${s.senha}\n\nAbra o link pelo celular e faÃ§a login para comeÃ§ar.`;
   copiarTexto(msg);
-  alert(`Mensagem com link e credenciais de ${s.nome} copiada para a área de transferência! Cole diretamente no WhatsApp.`);
+  alert(`Mensagem com link e credenciais de ${s.nome} copiada para a Ã¡rea de transferÃªncia! Cole diretamente no WhatsApp.`);
 }
 
 function copiarInstrucoesSupervisoresWhatsApp() {
   const linkApp = state.urlPortalGlobalSupervisor || document.getElementById('inputLinkSupervisorGlobal')?.value || (state.urlTunnelGlobal ? `${state.urlTunnelGlobal}/supervisor` : 'https://melissa-compile-teenage-sapphire.trycloudflare.com/supervisor');
-  const msg = `*SISFAC 2.0 - Aplicativo Móvel do Supervisor*\n\nPrezados supervisores, para registrar faltas e coberturas em tempo real pelo celular (4G ou Wi-Fi), acessem o link abaixo:\n\n🔗 ${linkApp}\n\nUtilizem o login e senha individuais fornecidos pela coordenação.`;
+  const msg = `*SISFAC 2.0 - Aplicativo MÃ³vel do Supervisor*\n\nPrezados supervisores, para registrar faltas e coberturas em tempo real pelo celular (4G ou Wi-Fi), acessem o link abaixo:\n\nðŸ”— ${linkApp}\n\nUtilizem o login e senha individuais fornecidos pela coordenaÃ§Ã£o.`;
   copiarTexto(msg);
   alert('Mensagem geral para envio no grupo dos supervisores copiada com sucesso!');
 }
@@ -7462,7 +7462,7 @@ function copiarTexto(texto) {
 }
 
 // -------------------------------------------------------------
-// 8.3 GESTÁO DE SETORES DA EMPRESA
+// 8.3 GESTÃO DE SETORES DA EMPRESA
 // -------------------------------------------------------------
 async function carregarSetoresAdmin() {
   const tbody = document.getElementById('tabelaSetoresAdminBody');
@@ -7478,7 +7478,7 @@ async function carregarSetoresAdmin() {
     if (kpi) kpi.textContent = state.setores.length;
 
     if (state.setores.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Nenhum setor cadastrado. Clique no botão acima para incluir um novo setor.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Nenhum setor cadastrado. Clique no botÃ£o acima para incluir um novo setor.</td></tr>`;
       return;
     }
 
@@ -7490,7 +7490,7 @@ async function carregarSetoresAdmin() {
             ${obterBadgeSetor(st.nome_setor)}
           </td>
           <td class="px-4 py-3 font-mono font-bold text-xs text-slate-700">${st.sigla || '-'}</td>
-          <td class="px-4 py-3 text-xs text-slate-500">${st.descricao || 'Sem descrição'}</td>
+          <td class="px-4 py-3 text-xs text-slate-500">${st.descricao || 'Sem descriÃ§Ã£o'}</td>
           <td class="px-4 py-3 text-center font-bold text-slate-800">${st.total_usuarios || 0}</td>
           <td class="px-4 py-3 text-center">
             <span class="${st.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} text-xs font-bold px-2 py-0.5 rounded">
@@ -7556,7 +7556,7 @@ function abrirModalNovoSetor(origemSelectId = null) {
 
 async function editarSetor(id) {
   const st = (state.setores || []).find(x => x.id === id);
-  if (!st) return alert('Setor não encontrado');
+  if (!st) return alert('Setor nÃ£o encontrado');
 
   document.getElementById('setorEditId').value = st.id;
   document.getElementById('setorNome').value = st.nome_setor || '';
@@ -7597,7 +7597,7 @@ async function salvarSetorAdmin(e) {
         if (selAlvo) selAlvo.value = payload.nome_setor;
       }
 
-      alert(id ? 'Setor atualizado com sucesso!' : 'Novo setor cadastrado com sucesso e já disponível para seleção de usuários!');
+      alert(id ? 'Setor atualizado com sucesso!' : 'Novo setor cadastrado com sucesso e jÃ¡ disponÃ­vel para seleÃ§Ã£o de usuÃ¡rios!');
     } else {
       alert('Aviso: ' + json.message);
     }
@@ -7614,7 +7614,7 @@ async function excluirSetor(id, nome) {
     if (json.success) {
       await carregarSetoresAdmin();
       await popularSelectSetores('usrSetor');
-      alert(json.message || 'Setor excluído com sucesso!');
+      alert(json.message || 'Setor excluÃ­do com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
@@ -7669,7 +7669,7 @@ function renderizarCardsClientesPostos() {
   const container = document.getElementById('containerClientesPostos');
   if (!container) return;
 
-  // Atualizar contador de colaboradores na Reserva Técnica
+  // Atualizar contador de colaboradores na Reserva TÃ©cnica
   const colabsLista = Array.isArray(state.colaboradores) ? state.colaboradores : [];
   const naReserva = colabsLista.filter(col => col.ativo === 1 && !col.posto_trabalho_id).length;
   const elReserva = document.getElementById('qtdColabsReservaTecnica');
@@ -7677,12 +7677,12 @@ function renderizarCardsClientesPostos() {
 
   let lista = state.clientesComPostos || [];
 
-  // Filtro 1: Cliente específico selecionado pelo select
+  // Filtro 1: Cliente especÃ­fico selecionado pelo select
   if (state.filtroClientePostoSelectId) {
     lista = lista.filter(c => c.id === state.filtroClientePostoSelectId);
   }
 
-  // Filtro 2: Busca por texto (prioriza nome fantasia ou razão social, depois cnpj ou nome de posto)
+  // Filtro 2: Busca por texto (prioriza nome fantasia ou razÃ£o social, depois cnpj ou nome de posto)
   if (state.filtroNomeClientePosto) {
     const termo = state.filtroNomeClientePosto;
     lista = lista.filter(c => {
@@ -7726,7 +7726,7 @@ function renderizarCardsClientesPostos() {
       badgeAlertaGeral = `
         <span class="bg-red-500 text-white text-xs font-black px-3 py-1 rounded-full shadow animate-pulse flex items-center gap-1.5">
           <i class="fa-solid fa-triangle-exclamation"></i>
-          ${c.total_vagas_abertas} VAGA(S) EM ABERTO - REQUER CONTRATAÇÁO / REALOCAÇÁO
+          ${c.total_vagas_abertas} VAGA(S) EM ABERTO - REQUER CONTRATAÃ‡ÃO / REALOCAÃ‡ÃO
         </span>
       `;
     } else {
@@ -7761,12 +7761,12 @@ function renderizarCardsClientesPostos() {
               <i class="fa-solid fa-triangle-exclamation"></i>
               ${p.vagas_abertas} VAGA(S) EM ABERTO
             </div>
-            <div class="text-[10px] text-red-700 font-bold mt-0.5">Requer contratação ou realocação</div>
+            <div class="text-[10px] text-red-700 font-bold mt-0.5">Requer contrataÃ§Ã£o ou realocaÃ§Ã£o</div>
           `;
         } else if (p.esta_lotado) {
           badgeStatusVaga = `
             <span class="bg-slate-100 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1">
-              <i class="fa-solid fa-lock text-slate-500"></i> Lotação Máxima (${p.total_ocupados}/${p.quantidade_vagas_limite})
+              <i class="fa-solid fa-lock text-slate-500"></i> LotaÃ§Ã£o MÃ¡xima (${p.total_ocupados}/${p.quantidade_vagas_limite})
             </span>
           `;
         } else {
@@ -7799,7 +7799,7 @@ function renderizarCardsClientesPostos() {
               <span class="inline-flex items-center gap-1.5 bg-white border border-slate-300 text-slate-800 text-xs px-2.5 py-1 rounded-lg shadow-2xs">
                 <i class="fa-solid fa-user text-slate-400"></i>
                 <span class="font-semibold">${col.nome}</span>
-                <button onclick="desvincularParaReservaTecnica(${col.id}, '${escapeJsString(col.nome)}', '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}')" class="text-amber-600 hover:text-amber-800 ml-1 transition" title="Mover para Reserva Técnica (libera vaga neste posto sem demitir)">
+                <button onclick="desvincularParaReservaTecnica(${col.id}, '${escapeJsString(col.nome)}', '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}')" class="text-amber-600 hover:text-amber-800 ml-1 transition" title="Mover para Reserva TÃ©cnica (libera vaga neste posto sem demitir)">
                   <i class="fa-solid fa-user-clock text-[11px]"></i>
                 </button>
                 <button onclick="abrirModalDemitirColaborador(${col.id}, '${escapeJsString(col.nome)}', '${escapeJsString(p.nome_posto)} - ${escapeJsString(c.nome_fantasia || c.nome_razao_social)}')" class="text-slate-400 hover:text-red-700 ml-0.5 transition" title="Demitir colaborador e abrir vaga no posto">
@@ -7812,13 +7812,13 @@ function renderizarCardsClientesPostos() {
           colabsHtml = `<span class="text-xs text-red-600 font-bold italic">Nenhum colaborador alocado</span>`;
         }
 
-        // Botão para alocar colaborador se houver vaga aberta
+        // BotÃ£o para alocar colaborador se houver vaga aberta
         let btnAlocar = '';
         if (p.requer_contratacao || p.vagas_disponiveis > 0) {
           btnAlocar = `
             <div class="mt-2 flex flex-wrap items-center gap-1.5">
-              <button onclick="abrirModalVincularColaborador(${c.id}, ${p.id}, '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}', ${p.cargo_id || 'null'}, '${escapeJsString(p.nome_cargo || '')}', ${p.vagas_disponiveis}, '${escapeJsString(p.escala || '5x2')}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1.5 transition shadow-xs" title="Puxar colaborador da Reserva Técnica ou transferir de outro cliente">
-                <i class="fa-solid fa-people-arrows"></i> Puxar Colaborador (Reserva / Transferência)
+              <button onclick="abrirModalVincularColaborador(${c.id}, ${p.id}, '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}', ${p.cargo_id || 'null'}, '${escapeJsString(p.nome_cargo || '')}', ${p.vagas_disponiveis}, '${escapeJsString(p.escala || '5x2')}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1.5 transition shadow-xs" title="Puxar colaborador da Reserva TÃ©cnica ou transferir de outro cliente">
+                <i class="fa-solid fa-people-arrows"></i> Puxar Colaborador (Reserva / TransferÃªncia)
               </button>
               <button onclick="abrirModalAlocarNoPosto(${c.id}, ${p.id}, '${escapeJsString(p.nome_posto)}', '${escapeJsString(c.nome_fantasia || c.nome_razao_social)}', ${p.cargo_id || 'null'})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-[11px] font-medium px-2 py-1 rounded-md flex items-center gap-1 transition" title="Cadastrar novo colaborador contratado do zero">
                 <i class="fa-solid fa-user-plus"></i> Novo Cadastro
@@ -7835,7 +7835,7 @@ function renderizarCardsClientesPostos() {
             </td>
             <td class="px-4 py-3">
               <span class="bg-slate-100 text-slate-800 text-xs px-2.5 py-1 rounded-md font-bold">${p.nome_cargo || 'Geral'}</span>
-              ${p.cargo_id ? `<span class="text-indigo-700 font-mono font-bold text-[10px] ml-1 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded" title="Código ID da Função/Cargo"><i class="fa-solid fa-briefcase mr-0.5"></i>ID: #${p.cargo_id}</span>` : ''}
+              ${p.cargo_id ? `<span class="text-indigo-700 font-mono font-bold text-[10px] ml-1 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded" title="CÃ³digo ID da FunÃ§Ã£o/Cargo"><i class="fa-solid fa-briefcase mr-0.5"></i>ID: #${p.cargo_id}</span>` : ''}
             </td>
             <td class="px-4 py-3 text-xs">
               <span class="font-bold text-slate-700">${p.escala}</span>
@@ -7860,7 +7860,7 @@ function renderizarCardsClientesPostos() {
                   ? `<button onclick="abrirModalEditarPosto(${p.id})" class="text-amber-600 hover:text-amber-800 p-1.5 rounded hover:bg-amber-50 transition" title="Editar Posto (Exclusivo Admin Master - Aditivo Contratual / Ajuste de Vagas)">
                       <i class="fa-solid fa-pen-to-square"></i>
                      </button>` 
-                  : `<span class="text-slate-300 p-1.5 cursor-not-allowed" title="Edição de postos e alteração de vagas contratuais restrita ao Administrador Master">
+                  : `<span class="text-slate-300 p-1.5 cursor-not-allowed" title="EdiÃ§Ã£o de postos e alteraÃ§Ã£o de vagas contratuais restrita ao Administrador Master">
                       <i class="fa-solid fa-lock text-xs"></i>
                      </span>`}
                 <button onclick="excluirItem('postos', ${p.id})" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition" title="Excluir Posto">
@@ -7878,12 +7878,12 @@ function renderizarCardsClientesPostos() {
             <thead class="bg-slate-100 text-slate-700 uppercase font-bold text-[11px] border-b border-slate-200">
               <tr>
                 <th class="px-4 py-2.5">Posto de Trabalho</th>
-                <th class="px-4 py-2.5">Função / Cargo</th>
+                <th class="px-4 py-2.5">FunÃ§Ã£o / Cargo</th>
                 <th class="px-4 py-2.5">Escala / Turno</th>
-                <th class="px-4 py-2.5 text-center">Lotação (Ocupadas / Contratadas)</th>
-                <th class="px-4 py-2.5 text-center">Situação da Vaga</th>
+                <th class="px-4 py-2.5 text-center">LotaÃ§Ã£o (Ocupadas / Contratadas)</th>
+                <th class="px-4 py-2.5 text-center">SituaÃ§Ã£o da Vaga</th>
                 <th class="px-4 py-2.5">Colaboradores Alocados</th>
-                <th class="px-4 py-2.5 text-right">Ação</th>
+                <th class="px-4 py-2.5 text-right">AÃ§Ã£o</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -7939,8 +7939,8 @@ function renderizarCardsClientesPostos() {
                 ${badgeAlertaGeral}
               </div>
               <div class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-4">
-                <span><i class="fa-solid fa-hashtag text-violet-600 mr-1"></i><b>Código ID:</b> <span class="font-mono text-violet-700 font-black">#${c.id}</span></span>
-                <span><i class="fa-solid fa-id-card text-slate-400 mr-1"></i><b>CNPJ:</b> <span class="font-mono">${c.cnpj || 'Não informado'}</span></span>
+                <span><i class="fa-solid fa-hashtag text-violet-600 mr-1"></i><b>CÃ³digo ID:</b> <span class="font-mono text-violet-700 font-black">#${c.id}</span></span>
+                <span><i class="fa-solid fa-id-card text-slate-400 mr-1"></i><b>CNPJ:</b> <span class="font-mono">${c.cnpj || 'NÃ£o informado'}</span></span>
                 ${c.contato_responsavel ? `<span><i class="fa-solid fa-user-tie text-slate-400 mr-1"></i><b>Contato:</b> ${c.contato_responsavel}</span>` : ''}
                 ${c.telefone ? `<span><i class="fa-solid fa-phone text-slate-400 mr-1"></i><b>Telefone:</b> ${c.telefone}</span>` : ''}
                 ${c.email ? `<span><i class="fa-solid fa-envelope text-slate-400 mr-1"></i><b>E-mail:</b> ${c.email}</span>` : ''}
@@ -7952,15 +7952,15 @@ function renderizarCardsClientesPostos() {
           </div>
 
           <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
-            <!-- Botão de Minimizar / Expandir individual -->
+            <!-- BotÃ£o de Minimizar / Expandir individual -->
             <button type="button" onclick="alternarRecolherCliente(${c.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs border border-slate-300" title="${isRecolhido ? 'Expandir Postos deste Cliente' : 'Minimizar Postos deste Cliente'}">
               <span class="text-[11px] text-slate-600 font-semibold">${postos.length} ${postos.length === 1 ? 'posto' : 'postos'}</span>
               <i class="fa-solid ${isRecolhido ? 'fa-chevron-down text-violet-600' : 'fa-chevron-up text-slate-500'}"></i>
             </button>
-            <button onclick="abrirModalMultiCliente(${c.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs" title="Juntar este cliente a outros num roteiro compartilhado (até 5)">
+            <button onclick="abrirModalMultiCliente(${c.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs" title="Juntar este cliente a outros num roteiro compartilhado (atÃ© 5)">
               <i class="fa-solid fa-people-arrows"></i> Multi-Cliente
             </button>
-            <button onclick="abrirModalEditarCliente(${c.id})" class="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs" title="Editar informações cadastrais do cliente">
+            <button onclick="abrirModalEditarCliente(${c.id})" class="bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition shadow-2xs" title="Editar informaÃ§Ãµes cadastrais do cliente">
               <i class="fa-solid fa-pen-to-square"></i> Editar Cliente
             </button>
             <button onclick="abrirModalNovoPosto(${c.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition">
@@ -8064,7 +8064,7 @@ async function exportarListaClientesExcel() {
       return;
     }
 
-    // Ordenar de A a Z por Nome Fantasia / Razão Social
+    // Ordenar de A a Z por Nome Fantasia / RazÃ£o Social
     lista.sort((a, b) => {
       const nA = (a.nome_fantasia || a.nome_razao_social || '').toLowerCase();
       const nB = (b.nome_fantasia || b.nome_razao_social || '').toLowerCase();
@@ -8074,7 +8074,7 @@ async function exportarListaClientesExcel() {
     const dadosExport = lista.map(c => ({
       'ID do Cliente': c.id,
       'Nome Fantasia': c.nome_fantasia || '',
-      'Razão Social': c.nome_razao_social || '',
+      'RazÃ£o Social': c.nome_razao_social || '',
       'CNPJ': c.cnpj || '',
       'Contato': c.contato_responsavel || '',
       'Telefone': c.telefone || '',
@@ -8090,7 +8090,7 @@ async function exportarListaClientesExcel() {
       ws['!cols'] = [
         { wch: 15 }, // ID do Cliente
         { wch: 35 }, // Nome Fantasia
-        { wch: 40 }, // Razão Social
+        { wch: 40 }, // RazÃ£o Social
         { wch: 22 }, // CNPJ
         { wch: 25 }, // Contato
         { wch: 20 }, // Telefone
@@ -8105,7 +8105,7 @@ async function exportarListaClientesExcel() {
       const dataHoje = new Date().toISOString().split('T')[0];
       XLSX.writeFile(wb, `Clientes_SISFAC_${dataHoje}.xlsx`);
     } else {
-      alert('Biblioteca XLSX não está carregada no momento.');
+      alert('Biblioteca XLSX nÃ£o estÃ¡ carregada no momento.');
     }
   } catch (err) {
     console.error('Erro ao exportar clientes:', err);
@@ -8119,7 +8119,7 @@ function abrirModalNovoCliente() {
   if (modal) modal.classList.remove('hidden');
   document.querySelectorAll('.select-posto-cargo').forEach(sel => {
     if (sel.options.length <= 1) {
-      sel.innerHTML = '<option value="">Selecione a Função / Cargo...</option>';
+      sel.innerHTML = '<option value="">Selecione a FunÃ§Ã£o / Cargo...</option>';
       state.cargos.forEach(c => {
         sel.innerHTML += `<option value="${c.id}">${c.nome_cargo}</option>`;
       });
@@ -8133,7 +8133,7 @@ function adicionarLinhaPostoNovoCliente() {
   const div = document.createElement('div');
   div.className = 'linha-posto-novo p-3 bg-violet-50/50 border border-violet-200 rounded-lg space-y-2 relative';
   
-  let optionsCargos = '<option value="">Selecione a Função / Cargo...</option>';
+  let optionsCargos = '<option value="">Selecione a FunÃ§Ã£o / Cargo...</option>';
   state.cargos.forEach(c => {
     optionsCargos += `<option value="${c.id}">${c.nome_cargo}</option>`;
   });
@@ -8145,10 +8145,10 @@ function adicionarLinhaPostoNovoCliente() {
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
         <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Nome do Posto / Local:</label>
-        <input type="text" class="input-posto-nome w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs" placeholder="Ex: Recepção Central ou Portaria B">
+        <input type="text" class="input-posto-nome w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs" placeholder="Ex: RecepÃ§Ã£o Central ou Portaria B">
       </div>
       <div>
-        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Função / Cargo:</label>
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">FunÃ§Ã£o / Cargo:</label>
         <select class="select-posto-cargo w-full border border-slate-300 rounded px-2 py-1.5 text-xs">
           ${optionsCargos}
         </select>
@@ -8168,8 +8168,8 @@ function adicionarLinhaPostoNovoCliente() {
         </select>
       </div>
       <div>
-        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Turno / Horário:</label>
-        <input type="text" class="input-posto-turno w-full border border-slate-300 rounded px-2 py-1 text-xs" placeholder="Ex: 08h às 17h">
+        <label class="block text-[11px] font-semibold text-slate-700 mb-0.5">Turno / HorÃ¡rio:</label>
+        <input type="text" class="input-posto-turno w-full border border-slate-300 rounded px-2 py-1 text-xs" placeholder="Ex: 08h Ã s 17h">
       </div>
     </div>
   `;
@@ -8231,7 +8231,7 @@ async function salvarNovoCliente(e) {
 
 function abrirModalEditarCliente(id) {
   const cliente = (state.clientesComPostos || []).find(c => c.id === id) || (state.clientes || []).find(c => c.id === id);
-  if (!cliente) return alert('Cliente não encontrado.');
+  if (!cliente) return alert('Cliente nÃ£o encontrado.');
 
   document.getElementById('editCliId').value = cliente.id;
   const tituloEl = document.getElementById('modalEditarClienteTitulo');
@@ -8255,10 +8255,10 @@ function abrirModalEditarCliente(id) {
 async function salvarEdicaoCliente(e) {
   e.preventDefault();
   const id = parseInt(document.getElementById('editCliId').value, 10);
-  if (!id) return alert('ID do cliente inválido.');
+  if (!id) return alert('ID do cliente invÃ¡lido.');
 
   const razao = document.getElementById('editCliRazao').value.trim();
-  if (!razao) return alert('Razão Social é obrigatória.');
+  if (!razao) return alert('RazÃ£o Social Ã© obrigatÃ³ria.');
 
   const payload = {
     nome_razao_social: razao,
@@ -8281,7 +8281,7 @@ async function salvarEdicaoCliente(e) {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalEditarCliente');
-      alert('Informações do cliente atualizadas com sucesso!');
+      alert('InformaÃ§Ãµes do cliente atualizadas com sucesso!');
       await carregarDadosBase();
       if (typeof carregarClientesComPostos === 'function') {
         await carregarClientesComPostos();
@@ -8290,7 +8290,7 @@ async function salvarEdicaoCliente(e) {
         await carregarGestaoPredios();
       }
     } else {
-      alert('Erro ao atualizar cliente: ' + (json.message || 'Falha na requisição.'));
+      alert('Erro ao atualizar cliente: ' + (json.message || 'Falha na requisiÃ§Ã£o.'));
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -8298,7 +8298,7 @@ async function salvarEdicaoCliente(e) {
 }
 
 // -------------------------------------------------------------
-// 10. FALTAS (COM EXCLUSÁO MÚLTIPLA)
+// 10. FALTAS (COM EXCLUSÃO MÃšLTIPLA)
 // -------------------------------------------------------------
 async function carregarFaltas() {
   const mes = document.getElementById('filtroFaltasMes')?.value || state.mesAtual;
@@ -8314,7 +8314,7 @@ async function carregarFaltas() {
   if (origem) url += `&origem=${origem}`;
 
   const tbody = document.getElementById('tabelaFaltasBody');
-  tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando ocorrências...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="10" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando ocorrÃªncias...</td></tr>`;
 
   try {
     const res = await fetch(url);
@@ -8366,7 +8366,7 @@ function renderizarTabelaFaltasFiltradas(faltas) {
   if (!tbody) return;
 
   if (faltas.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrência encontrada para esta busca.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrÃªncia encontrada para esta busca.</td></tr>`;
     return;
   }
 
@@ -8401,7 +8401,7 @@ function renderizarTabelaFaltasFiltradas(faltas) {
         </div>
       `;
     } else {
-      badgeOrigem = `<span class="text-xs text-slate-400 font-medium">💻 Sistema Web</span>`;
+      badgeOrigem = `<span class="text-xs text-slate-400 font-medium">ðŸ’» Sistema Web</span>`;
     }
 
     let badgeFat = f.houve_cobertura === 0
@@ -8466,7 +8466,7 @@ function atualizarBarraAcoesFaltas() {
 
 async function excluirFaltasSelecionadas() {
   const ids = Array.from(state.faltasSelecionadas);
-  if (!confirm(`Deseja excluir as ${ids.length} ocorrências de falta selecionadas?`)) return;
+  if (!confirm(`Deseja excluir as ${ids.length} ocorrÃªncias de falta selecionadas?`)) return;
 
   try {
     const res = await fetch('/api/batch-delete', {
@@ -8476,7 +8476,7 @@ async function excluirFaltasSelecionadas() {
     });
     const json = await res.json();
     if (json.success) {
-      alert(`${json.count} ocorrências excluídas com sucesso!`);
+      alert(`${json.count} ocorrÃªncias excluÃ­das com sucesso!`);
       carregarFaltas();
     }
   } catch (err) {
@@ -8485,7 +8485,7 @@ async function excluirFaltasSelecionadas() {
 }
 
 // -------------------------------------------------------------
-// GESTÁO DOS 5 SUPERVISORES DE CAMPO & APONTAMENTOS MOBILE
+// GESTÃO DOS 5 SUPERVISORES DE CAMPO & APONTAMENTOS MOBILE
 // -------------------------------------------------------------
 async function popularSelectSupervisoresFiltro() {
   const sel = document.getElementById('filtroFaltasSupervisor');
@@ -8578,7 +8578,7 @@ async function carregarSupervisoresModal() {
               </div>
             </div>
             
-            <!-- Botões de Ação Administrativa -->
+            <!-- BotÃµes de AÃ§Ã£o Administrativa -->
             <div class="flex items-center gap-1">
               <button type="button" onclick="editarSupervisorAdmin(${s.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded transition cursor-pointer" title="Editar supervisor">
                 <i class="fa-solid fa-pen-to-square"></i>
@@ -8602,12 +8602,12 @@ async function carregarSupervisoresModal() {
                 ${s.pin ? `<span class="text-[10px] text-slate-400 ml-1">(PIN: ${s.pin})</span>` : ''}
               </div>
             </div>
-            <button type="button" onclick="copiarCredenciaisSupervisor('${escapeJsString(s.nome)}', '${s.login}', '${s.senha || '123'}')" class="text-[11px] text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 px-2 py-1 rounded font-bold transition flex items-center gap-1 cursor-pointer" title="Copiar Usuário e Senha">
+            <button type="button" onclick="copiarCredenciaisSupervisor('${escapeJsString(s.nome)}', '${s.login}', '${s.senha || '123'}')" class="text-[11px] text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 px-2 py-1 rounded font-bold transition flex items-center gap-1 cursor-pointer" title="Copiar UsuÃ¡rio e Senha">
               <i class="fa-regular fa-copy"></i> Copiar Dados
             </button>
           </div>
 
-          <!-- Mini Indicadores do Mês -->
+          <!-- Mini Indicadores do MÃªs -->
           <div class="grid grid-cols-3 gap-1.5 text-center">
             <div class="bg-slate-50 rounded-lg p-1.5">
               <span class="text-[10px] text-slate-500 font-bold block">Faltas</span>
@@ -8623,7 +8623,7 @@ async function carregarSupervisoresModal() {
             </div>
           </div>
 
-          <!-- Ações de Envio e Teste -->
+          <!-- AÃ§Ãµes de Envio e Teste -->
           <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-1.5 flex-wrap">
               <button type="button" onclick="copiarLinkSupervisor('${s.token_acesso}', '${linkOficial}')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition cursor-pointer" title="Copiar Link de Acesso Oficial (Internet 4G / Wi-Fi)">
@@ -8636,7 +8636,7 @@ async function carregarSupervisoresModal() {
                 <i class="fa-solid fa-wifi text-amber-600"></i> Wi-Fi
               </button>
             </div>
-            <a href="${linkOficial}" target="_blank" class="text-xs text-indigo-700 hover:text-indigo-900 font-bold p-1.5" title="Testar visão deste supervisor">
+            <a href="${linkOficial}" target="_blank" class="text-xs text-indigo-700 hover:text-indigo-900 font-bold p-1.5" title="Testar visÃ£o deste supervisor">
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </a>
           </div>
@@ -8693,7 +8693,7 @@ async function salvarSupervisorFormInline(e) {
   const ativo = document.getElementById('formSupAtivo').checked;
 
   if (!nome || !login || !senha) {
-    alert('Nome, Login e Senha são obrigatórios.');
+    alert('Nome, Login e Senha sÃ£o obrigatÃ³rios.');
     return;
   }
 
@@ -8740,7 +8740,7 @@ async function excluirSupervisorAdmin(id, nome) {
     if (json.success) {
       await carregarSupervisoresModal();
       await popularSelectSupervisoresFiltro();
-      alert(json.message || 'Supervisor excluído/inativado com sucesso!');
+      alert(json.message || 'Supervisor excluÃ­do/inativado com sucesso!');
     } else {
       alert('Erro: ' + json.error);
     }
@@ -8752,7 +8752,7 @@ async function excluirSupervisorAdmin(id, nome) {
 function copiarLinkSupervisorGlobal() {
   const link = state.urlPortalGlobalSupervisor || (document.getElementById('inputLinkSupervisorModalGlobal')?.value);
   if (!link || link.includes('Carregando')) {
-    return alert('O link global ainda está sendo gerado pelo servidor. Aguarde alguns instantes.');
+    return alert('O link global ainda estÃ¡ sendo gerado pelo servidor. Aguarde alguns instantes.');
   }
   navigator.clipboard.writeText(link).then(() => {
     alert(`Link Global de acesso (Internet 4G / Celular) copiado com sucesso!\n\n${link}\n\nEnvie este link para qualquer supervisor acessar de qualquer lugar.`);
@@ -8764,7 +8764,7 @@ function copiarLinkSupervisorGlobal() {
 function copiarLinkRedeGeral() {
   const link = urlRedeGeralSupervisor || (document.getElementById('inputLinkSupervisorModalLocal')?.value) || `${window.location.origin}/supervisor`;
   navigator.clipboard.writeText(link).then(() => {
-    alert(`Link de acesso na rede Wi-Fi copiado com sucesso!\n\n${link}\n\nNota: Este link só funciona em dispositivos conectados exatamente na mesma rede Wi-Fi do escritório.`);
+    alert(`Link de acesso na rede Wi-Fi copiado com sucesso!\n\n${link}\n\nNota: Este link sÃ³ funciona em dispositivos conectados exatamente na mesma rede Wi-Fi do escritÃ³rio.`);
   }).catch(() => {
     prompt('Copie o link abaixo para abrir no celular:', link);
   });
@@ -8782,7 +8782,7 @@ function copiarLinkSupervisor(token, linkOficial) {
 function copiarLinkSupervisorLocal(linkRede) {
   const link = linkRede || `${window.location.origin}/supervisor.html`;
   navigator.clipboard.writeText(link).then(() => {
-    alert(`Link da rede Wi-Fi copiado com sucesso!\n\n${link}\n\n(Válido apenas quando o supervisor estiver conectado no Wi-Fi da sede)`);
+    alert(`Link da rede Wi-Fi copiado com sucesso!\n\n${link}\n\n(VÃ¡lido apenas quando o supervisor estiver conectado no Wi-Fi da sede)`);
   }).catch(() => {
     prompt('Copie o link Wi-Fi abaixo:', link);
   });
@@ -8790,7 +8790,7 @@ function copiarLinkSupervisorLocal(linkRede) {
 
 function copiarCredenciaisSupervisor(nome, login, senha) {
   const linkPortal = state.urlPortalGlobalSupervisor || urlRedeGeralSupervisor || (window.location.origin + '/supervisor');
-  const texto = `*Acesso Supervisor SISFAC*\nNome: ${nome}\nUsuário: ${login}\nSenha: ${senha}\nPortal de Acesso: ${linkPortal}`;
+  const texto = `*Acesso Supervisor SISFAC*\nNome: ${nome}\nUsuÃ¡rio: ${login}\nSenha: ${senha}\nPortal de Acesso: ${linkPortal}`;
   navigator.clipboard.writeText(texto).then(() => {
     alert(`Credenciais copiadas com sucesso!\n\n${texto}`);
   }).catch(() => {
@@ -8800,7 +8800,7 @@ function copiarCredenciaisSupervisor(nome, login, senha) {
 
 function enviarLinkSupervisorWhatsApp(nome, login, senha, tel, token, linkOficial) {
   const link = linkOficial || state.urlPortalGlobalSupervisor || `${window.location.origin}/supervisor.html?token=${token}`;
-  const texto = encodeURIComponent(`Olá ${nome}! Segue seu link de acesso oficial ao Portal do Supervisor do SISFAC:\n\n👤 *Usuário:* ${login}\n🔑 *Senha:* ${senha}\n\n📱 *Link de Acesso (Celular 4G/Wi-Fi):*\n${link}\n\nBasta tocar no link acima pelo seu celular para registrar as faltas e coberturas em tempo real.`);
+  const texto = encodeURIComponent(`OlÃ¡ ${nome}! Segue seu link de acesso oficial ao Portal do Supervisor do SISFAC:\n\nðŸ‘¤ *UsuÃ¡rio:* ${login}\nðŸ”‘ *Senha:* ${senha}\n\nðŸ“± *Link de Acesso (Celular 4G/Wi-Fi):*\n${link}\n\nBasta tocar no link acima pelo seu celular para registrar as faltas e coberturas em tempo real.`);
   const telLimpo = (tel || '').replace(/\D/g, '');
   const urlWa = telLimpo.length >= 10 ? `https://api.whatsapp.com/send?phone=55${telLimpo}&text=${texto}` : `https://api.whatsapp.com/send?text=${texto}`;
   window.open(urlWa, '_blank');
@@ -8833,7 +8833,7 @@ async function exportarFaltasExcel() {
     const faltas = await res.json();
 
     if (faltas.length === 0) {
-      alert('Nenhuma ocorrência encontrada para exportar.');
+      alert('Nenhuma ocorrÃªncia encontrada para exportar.');
       return;
     }
 
@@ -8843,21 +8843,21 @@ async function exportarFaltasExcel() {
       'Cliente': f.cliente_nome || '',
       'Posto / Unidade': f.nome_unidade || '',
       'Colaborador Ausente': f.colaborador_nome || '',
-      'Cargo / Função': f.nome_cargo || '',
+      'Cargo / FunÃ§Ã£o': f.nome_cargo || '',
       'Turno da Escala': f.turno || '',
       'Motivo da Falta': f.motivo_falta || '',
       'Dias Afastamento': f.dias_afastamento || 1,
       'CID Atestado': f.cid_atestado || '',
-      'Houve Cobertura?': f.houve_cobertura === 1 ? 'SIM' : 'NÁO',
+      'Houve Cobertura?': f.houve_cobertura === 1 ? 'SIM' : 'NÃO',
       'Tipo de Cobertura': f.houve_cobertura === 1 ? ((f.tipo_cobertura === 'freelancer' || f.tipo_cobertura === 'efetivo_dobra') ? 'Freelancer' : 'Efetivo / Reserva') : 'Posto Descoberto',
-      'Quem Cobriu': f.cobertor_efetivo_nome || f.freelancer_nome || (f.houve_cobertura === 1 ? 'Sim' : 'Ninguém'),
+      'Quem Cobriu': f.cobertor_efetivo_nome || f.freelancer_nome || (f.houve_cobertura === 1 ? 'Sim' : 'NinguÃ©m'),
       'Custo Freelance (R$)': f.valor_pago_freelance || 0,
-      'Motivo Não Cobertura': f.motivo_nao_cobertura || '',
+      'Motivo NÃ£o Cobertura': f.motivo_nao_cobertura || '',
       'Apontado Por (Supervisor)': f.supervisor_exibicao || f.supervisor_nome || 'Sistema Web',
       'Origem do Apontamento': f.origem_lancamento === 'mobile_supervisor' ? 'Celular (Mobile)' : 'Sistema Web',
       'Status Faturamento': f.status_faturamento || 'N/A',
       'Valor Glosa Sugerido (R$)': f.valor_desconto_sugerido || 0,
-      'Observações': f.observacoes_operacao || ''
+      'ObservaÃ§Ãµes': f.observacoes_operacao || ''
     }));
 
     if (typeof XLSX !== 'undefined') {
@@ -8902,23 +8902,23 @@ async function abrirModalNovaFalta() {
 async function lancarFaltaDiretoColaborador(colabId) {
   const colab = (state.colaboradores || []).find(c => c.id == colabId);
   if (!colab) {
-    alert('Colaborador não encontrado.');
+    alert('Colaborador nÃ£o encontrado.');
     return;
   }
 
   // 1. Abre o modal e inicializa dados
   await abrirModalNovaFalta();
 
-  // 2. Data da ocorrência (hoje)
+  // 2. Data da ocorrÃªncia (hoje)
   const campoData = document.getElementById('faltaData');
   if (campoData && !campoData.value) {
     campoData.value = new Date().toISOString().split('T')[0];
   }
 
-  // 3. Determina o cliente prioritário
+  // 3. Determina o cliente prioritÃ¡rio
   let clienteIdParaSelecionar = colab.cliente_id;
 
-  // Se o colaborador for Multi-Cliente ou estiver na Reserva Técnica (sem cliente_id direto)
+  // Se o colaborador for Multi-Cliente ou estiver na Reserva TÃ©cnica (sem cliente_id direto)
   if (!clienteIdParaSelecionar) {
     if (state.roteirosMultiCliente && state.roteirosMultiCliente.length > 0) {
       const rot = state.roteirosMultiCliente.find(r => r.colaborador_id === colab.id);
@@ -8948,7 +8948,7 @@ async function lancarFaltaDiretoColaborador(colabId) {
     if (!optExiste) {
       const opt = document.createElement('option');
       opt.value = colab.id;
-      const tagMulti = colab.escala === 'Multi-Cliente' || colab.is_multi_cliente ? ' ⭐ [Multi-Cliente]' : '';
+      const tagMulti = colab.escala === 'Multi-Cliente' || colab.is_multi_cliente ? ' â­ [Multi-Cliente]' : '';
       opt.textContent = `${colab.nome} (${colab.nome_cargo || 'Geral'})${tagMulti} - SELECIONADO`;
       selColab.insertBefore(opt, selColab.firstChild);
     }
@@ -8960,7 +8960,7 @@ async function lancarFaltaDiretoColaborador(colabId) {
   if (selMotivo) selMotivo.focus();
 
   if (typeof mostrarNotificacaoSucesso === 'function') {
-    mostrarNotificacaoSucesso(`Lançando falta para: ${colab.nome}`);
+    mostrarNotificacaoSucesso(`LanÃ§ando falta para: ${colab.nome}`);
   }
 }
 
@@ -9058,8 +9058,8 @@ function renderizarOpcoesColaboradorFalta(colabs, valorSelecionado = null) {
   const multis = colabs.filter(c => c.tipo_alocacao === 'Multi-Cliente');
 
   if (multis.length > 0) {
-    selColab.innerHTML += `<optgroup label="⭐ Colaboradores Multi-Cliente (Jornada Compartilhada)">` +
-      multis.map(c => `<option value="${c.id}">⭐ ${escapeHtml(c.nome)} (${escapeHtml(c.nome_cargo)}) - [${escapeHtml(c.info_extra)}]</option>`).join('') +
+    selColab.innerHTML += `<optgroup label="â­ Colaboradores Multi-Cliente (Jornada Compartilhada)">` +
+      multis.map(c => `<option value="${c.id}">â­ ${escapeHtml(c.nome)} (${escapeHtml(c.nome_cargo)}) - [${escapeHtml(c.info_extra)}]</option>`).join('') +
       `</optgroup>`;
   }
 
@@ -9132,7 +9132,7 @@ async function aoSelecionarClienteFalta() {
     return;
   }
 
-  // Se os roteiros multi-cliente ainda não foram carregados, carrega
+  // Se os roteiros multi-cliente ainda nÃ£o foram carregados, carrega
   if (!state.roteirosMultiCliente || state.roteirosMultiCliente.length === 0) {
     try {
       await carregarRoteirosMultiCliente();
@@ -9170,7 +9170,7 @@ function aoMudarMotivoFalta() {
   const motivo = document.getElementById('faltaMotivo').value;
   const divDias = document.getElementById('divAtestadoDias');
   const divCid = document.getElementById('divAtestadoCid');
-  if (motivo === 'Atestado Médico') {
+  if (motivo === 'Atestado MÃ©dico') {
     divDias.classList.remove('hidden');
     divCid.classList.remove('hidden');
   } else {
@@ -9240,7 +9240,7 @@ async function salvarNovaFalta(e) {
       fecharModal('modalNovaFalta');
       carregarFaltas();
       if (!houveCobertura) {
-        alert('Atenção: Posto registrado como DESCOBERTO!\nEncaminhado automaticamente ao FATURAMENTO para desconto contratual no cliente.');
+        alert('AtenÃ§Ã£o: Posto registrado como DESCOBERTO!\nEncaminhado automaticamente ao FATURAMENTO para desconto contratual no cliente.');
       } else {
         alert('Apontamento de falta e cobertura registrado com sucesso!');
       }
@@ -9251,7 +9251,7 @@ async function salvarNovaFalta(e) {
 }
 
 // -------------------------------------------------------------
-// 11. DEMAIS FUNÇÕES AUXILIARES E MODAIS
+// 11. DEMAIS FUNÃ‡Ã•ES AUXILIARES E MODAIS
 // -------------------------------------------------------------
 async function carregarFaturamento() {
   state.fatSelecionados.clear();
@@ -9327,7 +9327,7 @@ function atualizarBarraAcoesFaturamento() {
 async function excluirFaturamentoSelecionados() {
   const ids = Array.from(state.fatSelecionados);
   if (ids.length === 0) return;
-  if (!confirm(`Deseja realmente excluir as ${ids.length} glosas/faltas faturáveis selecionadas?`)) return;
+  if (!confirm(`Deseja realmente excluir as ${ids.length} glosas/faltas faturÃ¡veis selecionadas?`)) return;
 
   try {
     const res = await fetch('/api/batch-delete', {
@@ -9337,7 +9337,7 @@ async function excluirFaturamentoSelecionados() {
     });
     const json = await res.json();
     if (json.success) {
-      alert(`${json.count} registros de faturamento/glosa excluídos com sucesso!`);
+      alert(`${json.count} registros de faturamento/glosa excluÃ­dos com sucesso!`);
       carregarFaturamento();
     } else {
       alert('Erro ao excluir: ' + json.message);
@@ -9387,7 +9387,7 @@ async function exportarFaturamentoExcel() {
     const res = await fetch('/api/faturamento');
     const itens = await res.json();
     if (!itens || itens.length === 0) {
-      alert('Não há dados de faturamento/glosas para exportar.');
+      alert('NÃ£o hÃ¡ dados de faturamento/glosas para exportar.');
       return;
     }
     const rows = itens.map(item => ({
@@ -9397,7 +9397,7 @@ async function exportarFaturamentoExcel() {
       'Colaborador Faltante': item.colaborador_faltante_nome || '',
       'Valor Desconto Sugerido (R$)': parseFloat(item.valor_desconto_sugerido) || 0,
       'Status': item.status_faturamento,
-      'Nº Fatura Desconto': item.numero_fatura_desconto || ''
+      'NÂº Fatura Desconto': item.numero_fatura_desconto || ''
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -9414,9 +9414,9 @@ function exportarDiretoriaExcel() {
     const rows = [
       { 'Indicador': 'Total de Colaboradores Ativos', 'Valor': dados.totalColaboradores || 0 },
       { 'Indicador': 'Vagas em Aberto', 'Valor': dados.totalVagasAbertas || 0 },
-      { 'Indicador': 'Faltas no Mês', 'Valor': dados.totalFaltasMes || 0 },
+      { 'Indicador': 'Faltas no MÃªs', 'Valor': dados.totalFaltasMes || 0 },
       { 'Indicador': 'Faturamento Previsto', 'Valor': dados.faturamentoEstimado || 0 },
-      { 'Indicador': 'Contas a Pagar no Mês', 'Valor': dados.contasPagarMes || 0 }
+      { 'Indicador': 'Contas a Pagar no MÃªs', 'Valor': dados.contasPagarMes || 0 }
     ];
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -9429,7 +9429,7 @@ function exportarDiretoriaExcel() {
 
 async function carregarFechamentoFreelancers() {
   const container = document.getElementById('cardsFreelancersContainer');
-  container.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando diárias...</div>`;
+  container.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Carregando diÃ¡rias...</div>`;
 
   state.freeSelecionados.clear();
   atualizarBarraAcoesFree();
@@ -9499,7 +9499,7 @@ async function excluirFreelancersSelecionados() {
 }
 
 async function pagarFreelancerMes(freelancerId) {
-  if (!confirm('Confirmar pagamento das diárias deste freelancer?')) return;
+  if (!confirm('Confirmar pagamento das diÃ¡rias deste freelancer?')) return;
   try {
     await fetch('/api/freelancers/pagar', {
       method: 'POST',
@@ -9548,7 +9548,7 @@ async function salvarNovoFreelancer(e) {
 }
 
 // =========================================================================
-// GESTÁO DE FREELANCERS, DOSSIÊ COMPLETO E AUDITORIA DE EXCLUÍDOS
+// GESTÃO DE FREELANCERS, DOSSIÃŠ COMPLETO E AUDITORIA DE EXCLUÃDOS
 // =========================================================================
 
 // 1. EDITAR CADASTRO DO FREELANCER
@@ -9563,14 +9563,14 @@ async function abrirModalEditarFreelancer(id) {
     } catch(e) {}
   }
   if (!free) {
-    alert('Freelancer não encontrado.');
+    alert('Freelancer nÃ£o encontrado.');
     return;
   }
 
   // Preencher cargos
   const selCargo = document.getElementById('editFreeCargoId');
   if (selCargo) {
-    selCargo.innerHTML = '<option value="">Selecione a Função...</option>';
+    selCargo.innerHTML = '<option value="">Selecione a FunÃ§Ã£o...</option>';
     (state.cargos || []).forEach(cg => {
       selCargo.innerHTML += `<option value="${cg.id}">${cg.nome_cargo}</option>`;
     });
@@ -9630,11 +9630,11 @@ async function salvarEdicaoFreelancer(e) {
       alert('Aviso: ' + (json.message || json.error));
     }
   } catch(err) {
-    alert('Erro ao salvar alterações: ' + err.message);
+    alert('Erro ao salvar alteraÃ§Ãµes: ' + err.message);
   }
 }
 
-// 2. DOSSIÊ COMPLETO DO FREELANCER
+// 2. DOSSIÃŠ COMPLETO DO FREELANCER
 async function abrirDossieFreelancer(freelancerId) {
   state.dossieFreelancerAtualId = freelancerId;
   const modal = document.getElementById('modalDossieFreelancer');
@@ -9652,8 +9652,8 @@ async function carregarDossieFreelancer(freelancerId) {
   const corpoServicos = document.getElementById('dossieTabelaServicosCorpo');
   const corpoExcluidos = document.getElementById('dossieTabelaExcluidosCorpo');
 
-  if (corpoServicos) corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando dossiê completo...</td></tr>`;
-  if (corpoExcluidos) corpoExcluidos.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando registros excluídos...</td></tr>`;
+  if (corpoServicos) corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando dossiÃª completo...</td></tr>`;
+  if (corpoExcluidos) corpoExcluidos.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando registros excluÃ­dos...</td></tr>`;
 
   try {
     const res = await fetch(`/api/freelancers/${freelancerId}/dossie`);
@@ -9671,11 +9671,11 @@ async function carregarDossieFreelancer(freelancerId) {
 
     // Header info
     document.getElementById('dossieFreeNome').textContent = f.nome;
-    document.getElementById('dossieFreeCargoBadge').textContent = f.cargo_preferencial_nome || 'Função Geral';
+    document.getElementById('dossieFreeCargoBadge').textContent = f.cargo_preferencial_nome || 'FunÃ§Ã£o Geral';
     
-    let contatosTxt = `PIX (${f.tipo_chave_pix || 'Chave'}): ${f.chave_pix || 'Não inf.'}`;
-    if (f.telefone) contatosTxt += ` • Tel: ${f.telefone}`;
-    if (f.banco) contatosTxt += ` • Banco: ${f.banco}`;
+    let contatosTxt = `PIX (${f.tipo_chave_pix || 'Chave'}): ${f.chave_pix || 'NÃ£o inf.'}`;
+    if (f.telefone) contatosTxt += ` â€¢ Tel: ${f.telefone}`;
+    if (f.banco) contatosTxt += ` â€¢ Banco: ${f.banco}`;
     document.getElementById('dossieFreeContatos').textContent = contatosTxt;
 
     // KPIs
@@ -9685,17 +9685,17 @@ async function carregarDossieFreelancer(freelancerId) {
     document.getElementById('dossieKpiDiariaPadrao').textContent = formatarMoeda(f.valor_diaria_padrao || 140);
 
     const badgeServicos = document.getElementById('dossieTotalServicosBadge');
-    if (badgeServicos) badgeServicos.textContent = `${servicos.length} serviço(s)`;
+    if (badgeServicos) badgeServicos.textContent = `${servicos.length} serviÃ§o(s)`;
     const badgeExcluidos = document.getElementById('dossieTotalExcluidosBadge');
-    if (badgeExcluidos) badgeExcluidos.textContent = `${excluidos.length} excluído(s)`;
+    if (badgeExcluidos) badgeExcluidos.textContent = `${excluidos.length} excluÃ­do(s)`;
 
-    // Renderizar tabela de serviços ativos
+    // Renderizar tabela de serviÃ§os ativos
     if (servicos.length === 0) {
-      corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Nenhum serviço prestado ativo registrado para este freelancer.</td></tr>`;
+      corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">Nenhum serviÃ§o prestado ativo registrado para este freelancer.</td></tr>`;
     } else {
       corpoServicos.innerHTML = servicos.map(s => {
         const isPago = s.status_pagamento_freelance === 'Pago';
-        const origemBadge = s.origem_lancamento === 'mobile_supervisor' ? '📱 Mobile' : '💻 Web';
+        const origemBadge = s.origem_lancamento === 'mobile_supervisor' ? 'ðŸ“± Mobile' : 'ðŸ’» Web';
         const dataHoraCriacao = s.created_at ? new Date(s.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Data indisp.';
 
         let atualizadoInfo = '';
@@ -9724,7 +9724,7 @@ async function carregarDossieFreelancer(freelancerId) {
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
               <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPago ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}">
-                ${isPago ? '✅ Pago' : '⏳ Pendente'}
+                ${isPago ? 'âœ… Pago' : 'â³ Pendente'}
               </span>
               ${s.data_pagamento_freelance ? `<span class="text-[10px] text-slate-400 block">${formatarData(s.data_pagamento_freelance)}</span>` : ''}
             </td>
@@ -9734,16 +9734,16 @@ async function carregarDossieFreelancer(freelancerId) {
                 <span>${s.quem_lancou || 'Sistema'}</span>
               </div>
               <div class="text-[10px] text-slate-500 mt-0.5">
-                ${origemBadge} • ${dataHoraCriacao}
+                ${origemBadge} â€¢ ${dataHoraCriacao}
               </div>
               ${atualizadoInfo}
             </td>
             <td class="px-4 py-3 text-center whitespace-nowrap">
               <div class="inline-flex items-center gap-1.5">
-                <button type="button" onclick="abrirModalEditarDiaria(${s.id}, ${freelancerId})" class="p-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold shadow-2xs transition" title="Editar este plantão">
+                <button type="button" onclick="abrirModalEditarDiaria(${s.id}, ${freelancerId})" class="p-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-semibold shadow-2xs transition" title="Editar este plantÃ£o">
                   <i class="fa-solid fa-pen"></i>
                 </button>
-                <button type="button" onclick="excluirDiariaSoft(${s.id}, ${freelancerId})" class="p-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold shadow-2xs transition" title="Excluir este plantão (mover para lixeira)">
+                <button type="button" onclick="excluirDiariaSoft(${s.id}, ${freelancerId})" class="p-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-semibold shadow-2xs transition" title="Excluir este plantÃ£o (mover para lixeira)">
                   <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
@@ -9753,13 +9753,13 @@ async function carregarDossieFreelancer(freelancerId) {
       }).join('');
     }
 
-    // Renderizar tabela de diárias excluídas
+    // Renderizar tabela de diÃ¡rias excluÃ­das
     if (excluidos.length === 0) {
-      corpoExcluidos.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400">Nenhum registro excluído para este freelancer.</td></tr>`;
+      corpoExcluidos.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-slate-400">Nenhum registro excluÃ­do para este freelancer.</td></tr>`;
     } else {
       const ehAdminMaster = isUsuarioAdminMaster();
       corpoExcluidos.innerHTML = excluidos.map(item => {
-        const dataHoraExclusao = item.excluido_em ? new Date(item.excluido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Não informada';
+        const dataHoraExclusao = item.excluido_em ? new Date(item.excluido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'NÃ£o informada';
         return `
           <tr class="hover:bg-rose-50/40 transition border-b border-rose-100 text-slate-700">
             <td class="px-3 py-2 font-bold whitespace-nowrap">${formatarData(item.data_falta)}</td>
@@ -9770,17 +9770,17 @@ async function carregarDossieFreelancer(freelancerId) {
             <td class="px-3 py-2 font-bold text-slate-800">${formatarMoeda(item.valor_pago_freelance || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.quem_lancou || 'Sistema'}</td>
             <td class="px-3 py-2 font-bold text-rose-900 bg-rose-50/70 whitespace-nowrap">
-              <i class="fa-solid fa-user-xmark text-rose-600 mr-1"></i>${item.excluido_por || 'Usuário'}
+              <i class="fa-solid fa-user-xmark text-rose-600 mr-1"></i>${item.excluido_por || 'UsuÃ¡rio'}
             </td>
             <td class="px-3 py-2 text-[11px] font-mono text-rose-800 bg-rose-50/70 whitespace-nowrap">
               ${dataHoraExclusao}
             </td>
             <td class="px-3 py-2 text-[11px] text-slate-600 bg-rose-50/70">
-              <i>${item.motivo_exclusao || 'Excluído'}</i>
+              <i>${item.motivo_exclusao || 'ExcluÃ­do'}</i>
             </td>
             <td class="px-3 py-2 text-center whitespace-nowrap">
               <div class="inline-flex items-center gap-1.5">
-                <button type="button" onclick="restaurarDiaria(${item.id}, ${freelancerId})" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[11px] font-bold shadow-2xs" title="Restaurar este plantão de volta ao dossiê ativo">
+                <button type="button" onclick="restaurarDiaria(${item.id}, ${freelancerId})" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[11px] font-bold shadow-2xs" title="Restaurar este plantÃ£o de volta ao dossiÃª ativo">
                   <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar
                 </button>
                 <button type="button" onclick="purgarDiariaDefinitivo(${item.id}, ${freelancerId})" class="px-2 py-1 ${ehAdminMaster ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} rounded text-[11px] font-bold shadow-2xs" ${!ehAdminMaster ? 'title="Apenas o Admin Master pode excluir definitivamente"' : 'title="Excluir Definitivamente do Banco de Dados"'}>
@@ -9794,12 +9794,12 @@ async function carregarDossieFreelancer(freelancerId) {
     }
 
   } catch(err) {
-    console.error('Erro ao carregar dossiê:', err);
+    console.error('Erro ao carregar dossiÃª:', err);
     if (corpoServicos) corpoServicos.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-rose-500">Erro: ${err.message}</td></tr>`;
   }
 }
 
-// 3. EDITAR DIÁRIA / PLANTÁO ESPECÍFICO (TUDO EDITÁVEL)
+// 3. EDITAR DIÃRIA / PLANTÃO ESPECÃFICO (TUDO EDITÃVEL)
 async function abrirModalEditarDiaria(diariaId, freelancerId = null) {
   state.diariaEdicaoAtualId = diariaId;
   state.dossieFreelancerAtualId = freelancerId || state.dossieFreelancerAtualId;
@@ -9815,7 +9815,7 @@ async function abrirModalEditarDiaria(diariaId, freelancerId = null) {
   } catch(e) {}
 
   if (!diaria) {
-    alert('Não foi possível carregar os detalhes desta diária.');
+    alert('NÃ£o foi possÃ­vel carregar os detalhes desta diÃ¡ria.');
     return;
   }
 
@@ -9907,9 +9907,9 @@ async function salvarEdicaoDiaria(e) {
     if (json.success) {
       fecharModal('modalEditarDiariaFreelancer');
       if (typeof showToast === 'function') {
-        showToast('Diária atualizada com sucesso!', 'success');
+        showToast('DiÃ¡ria atualizada com sucesso!', 'success');
       } else {
-        alert('Diária atualizada com sucesso!');
+        alert('DiÃ¡ria atualizada com sucesso!');
       }
       carregarFechamentoFreelancers();
       if (freeId) carregarDossieFreelancer(freeId);
@@ -9917,16 +9917,16 @@ async function salvarEdicaoDiaria(e) {
       alert('Aviso: ' + (json.message || json.error));
     }
   } catch(err) {
-    alert('Erro ao salvar diária: ' + err.message);
+    alert('Erro ao salvar diÃ¡ria: ' + err.message);
   }
 }
 
-// 4. SOFT DELETE (EXCLUIR DIÁRIA COM AUDITORIA)
+// 4. SOFT DELETE (EXCLUIR DIÃRIA COM AUDITORIA)
 async function excluirDiariaSoft(diariaId, freelancerId = null) {
-  const motivo = prompt('Por qual motivo este plantão está sendo excluído da folha? (Ex: Duplicidade, erro de escala, cancelamento pelo cliente)');
+  const motivo = prompt('Por qual motivo este plantÃ£o estÃ¡ sendo excluÃ­do da folha? (Ex: Duplicidade, erro de escala, cancelamento pelo cliente)');
   if (motivo === null) return; // Cancelado
 
-  const motivoFormatado = (motivo || '').trim() || 'Exclusão solicitada pelo operador';
+  const motivoFormatado = (motivo || '').trim() || 'ExclusÃ£o solicitada pelo operador';
   const usuarioNome = state.usuarioLogado?.nome || 'Administrador';
 
   try {
@@ -9936,9 +9936,9 @@ async function excluirDiariaSoft(diariaId, freelancerId = null) {
     const json = await res.json();
     if (json.success) {
       if (typeof showToast === 'function') {
-        showToast('Plantão movido para a lixeira com sucesso!', 'info');
+        showToast('PlantÃ£o movido para a lixeira com sucesso!', 'info');
       } else {
-        alert('Plantão movido para a lixeira com sucesso!');
+        alert('PlantÃ£o movido para a lixeira com sucesso!');
       }
       carregarFechamentoFreelancers();
       if (freelancerId) carregarDossieFreelancer(freelancerId);
@@ -9951,9 +9951,9 @@ async function excluirDiariaSoft(diariaId, freelancerId = null) {
   }
 }
 
-// 5. RESTAURAR DIÁRIA DA LIXEIRA
+// 5. RESTAURAR DIÃRIA DA LIXEIRA
 async function restaurarDiaria(diariaId, freelancerId = null) {
-  if (!confirm('Deseja restaurar este plantão de volta ao histórico ativo do freelancer?')) return;
+  if (!confirm('Deseja restaurar este plantÃ£o de volta ao histÃ³rico ativo do freelancer?')) return;
 
   try {
     const res = await fetch(`/api/faltas/${diariaId}/restaurar`, {
@@ -9962,9 +9962,9 @@ async function restaurarDiaria(diariaId, freelancerId = null) {
     const json = await res.json();
     if (json.success) {
       if (typeof showToast === 'function') {
-        showToast('Plantão restaurado com sucesso!', 'success');
+        showToast('PlantÃ£o restaurado com sucesso!', 'success');
       } else {
-        alert('Plantão restaurado com sucesso!');
+        alert('PlantÃ£o restaurado com sucesso!');
       }
       carregarFechamentoFreelancers();
       if (freelancerId) carregarDossieFreelancer(freelancerId);
@@ -9982,13 +9982,13 @@ async function purgarDiariaDefinitivo(diariaId, freelancerId = null) {
   const ehAdminMaster = isUsuarioAdminMaster();
 
   if (!ehAdminMaster) {
-    alert('⚠️ Acesso Negado: Apenas o Administrador Master tem autorização para excluir definitivamente registros da lixeira do sistema.');
+    alert('âš ï¸ Acesso Negado: Apenas o Administrador Master tem autorizaÃ§Ã£o para excluir definitivamente registros da lixeira do sistema.');
     return;
   }
 
-  const confirmacao = prompt('ATENÇÁO: Esta ação é irreversível e apagará o registro do banco de dados permanentemente.\n\nDigite EXCLUIR para confirmar a exclusão definitiva:');
+  const confirmacao = prompt('ATENÃ‡ÃO: Esta aÃ§Ã£o Ã© irreversÃ­vel e apagarÃ¡ o registro do banco de dados permanentemente.\n\nDigite EXCLUIR para confirmar a exclusÃ£o definitiva:');
   if (confirmacao !== 'EXCLUIR') {
-    alert('Operação cancelada.');
+    alert('OperaÃ§Ã£o cancelada.');
     return;
   }
 
@@ -10004,9 +10004,9 @@ async function purgarDiariaDefinitivo(diariaId, freelancerId = null) {
     const json = await res.json();
     if (json.success) {
       if (typeof showToast === 'function') {
-        showToast('Registro excluído definitivamente do banco pelo Admin Master.', 'success');
+        showToast('Registro excluÃ­do definitivamente do banco pelo Admin Master.', 'success');
       } else {
-        alert('Registro excluído definitivamente do banco pelo Admin Master.');
+        alert('Registro excluÃ­do definitivamente do banco pelo Admin Master.');
       }
       carregarFechamentoFreelancers();
       if (freelancerId) carregarDossieFreelancer(freelancerId);
@@ -10019,7 +10019,7 @@ async function purgarDiariaDefinitivo(diariaId, freelancerId = null) {
   }
 }
 
-// 7. CARREGAR AUDITORIA / LIXEIRA GLOBAL DE TODAS AS DIÁRIAS EXCLUÍDAS
+// 7. CARREGAR AUDITORIA / LIXEIRA GLOBAL DE TODAS AS DIÃRIAS EXCLUÃDAS
 async function carregarLixeiraGlobalFreelancers() {
   const tbody = document.getElementById('tabelaLixeiraGlobalFreelancersCorpo');
   const badgeQtd = document.getElementById('badgeQtdLixeiraGlobal');
@@ -10030,12 +10030,12 @@ async function carregarLixeiraGlobalFreelancers() {
     const excluidos = await res.json();
 
     if (!Array.isArray(excluidos) || excluidos.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium">Nenhum plantão ou diária na lixeira no momento.</td></tr>`;
-      if (badgeQtd) badgeQtd.textContent = '0 excluído(s)';
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-medium">Nenhum plantÃ£o ou diÃ¡ria na lixeira no momento.</td></tr>`;
+      if (badgeQtd) badgeQtd.textContent = '0 excluÃ­do(s)';
       return;
     }
 
-    if (badgeQtd) badgeQtd.textContent = `${excluidos.length} excluído(s)`;
+    if (badgeQtd) badgeQtd.textContent = `${excluidos.length} excluÃ­do(s)`;
     const ehAdminMaster = isUsuarioAdminMaster();
 
     tbody.innerHTML = excluidos.map(item => {
@@ -10051,17 +10051,17 @@ async function carregarLixeiraGlobalFreelancers() {
           <td class="px-4 py-2.5 font-bold text-slate-800">${formatarMoeda(item.valor_pago_freelance || 0)}</td>
           <td class="px-4 py-2.5 text-slate-600">${item.quem_lancou || 'Sistema'}</td>
           <td class="px-4 py-2.5 font-bold text-rose-900 bg-rose-50/60 whitespace-nowrap">
-            <i class="fa-solid fa-user-xmark text-rose-600 mr-1"></i>${item.excluido_por || 'Usuário'}
+            <i class="fa-solid fa-user-xmark text-rose-600 mr-1"></i>${item.excluido_por || 'UsuÃ¡rio'}
           </td>
           <td class="px-4 py-2.5 text-[11px] font-mono text-rose-800 bg-rose-50/60 whitespace-nowrap">
             ${dataHoraExclusao}
           </td>
           <td class="px-4 py-2.5 text-[11px] text-slate-600 bg-rose-50/60">
-            <i>${item.motivo_exclusao || 'Excluído'}</i>
+            <i>${item.motivo_exclusao || 'ExcluÃ­do'}</i>
           </td>
           <td class="px-4 py-2.5 text-center whitespace-nowrap">
             <div class="inline-flex items-center gap-1.5">
-              <button type="button" onclick="restaurarDiaria(${item.id}, ${item.freelancer_id})" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold shadow-2xs" title="Restaurar de volta à folha ativa">
+              <button type="button" onclick="restaurarDiaria(${item.id}, ${item.freelancer_id})" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold shadow-2xs" title="Restaurar de volta Ã  folha ativa">
                 <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar
               </button>
               <button type="button" onclick="purgarDiariaDefinitivo(${item.id}, ${item.freelancer_id})" class="px-2.5 py-1 ${ehAdminMaster ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'} rounded-lg text-xs font-bold shadow-2xs" ${!ehAdminMaster ? 'title="Apenas o Admin Master pode excluir definitivamente"' : 'title="Excluir Definitivamente do Banco de Dados"'}>
@@ -10088,7 +10088,7 @@ async function carregarPainelDiretoria() {
     tbody.innerHTML = '';
 
     if (dados.relatorioDiretoria.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Nenhuma ocorrência registrada no mês.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Nenhuma ocorrÃªncia registrada no mÃªs.</td></tr>`;
       return;
     }
 
@@ -10111,7 +10111,7 @@ async function carregarPainelDiretoria() {
 }
 
 // =============================================================
-// GESTÁO DE COMPRAS MULTI-PRÉDIOS (~25 PRÉDIOS), LINKS EXTERNOS E CONSOLIDAÇÁO
+// GESTÃO DE COMPRAS MULTI-PRÃ‰DIOS (~25 PRÃ‰DIOS), LINKS EXTERNOS E CONSOLIDAÃ‡ÃO
 // =============================================================
 
 state.comprasMultiPredios = {
@@ -10132,10 +10132,10 @@ async function carregarDadosComprasMultiPredios() {
   const footConsolidado = document.getElementById('tabelaConsolidadoComprasFoot');
 
   if (tbodyPredios) {
-    tbodyPredios.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Carregando prédios e status dos pedidos...</td></tr>`;
+    tbodyPredios.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Carregando prÃ©dios e status dos pedidos...</td></tr>`;
   }
   if (tbodyConsolidado) {
-    tbodyConsolidado.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando produtos de todos os prédios...</td></tr>`;
+    tbodyConsolidado.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Consolidando produtos de todos os prÃ©dios...</td></tr>`;
   }
 
   try {
@@ -10174,17 +10174,17 @@ async function carregarDadosComprasMultiPredios() {
     if (elValorTotal) elValorTotal.textContent = formatarMoeda(kpisC.valor_total_geral || 0);
     if (elContador) elContador.textContent = totalPredios;
 
-    // 2. Renderizar Visão 1: Prédios & Status
+    // 2. Renderizar VisÃ£o 1: PrÃ©dios & Status
     renderizarTabelaPrediosCompras();
 
-    // 3. Renderizar Visão 2: Pedido Consolidado (Totalização por Item)
+    // 3. Renderizar VisÃ£o 2: Pedido Consolidado (TotalizaÃ§Ã£o por Item)
     renderizarTabelaConsolidadoCompras();
 
     // 4. Carregar Matriz Tradicional em background
     carregarMatrizCompras();
 
   } catch (err) {
-    console.error('Erro ao carregar dados de compras multi-prédios:', err);
+    console.error('Erro ao carregar dados de compras multi-prÃ©dios:', err);
     if (tbodyPredios) {
       tbodyPredios.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-rose-500 font-bold">Erro ao carregar: ${err.message}</td></tr>`;
     }
@@ -10207,19 +10207,19 @@ function renderizarTabelaPrediosCompras(filtro = '') {
   }
 
   if (unidades.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans">Nenhum prédio encontrado para este filtro.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans">Nenhum prÃ©dio encontrado para este filtro.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = unidades.map(u => {
-    const isEnviado = u.status_preenchimento === 'Enviado pelo Responsável';
+    const isEnviado = u.status_preenchimento === 'Enviado pelo ResponsÃ¡vel';
     const isManual = u.status_preenchimento === 'Preenchido Manualmente';
     
     let statusHtml = '';
     if (isEnviado) {
-      statusHtml = `<span class="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1"><i class="fa-solid fa-check"></i> Enviado pelo Responsável</span>`;
+      statusHtml = `<span class="bg-emerald-100 text-emerald-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1"><i class="fa-solid fa-check"></i> Enviado pelo ResponsÃ¡vel</span>`;
     } else if (isManual) {
-      statusHtml = `<span class="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-sky-200 inline-flex items-center gap-1"><i class="fa-solid fa-pen"></i> Lançado no SISFAC</span>`;
+      statusHtml = `<span class="bg-sky-100 text-sky-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-sky-200 inline-flex items-center gap-1"><i class="fa-solid fa-pen"></i> LanÃ§ado no SISFAC</span>`;
     } else {
       statusHtml = `<span class="bg-amber-100 text-amber-800 font-semibold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 inline-flex items-center gap-1"><i class="fa-regular fa-clock"></i> Pendente</span>`;
     }
@@ -10228,7 +10228,7 @@ function renderizarTabelaPrediosCompras(filtro = '') {
       ? new Date(u.data_envio).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) 
       : '<span class="text-slate-400 font-normal">-</span>';
 
-    const respExibicao = u.responsavel_nome || u.responsavel_local || '<span class="text-slate-400 italic">Não informado</span>';
+    const respExibicao = u.responsavel_nome || u.responsavel_local || '<span class="text-slate-400 italic">NÃ£o informado</span>';
     const telExibicao = u.responsavel_telefone || u.telefone_local || '';
 
     return `
@@ -10249,10 +10249,10 @@ function renderizarTabelaPrediosCompras(filtro = '') {
         <td class="py-2.5 px-3 text-right font-mono font-bold ${u.valor_total > 0 ? 'text-teal-700' : 'text-slate-400'}">${formatarMoeda(u.valor_total)}</td>
         <td class="py-2.5 px-3 text-center">
           <div class="flex items-center justify-center gap-1">
-            <button type="button" onclick="abrirModalEdicaoPredioCompras(${u.unidade_id})" title="Lançar ou Ajustar Pedido deste Prédio" class="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
+            <button type="button" onclick="abrirModalEdicaoPredioCompras(${u.unidade_id})" title="LanÃ§ar ou Ajustar Pedido deste PrÃ©dio" class="bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 font-bold px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
               <i class="fa-solid fa-pen-to-square"></i> Editar
             </button>
-            <button type="button" onclick="copiarLinkPredio('${u.token_acesso}', ${u.unidade_id})" title="Copiar Link Direto para o Responsável" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
+            <button type="button" onclick="copiarLinkPredio('${u.token_acesso}', ${u.unidade_id})" title="Copiar Link Direto para o ResponsÃ¡vel" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
               <i class="fa-regular fa-copy"></i>
             </button>
             <button type="button" onclick="enviarLinkWhatsApp(${u.unidade_id}, '${escapeJsString(telExibicao)}', '${escapeJsString(u.nome_unidade)}', '${u.token_acesso}')" title="Enviar Link no WhatsApp" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[11px] flex items-center gap-1 transition">
@@ -10277,7 +10277,7 @@ function renderizarTabelaConsolidadoCompras() {
   const produtos = state.comprasMultiPredios.consolidado.produtos || [];
 
   if (produtos.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans">Nenhum produto cadastrado no catálogo.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 font-sans">Nenhum produto cadastrado no catÃ¡logo.</td></tr>`;
     if (tfoot) tfoot.innerHTML = '';
     return;
   }
@@ -10296,7 +10296,7 @@ function renderizarTabelaConsolidadoCompras() {
         <td class="py-2.5 px-3 font-mono text-[11px]">${p.codigo_referencia || p.produto_id}</td>
         <td class="py-2.5 px-3">
           <div class="font-bold text-slate-900">${p.descricao}</div>
-          <div class="text-[10px] text-slate-400">${p.fornecedor_nome || 'Distribuidora Padrão'}</div>
+          <div class="text-[10px] text-slate-400">${p.fornecedor_nome || 'Distribuidora PadrÃ£o'}</div>
         </td>
         <td class="py-2.5 px-3">
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">${p.categoria}</span>
@@ -10316,7 +10316,7 @@ function renderizarTabelaConsolidadoCompras() {
   if (tfoot) {
     tfoot.innerHTML = `
       <tr>
-        <td colspan="5" class="py-3 px-3 text-right uppercase tracking-wider text-xs">VALOR TOTAL DO PEDIDO CONSOLIDADO (TODOS OS PRÉDIOS):</td>
+        <td colspan="5" class="py-3 px-3 text-right uppercase tracking-wider text-xs">VALOR TOTAL DO PEDIDO CONSOLIDADO (TODOS OS PRÃ‰DIOS):</td>
         <td class="py-3 px-3 text-right font-mono font-black text-base text-teal-300">${totalGeralQtd} un</td>
         <td class="py-3 px-3 text-right font-mono font-black text-base text-emerald-400">${formatarMoeda(totalGeralValor)}</td>
       </tr>
@@ -10327,7 +10327,7 @@ function renderizarTabelaConsolidadoCompras() {
 function trocarVisaoCompras(visao) {
   state.comprasMultiPredios.visaoAtiva = visao;
 
-  // Botões
+  // BotÃµes
   document.querySelectorAll('.visao-compras-btn').forEach(btn => {
     btn.classList.remove('bg-teal-50', 'text-teal-700', 'border', 'border-teal-200');
     btn.classList.add('text-slate-600');
@@ -10349,7 +10349,7 @@ function trocarVisaoCompras(visao) {
 }
 
 // -------------------------------------------------------------
-// MODAL DE LINKS EXTERNOS PARA OS RESPONSÁVEIS DOS PRÉDIOS
+// MODAL DE LINKS EXTERNOS PARA OS RESPONSÃVEIS DOS PRÃ‰DIOS
 // -------------------------------------------------------------
 async function abrirModalLinksPredios() {
   const data = state.comprasMultiPredios.links;
@@ -10394,7 +10394,7 @@ function renderizarListaModalLinks(filtro = '') {
 
   container.innerHTML = unidades.map(u => {
     const linkDireto = `${basePublica}/pedido-unidade.html?token=${u.token_acesso}`;
-    const isEnviado = u.status_preenchimento === 'Enviado pelo Responsável';
+    const isEnviado = u.status_preenchimento === 'Enviado pelo ResponsÃ¡vel';
     const tel = u.responsavel_telefone || u.telefone_local || '';
 
     return `
@@ -10407,7 +10407,7 @@ function renderizarListaModalLinks(filtro = '') {
               : '<span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded">Pendente</span>'}
           </div>
           <div class="text-[11px] text-slate-500">
-            ${u.responsavel_local ? `Resp: ${u.responsavel_local}` : 'Sem responsável direto'} ${tel ? `(${tel})` : ''}
+            ${u.responsavel_local ? `Resp: ${u.responsavel_local}` : 'Sem responsÃ¡vel direto'} ${tel ? `(${tel})` : ''}
           </div>
         </div>
 
@@ -10436,7 +10436,7 @@ function copiarLinkGenerico() {
   const input = document.getElementById('inputLinkGeral');
   if (input) {
     navigator.clipboard.writeText(input.value);
-    alert('Link Geral de compras copiado com sucesso!\n\n' + input.value + '\n\nVocê pode colar em e-mails, comunicados ou grupos de WhatsApp.');
+    alert('Link Geral de compras copiado com sucesso!\n\n' + input.value + '\n\nVocÃª pode colar em e-mails, comunicados ou grupos de WhatsApp.');
   }
 }
 
@@ -10444,7 +10444,7 @@ function copiarLinkPredio(tokenAcesso, unidadeId) {
   const basePublica = obterBasePublicaLink();
   const link = `${basePublica}/pedido-unidade.html?token=${tokenAcesso}`;
   navigator.clipboard.writeText(link);
-  alert('Link direto do prédio copiado com sucesso para a área de transferência!\n\n' + link);
+  alert('Link direto do prÃ©dio copiado com sucesso para a Ã¡rea de transferÃªncia!\n\n' + link);
 }
 
 function enviarLinkWhatsApp(unidadeId, telefone, nomePredio, tokenAcesso) {
@@ -10453,10 +10453,10 @@ function enviarLinkWhatsApp(unidadeId, telefone, nomePredio, tokenAcesso) {
   const data = state.comprasMultiPredios.links;
   const mesFormatado = data?.ano_mes || state.mesAtual;
 
-  let texto = `Olá! Segue o link para preenchimento do *Pedido Mensal de Insumos & Materiais* (${mesFormatado}):\n\n`;
-  texto += `🏢 *Prédio:* ${nomePredio}\n`;
-  texto += `👉 *Link do Pedido:* ${link}\n\n`;
-  texto += `Basta clicar no link pelo seu celular ou computador, conferir os itens necessários e confirmar o envio.`;
+  let texto = `OlÃ¡! Segue o link para preenchimento do *Pedido Mensal de Insumos & Materiais* (${mesFormatado}):\n\n`;
+  texto += `ðŸ¢ *PrÃ©dio:* ${nomePredio}\n`;
+  texto += `ðŸ‘‰ *Link do Pedido:* ${link}\n\n`;
+  texto += `Basta clicar no link pelo seu celular ou computador, conferir os itens necessÃ¡rios e confirmar o envio.`;
 
   const telLimpo = (telefone || '').replace(/\D/g, '');
   let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
@@ -10467,7 +10467,7 @@ function enviarLinkWhatsApp(unidadeId, telefone, nomePredio, tokenAcesso) {
 }
 
 // -------------------------------------------------------------
-// MODAL DE LANÇAMENTO / AJUSTE MANUAL DO PRÉDIO NO SISFAC
+// MODAL DE LANÃ‡AMENTO / AJUSTE MANUAL DO PRÃ‰DIO NO SISFAC
 // -------------------------------------------------------------
 function abrirModalEdicaoPredioCompras(unidadeId) {
   const linksData = state.comprasMultiPredios.links;
@@ -10480,14 +10480,14 @@ function abrirModalEdicaoPredioCompras(unidadeId) {
   state.modalEdicaoPredioId = unidadeId;
   state.modalEdicaoQuantidades = new Map();
 
-  // Carregar itens já salvos dessa unidade
+  // Carregar itens jÃ¡ salvos dessa unidade
   const itensSalvos = (consolidadoData.itens_matriz || []).filter(i => i.unidade_id === unidadeId);
   itensSalvos.forEach(it => {
     state.modalEdicaoQuantidades.set(it.produto_id, it.quantidade);
   });
 
   document.getElementById('modalEdicaoPredioNome').textContent = uni.nome_unidade;
-  document.getElementById('modalEdicaoPredioSub').textContent = `Cliente: ${linksData.cliente.nome_fantasia || linksData.cliente.nome_razao_social} • Competência: ${linksData.ano_mes}`;
+  document.getElementById('modalEdicaoPredioSub').textContent = `Cliente: ${linksData.cliente.nome_fantasia || linksData.cliente.nome_razao_social} â€¢ CompetÃªncia: ${linksData.ano_mes}`;
   document.getElementById('modalEdicaoPredioRespNome').value = uni.responsavel_nome || uni.responsavel_local || '';
   document.getElementById('modalEdicaoPredioRespTel').value = uni.responsavel_telefone || uni.telefone_local || '';
   document.getElementById('modalEdicaoPredioObs').value = uni.observacoes || '';
@@ -10621,7 +10621,7 @@ async function salvarModalEdicaoPredio() {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalEdicaoPredioCompras');
-      alert('Pedido do prédio salvo com sucesso!');
+      alert('Pedido do prÃ©dio salvo com sucesso!');
       await carregarDadosComprasMultiPredios();
     } else {
       alert('Erro ao salvar: ' + (json.message || 'Falha ao salvar.'));
@@ -10632,7 +10632,7 @@ async function salvarModalEdicaoPredio() {
 }
 
 // -------------------------------------------------------------
-// EXPORTAÇÁO COMPLETA DO PEDIDO CONSOLIDADO PARA EXCEL (.xlsx)
+// EXPORTAÃ‡ÃO COMPLETA DO PEDIDO CONSOLIDADO PARA EXCEL (.xlsx)
 // -------------------------------------------------------------
 function exportarPedidoConsolidadoExcel() {
   if (!state.comprasMultiPredios.consolidado || !state.comprasMultiPredios.links) {
@@ -10649,7 +10649,7 @@ function exportarPedidoConsolidadoExcel() {
   dadosConsolidado.push({
     'Item': 'SISFAC 2.0 - PEDIDO CONSOLIDADO DE COMPRAS',
     'Produto_Descricao': `Cliente: ${clienteNome}`,
-    'Categoria': `Competência: ${ano_mes}`,
+    'Categoria': `CompetÃªncia: ${ano_mes}`,
     'Unid_Medida': '',
     'Qtd_Total_Consolidada': '',
     'Preco_Unitario_Ref': '',
@@ -10677,7 +10677,7 @@ function exportarPedidoConsolidadoExcel() {
   dadosConsolidado.push({});
   dadosConsolidado.push({
     'Item': 'TOTAL GERAL',
-    'Produto_Descricao': 'SOMA CONSOLIDADA DE TODOS OS PRÉDIOS',
+    'Produto_Descricao': 'SOMA CONSOLIDADA DE TODOS OS PRÃ‰DIOS',
     'Categoria': '',
     'Unid_Medida': '',
     'Qtd_Total_Consolidada': totalQtd,
@@ -10688,11 +10688,11 @@ function exportarPedidoConsolidadoExcel() {
   const wsConsolidado = XLSX.utils.json_to_sheet(dadosConsolidado);
   XLSX.utils.book_append_sheet(wb, wsConsolidado, 'Pedido_Consolidado');
 
-  // ABA 2: Resumo Individual por Prédio
+  // ABA 2: Resumo Individual por PrÃ©dio
   const dadosPorPredio = (unidades || []).map((u, idx) => ({
     'N': idx + 1,
     'Predio_Bloco': u.nome_unidade,
-    'Responsavel': u.responsavel_nome || u.responsavel_local || 'Não informado',
+    'Responsavel': u.responsavel_nome || u.responsavel_local || 'NÃ£o informado',
     'Status_Pedido': u.status_preenchimento || 'Pendente',
     'Data_Envio': u.data_envio ? new Date(u.data_envio).toLocaleDateString('pt-BR') : '-',
     'Total_Itens_Solicitados': u.total_itens || 0,
@@ -10701,7 +10701,7 @@ function exportarPedidoConsolidadoExcel() {
   const wsPredios = XLSX.utils.json_to_sheet(dadosPorPredio);
   XLSX.utils.book_append_sheet(wb, wsPredios, 'Resumo_Por_Predio');
 
-  // ABA 3: Matriz Completa Prédios x Produtos
+  // ABA 3: Matriz Completa PrÃ©dios x Produtos
   const mapaItens = new Map();
   (itens_matriz || []).forEach(it => {
     mapaItens.set(`${it.unidade_id}-${it.produto_id}`, it.quantidade);
@@ -10833,10 +10833,10 @@ async function copiarMesAnteriorCompras() {
         if (input) input.value = i.quantidade;
       });
       recalcularTotaisMatriz();
-      alert(`Quantidades duplicadas com sucesso do mês anterior (${json.copiado_de})!`);
+      alert(`Quantidades duplicadas com sucesso do mÃªs anterior (${json.copiado_de})!`);
       await carregarDadosComprasMultiPredios();
     } else {
-      alert(json.message || 'Sem pedido no mês anterior.');
+      alert(json.message || 'Sem pedido no mÃªs anterior.');
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -10882,7 +10882,7 @@ async function abrirModalRomaneios() {
           </table>
           <div class="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-[10px] text-slate-500">
             <div>Data de Recebimento: ____/____/________</div>
-            <div>Assinatura do Responsável: _______________________________</div>
+            <div>Assinatura do ResponsÃ¡vel: _______________________________</div>
           </div>
         </div>
       `;
@@ -10893,7 +10893,7 @@ async function abrirModalRomaneios() {
 }
 
 // =============================================================
-// CADASTRO & GESTÁO DE PRÉDIOS E UNIDADES DE ENTREGA (ILIMITADOS)
+// CADASTRO & GESTÃO DE PRÃ‰DIOS E UNIDADES DE ENTREGA (ILIMITADOS)
 // =============================================================
 
 state.gestaoPredios = {
@@ -10913,7 +10913,7 @@ async function carregarGestaoPredios() {
 
   const tbody = document.getElementById('tabelaGestaoPrediosBody');
   if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Carregando prédios e unidades cadastradas...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400 font-sans"><i class="fa-solid fa-spinner fa-spin"></i> Carregando prÃ©dios e unidades cadastradas...</td></tr>`;
   }
 
   try {
@@ -10944,7 +10944,7 @@ async function carregarGestaoPredios() {
 
     filtrarGestaoPrediosLocal();
   } catch (err) {
-    console.error('Erro ao carregar prédios:', err);
+    console.error('Erro ao carregar prÃ©dios:', err);
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-rose-500 font-bold">Erro ao carregar: ${err.message}</td></tr>`;
     }
@@ -10981,11 +10981,11 @@ function renderizarTabelaGestaoPredios() {
 
   const lista = state.gestaoPredios.listaFiltrada || [];
   if (contador) {
-    contador.textContent = `Exibindo ${lista.length} prédio(s) de ${state.gestaoPredios.lista.length} cadastrado(s)`;
+    contador.textContent = `Exibindo ${lista.length} prÃ©dio(s) de ${state.gestaoPredios.lista.length} cadastrado(s)`;
   }
 
   if (lista.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-sans"><i class="fa-solid fa-building-circle-exclamation text-2xl mb-2 text-slate-300"></i><br>Nenhum prédio encontrado com os filtros atuais.<br><button onclick="abrirModalNovoPredio()" class="mt-2 text-xs text-teal-600 font-bold underline">+ Cadastrar Novo Prédio</button></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-sans"><i class="fa-solid fa-building-circle-exclamation text-2xl mb-2 text-slate-300"></i><br>Nenhum prÃ©dio encontrado com os filtros atuais.<br><button onclick="abrirModalNovoPredio()" class="mt-2 text-xs text-teal-600 font-bold underline">+ Cadastrar Novo PrÃ©dio</button></td></tr>`;
     return;
   }
 
@@ -10996,7 +10996,7 @@ function renderizarTabelaGestaoPredios() {
       ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Ativo</span>'
       : '<span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">Inativo</span>';
 
-    const endFormatado = [u.endereco, u.bairro, u.cidade].filter(Boolean).join(' - ') || '<span class="text-slate-400 italic">Não informado</span>';
+    const endFormatado = [u.endereco, u.bairro, u.cidade].filter(Boolean).join(' - ') || '<span class="text-slate-400 italic">NÃ£o informado</span>';
     const telFormatado = u.telefone_local ? u.telefone_local.trim() : '';
     const telClean = telFormatado.replace(/\D/g, '');
     const telBtn = telClean.length >= 10 
@@ -11005,7 +11005,7 @@ function renderizarTabelaGestaoPredios() {
 
     const cotaTxt = u.cota_limite_insumos > 0 ? formatarMoeda(u.cota_limite_insumos) : '<span class="text-slate-400">Livre</span>';
 
-    // Link público
+    // Link pÃºblico
     const linkAuto = u.ultimo_token_acesso ? `/pedido-unidade.html?token=${u.ultimo_token_acesso}` : `/pedido-unidade.html?cliente_id=${u.cliente_id}&unidade_id=${u.id}`;
 
     html += `
@@ -11025,23 +11025,23 @@ function renderizarTabelaGestaoPredios() {
         </td>
         <td class="py-2.5 px-3 text-slate-600 leading-tight">${endFormatado}</td>
         <td class="py-2.5 px-3">
-          <div class="font-medium text-slate-800">${u.responsavel_local || '<span class="text-slate-400 italic">Não informado</span>'}</div>
+          <div class="font-medium text-slate-800">${u.responsavel_local || '<span class="text-slate-400 italic">NÃ£o informado</span>'}</div>
         </td>
         <td class="py-2.5 px-3">${telBtn}</td>
         <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-700">${cotaTxt}</td>
         <td class="py-2.5 px-3 text-center">${badgeStatus}</td>
         <td class="py-2.5 px-3 text-center">
           <div class="flex items-center justify-center gap-1">
-            <button type="button" onclick="abrirModalEditarPredio(${u.id})" class="p-1.5 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded transition" title="Editar Dados do Prédio">
+            <button type="button" onclick="abrirModalEditarPredio(${u.id})" class="p-1.5 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded transition" title="Editar Dados do PrÃ©dio">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <button type="button" onclick="copiarLinkDiretoPredio('${linkAuto}', '${u.nome_unidade.replace(/'/g, "\\'")}')" class="p-1.5 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded transition" title="Copiar Link de Autoatendimento">
               <i class="fa-solid fa-link"></i>
             </button>
-            <a href="${linkAuto}" target="_blank" class="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition" title="Abrir Página de Pedido em Nova Aba">
+            <a href="${linkAuto}" target="_blank" class="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded transition" title="Abrir PÃ¡gina de Pedido em Nova Aba">
               <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </a>
-            <button type="button" onclick="excluirPredio(${u.id}, '${u.nome_unidade.replace(/'/g, "\\'")}')" class="p-1.5 text-slate-600 hover:text-rose-700 hover:bg-rose-50 rounded transition" title="${isAtivo ? 'Inativar / Excluir Prédio' : 'Excluir Prédio'}">
+            <button type="button" onclick="excluirPredio(${u.id}, '${u.nome_unidade.replace(/'/g, "\\'")}')" class="p-1.5 text-slate-600 hover:text-rose-700 hover:bg-rose-50 rounded transition" title="${isAtivo ? 'Inativar / Excluir PrÃ©dio' : 'Excluir PrÃ©dio'}">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -11057,7 +11057,7 @@ function copiarLinkDiretoPredio(path, nome) {
   const fullUrl = obterBasePublicaLink() + path;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(fullUrl).then(() => {
-      alert(`Link do ${nome} copiado para a área de transferência!\n\n${fullUrl}`);
+      alert(`Link do ${nome} copiado para a Ã¡rea de transferÃªncia!\n\n${fullUrl}`);
     }).catch(() => {
       prompt(`Copie o link do ${nome}:`, fullUrl);
     });
@@ -11089,7 +11089,7 @@ function popularSelectFornecedoresPermitidos(selecionadosJson = '[]') {
 function abrirModalNovoPredio() {
   document.getElementById('formCadastroPredio')?.reset();
   document.getElementById('predioEditId').value = '';
-  document.getElementById('modalCadastroPredioTitulo').innerHTML = '<i class="fa-solid fa-city text-teal-300"></i> Cadastrar Novo Prédio / Unidade de Entrega';
+  document.getElementById('modalCadastroPredioTitulo').innerHTML = '<i class="fa-solid fa-city text-teal-300"></i> Cadastrar Novo PrÃ©dio / Unidade de Entrega';
   document.getElementById('predioAtivo').checked = true;
 
   popularSelectFornecedoresPermitidos('[]');
@@ -11105,10 +11105,10 @@ function abrirModalNovoPredio() {
 
 function abrirModalEditarPredio(id) {
   const u = (state.gestaoPredios.lista || []).find(item => item.id === id) || (state.unidades || []).find(item => item.id === id);
-  if (!u) return alert('Prédio não encontrado.');
+  if (!u) return alert('PrÃ©dio nÃ£o encontrado.');
 
   document.getElementById('predioEditId').value = u.id;
-  document.getElementById('modalCadastroPredioTitulo').innerHTML = `<i class="fa-solid fa-pen-to-square text-teal-300"></i> Editar Prédio: <span class="text-teal-200 font-bold">${u.nome_unidade}</span>`;
+  document.getElementById('modalCadastroPredioTitulo').innerHTML = `<i class="fa-solid fa-pen-to-square text-teal-300"></i> Editar PrÃ©dio: <span class="text-teal-200 font-bold">${u.nome_unidade}</span>`;
   document.getElementById('predioClienteId').value = u.cliente_id || '';
   document.getElementById('predioNomeUnidade').value = u.nome_unidade || '';
   document.getElementById('predioEndereco').value = u.endereco || '';
@@ -11133,7 +11133,7 @@ async function salvarPredio(e) {
   const nomeUnidade = (document.getElementById('predioNomeUnidade').value || '').trim();
 
   if (!clienteId) return alert('Selecione o Cliente Contratante.');
-  if (!nomeUnidade) return alert('Informe o Nome do Prédio.');
+  if (!nomeUnidade) return alert('Informe o Nome do PrÃ©dio.');
 
   const selFornecedores = document.getElementById('predioFornecedoresPermitidos');
   let fornecedoresPermitidos = [];
@@ -11167,14 +11167,14 @@ async function salvarPredio(e) {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalCadastroPredio');
-      alert(`Prédio "${nomeUnidade}" ${id ? 'atualizado' : 'cadastrado'} com sucesso!`);
+      alert(`PrÃ©dio "${nomeUnidade}" ${id ? 'atualizado' : 'cadastrado'} com sucesso!`);
       await carregarGestaoPredios();
       await carregarDadosBase();
       if (document.getElementById('comprasClienteSelect')) {
         await carregarDadosComprasMultiPredios();
       }
     } else {
-      alert('Erro ao salvar prédio: ' + (json.message || 'Falha ao salvar.'));
+      alert('Erro ao salvar prÃ©dio: ' + (json.message || 'Falha ao salvar.'));
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -11182,20 +11182,20 @@ async function salvarPredio(e) {
 }
 
 async function excluirPredio(id, nome) {
-  if (!confirm(`Deseja realmente inativar/remover o prédio "${nome}"?\n\nEle será inativado se houver registros vinculados para preservar o histórico.`)) return;
+  if (!confirm(`Deseja realmente inativar/remover o prÃ©dio "${nome}"?\n\nEle serÃ¡ inativado se houver registros vinculados para preservar o histÃ³rico.`)) return;
 
   try {
     const res = await fetch(`/api/unidades/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (json.success) {
-      alert(json.message || 'Prédio inativado/removido com sucesso!');
+      alert(json.message || 'PrÃ©dio inativado/removido com sucesso!');
       await carregarGestaoPredios();
       await carregarDadosBase();
       if (document.getElementById('comprasClienteSelect')) {
         await carregarDadosComprasMultiPredios();
       }
     } else {
-      alert('Erro: ' + (json.message || 'Não foi possível remover.'));
+      alert('Erro: ' + (json.message || 'NÃ£o foi possÃ­vel remover.'));
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -11204,7 +11204,7 @@ async function excluirPredio(id, nome) {
 
 function exportarGestaoPrediosExcel() {
   const lista = state.gestaoPredios.listaFiltrada || state.gestaoPredios.lista || [];
-  if (lista.length === 0) return alert('Nenhum prédio cadastrado para exportar.');
+  if (lista.length === 0) return alert('Nenhum prÃ©dio cadastrado para exportar.');
 
   const dados = lista.map((u, idx) => ({
     'ID': u.id,
@@ -11257,23 +11257,23 @@ function baixarModeloImportacaoPredios() {
   // Aba 1: Modelo_Predios
   const exemplo = [
     {
-      'Nome_Predio': 'Torre A - Edifício Horizonte',
+      'Nome_Predio': 'Torre A - EdifÃ­cio Horizonte',
       'Cliente': '1',
       'Endereco': 'Av. Paulista, 1000',
       'Bairro': 'Bela Vista',
-      'Cidade': 'São Paulo',
+      'Cidade': 'SÃ£o Paulo',
       'CEP': '01310-100',
-      'Responsavel': 'Síndico Roberto Ferreira',
+      'Responsavel': 'SÃ­ndico Roberto Ferreira',
       'Telefone': '(11) 98888-1111',
       'Cota_Insumos': 1500.00,
-      'Observacoes': 'Entregar na doca de carga das 08h às 11h'
+      'Observacoes': 'Entregar na doca de carga das 08h Ã s 11h'
     },
     {
       'Nome_Predio': 'Torre B - Bloco Administrativo',
       'Cliente': '1',
       'Endereco': 'Av. Paulista, 1000 - Fundos',
       'Bairro': 'Bela Vista',
-      'Cidade': 'São Paulo',
+      'Cidade': 'SÃ£o Paulo',
       'CEP': '01310-100',
       'Responsavel': 'Zelador Carlos Alberto',
       'Telefone': '(11) 98888-2222',
@@ -11281,13 +11281,13 @@ function baixarModeloImportacaoPredios() {
       'Observacoes': 'Portaria 2'
     },
     {
-      'Nome_Predio': 'Prédio 03 - Auditório & Eventos',
+      'Nome_Predio': 'PrÃ©dio 03 - AuditÃ³rio & Eventos',
       'Cliente': 'Rede de Ensino & Faculdades Futuro S/A',
       'Endereco': 'Rua Augusta, 500',
-      'Bairro': 'Consolação',
-      'Cidade': 'São Paulo',
+      'Bairro': 'ConsolaÃ§Ã£o',
+      'Cidade': 'SÃ£o Paulo',
       'CEP': '01305-000',
-      'Responsavel': 'Encarregada Sônia',
+      'Responsavel': 'Encarregada SÃ´nia',
       'Telefone': '(11) 97777-3333',
       'Cota_Insumos': 800.00,
       'Observacoes': 'Recebimento de segunda a sexta'
@@ -11329,7 +11329,7 @@ function processarArquivoImportacaoPredios(input) {
       const rawRows = XLSX.utils.sheet_to_json(worksheet);
 
       if (!rawRows || rawRows.length === 0) {
-        return alert('A planilha selecionada está vazia.');
+        return alert('A planilha selecionada estÃ¡ vazia.');
       }
 
       const clientePadraoId = parseInt(document.getElementById('importarPrediosClientePadrao')?.value, 10) || state.clientes[0]?.id;
@@ -11374,7 +11374,7 @@ function processarArquivoImportacaoPredios(input) {
       });
 
       if (predios.length === 0) {
-        return alert('Nenhum prédio com nome válido foi identificado na planilha.');
+        return alert('Nenhum prÃ©dio com nome vÃ¡lido foi identificado na planilha.');
       }
 
       state.prediosImportacaoPendente = predios;
@@ -11384,7 +11384,7 @@ function processarArquivoImportacaoPredios(input) {
       const tbody = document.getElementById('previewImportacaoPrediosBody');
       const btn = document.getElementById('btnConfirmarImportacaoPredios');
 
-      if (qtdEl) qtdEl.textContent = `${predios.length} prédio(s) detectado(s)`;
+      if (qtdEl) qtdEl.textContent = `${predios.length} prÃ©dio(s) detectado(s)`;
       if (tbody) {
         tbody.innerHTML = predios.slice(0, 10).map(p => `
           <tr>
@@ -11395,7 +11395,7 @@ function processarArquivoImportacaoPredios(input) {
           </tr>
         `).join('');
         if (predios.length > 10) {
-          tbody.innerHTML += `<tr><td colspan="4" class="p-1.5 text-center text-slate-400 italic">... e mais ${predios.length - 10} prédio(s)</td></tr>`;
+          tbody.innerHTML += `<tr><td colspan="4" class="p-1.5 text-center text-slate-400 italic">... e mais ${predios.length - 10} prÃ©dio(s)</td></tr>`;
         }
       }
 
@@ -11410,7 +11410,7 @@ function processarArquivoImportacaoPredios(input) {
 
 async function confirmarImportacaoPredios() {
   if (!state.prediosImportacaoPendente || state.prediosImportacaoPendente.length === 0) {
-    return alert('Nenhum prédio pendente para importar.');
+    return alert('Nenhum prÃ©dio pendente para importar.');
   }
 
   const btn = document.getElementById('btnConfirmarImportacaoPredios');
@@ -11426,25 +11426,25 @@ async function confirmarImportacaoPredios() {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalImportarPredios');
-      alert(`Importação concluída com sucesso!\n\n${json.inseridos} novo(s) prédio(s) cadastrado(s)\n${json.atualizados} prédio(s) atualizado(s)`);
+      alert(`ImportaÃ§Ã£o concluÃ­da com sucesso!\n\n${json.inseridos} novo(s) prÃ©dio(s) cadastrado(s)\n${json.atualizados} prÃ©dio(s) atualizado(s)`);
       await carregarGestaoPredios();
       await carregarDadosBase();
       if (document.getElementById('comprasClienteSelect')) {
         await carregarDadosComprasMultiPredios();
       }
     } else {
-      alert('Erro na importação: ' + (json.message || 'Falha ao importar.'));
+      alert('Erro na importaÃ§Ã£o: ' + (json.message || 'Falha ao importar.'));
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Importar Todos os Prédios';
+      btn.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Importar Todos os PrÃ©dios';
     }
   } catch (err) {
     alert('Erro: ' + err.message);
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Importar Todos os Prédios';
+    btn.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Importar Todos os PrÃ©dios';
   }
 }
 
-// Utilitários
+// UtilitÃ¡rios
 async function excluirItem(entidade, id) {
   if (!confirm(`Deseja realmente excluir este registro de ${entidade}?`)) return;
   try {
@@ -11556,7 +11556,7 @@ async function carregarDashboardExecutivo() {
           </div>
           <div class="mt-2">
             <div class="text-2xl font-black text-amber-700">${vagasAbertas}</div>
-            <div class="text-[11px] text-amber-800 font-bold mt-0.5">${vagasAbertas > 0 ? 'Requer contratação/alocação' : 'Quadro 100% preenchido'}</div>
+            <div class="text-[11px] text-amber-800 font-bold mt-0.5">${vagasAbertas > 0 ? 'Requer contrataÃ§Ã£o/alocaÃ§Ã£o' : 'Quadro 100% preenchido'}</div>
           </div>
         </div>
 
@@ -11568,26 +11568,26 @@ async function carregarDashboardExecutivo() {
           </div>
           <div class="mt-2">
             <div class="text-2xl font-black text-slate-900">${colaboradoresAtivos}</div>
-            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">${colaboradoresDemitidosMes} demissões no mês</div>
+            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">${colaboradoresDemitidosMes} demissÃµes no mÃªs</div>
           </div>
         </div>
 
-        <!-- KPI 5: Colaboradores em Férias -->
+        <!-- KPI 5: Colaboradores em FÃ©rias -->
         <div class="bg-gradient-to-br from-white to-sky-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold uppercase text-sky-800">Em Férias</span>
+            <span class="text-[11px] font-bold uppercase text-sky-800">Em FÃ©rias</span>
             <span class="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-umbrella-beach"></i></span>
           </div>
           <div class="mt-2">
             <div class="text-2xl font-black text-sky-900">${colaboradoresEmFerias}</div>
-            <div class="text-[11px] text-sky-700 font-semibold mt-0.5">Período ativo na competência</div>
+            <div class="text-[11px] text-sky-700 font-semibold mt-0.5">PerÃ­odo ativo na competÃªncia</div>
           </div>
         </div>
 
-        <!-- KPI 6: Faltas no Mês -->
+        <!-- KPI 6: Faltas no MÃªs -->
         <div class="bg-gradient-to-br from-white to-rose-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold uppercase text-rose-800">Faltas no Mês</span>
+            <span class="text-[11px] font-bold uppercase text-rose-800">Faltas no MÃªs</span>
             <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-calendar-xmark"></i></span>
           </div>
           <div class="mt-2">
@@ -11608,7 +11608,7 @@ async function carregarDashboardExecutivo() {
           </div>
         </div>
 
-        <!-- KPI 8: Diárias Freelancers -->
+        <!-- KPI 8: DiÃ¡rias Freelancers -->
         <div class="bg-gradient-to-br from-white to-amber-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold uppercase text-amber-800">Total Freelancers</span>
@@ -11632,10 +11632,10 @@ async function carregarDashboardExecutivo() {
           </div>
         </div>
 
-        <!-- KPI 10: Total Vale Alimentação (VA) -->
+        <!-- KPI 10: Total Vale AlimentaÃ§Ã£o (VA) -->
         <div class="bg-gradient-to-br from-white to-violet-50/40 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-bold uppercase text-violet-800">Total VA (Alimentação)</span>
+            <span class="text-[11px] font-bold uppercase text-violet-800">Total VA (AlimentaÃ§Ã£o)</span>
             <span class="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-utensils"></i></span>
           </div>
           <div class="mt-2">
@@ -11646,7 +11646,7 @@ async function carregarDashboardExecutivo() {
       `;
     }
 
-    // Painel 1: Lotação Top Clientes
+    // Painel 1: LotaÃ§Ã£o Top Clientes
     const lotaLista = data.clientesLota || data.lotacaoClientes || [];
     if (containerLotacao) {
       if (!lotaLista || lotaLista.length === 0) {
@@ -11686,16 +11686,16 @@ async function carregarDashboardExecutivo() {
         <div class="space-y-3">
           <div class="p-3 bg-violet-50/60 rounded-lg border border-violet-200">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold text-violet-950 flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-violet-600"></i> Total Geral de Benefícios</span>
+              <span class="font-bold text-violet-950 flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-violet-600"></i> Total Geral de BenefÃ­cios</span>
               <span class="font-black text-violet-900">${formatarMoeda(totalBeneficios)}</span>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-violet-200/60 text-[11px]">
               <div class="bg-white p-2 rounded border border-violet-100">
-                <span class="text-slate-500 block font-semibold">🚌 Vale Transporte (VT):</span>
+                <span class="text-slate-500 block font-semibold">ðŸšŒ Vale Transporte (VT):</span>
                 <span class="font-bold text-emerald-700 text-xs">${formatarMoeda(totalVtCalculado)}</span>
               </div>
               <div class="bg-white p-2 rounded border border-violet-100">
-                <span class="text-slate-500 block font-semibold">🍽️ Vale Alimentação (VA):</span>
+                <span class="text-slate-500 block font-semibold">ðŸ½ï¸ Vale AlimentaÃ§Ã£o (VA):</span>
                 <span class="font-bold text-purple-700 text-xs">${formatarMoeda(totalVaCalculado)}</span>
               </div>
             </div>
@@ -11723,7 +11723,7 @@ async function carregarDashboardExecutivo() {
               <span class="font-bold text-red-950 flex items-center gap-1.5"><i class="fa-solid fa-circle-minus text-red-600"></i> Glosas & Descontos em Faturas</span>
               <span class="font-black text-red-700">${formatarMoeda(totalGlosasFaturamento)}</span>
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">Impacto direto no faturamento mensal por ausência de cobertura em postos de serviço.</p>
+            <p class="text-[11px] text-slate-500 mt-1">Impacto direto no faturamento mensal por ausÃªncia de cobertura em postos de serviÃ§o.</p>
           </div>
         </div>
       `;
@@ -11733,7 +11733,7 @@ async function carregarDashboardExecutivo() {
     const faltasLista = data.topFaltasClientes || data.faltasRanking || [];
     if (containerFaltas) {
       if (!faltasLista || faltasLista.length === 0) {
-        containerFaltas.innerHTML = '<div class="text-xs text-slate-400 py-6 text-center">Nenhuma falta registrada no mês de competência.</div>';
+        containerFaltas.innerHTML = '<div class="text-xs text-slate-400 py-6 text-center">Nenhuma falta registrada no mÃªs de competÃªncia.</div>';
       } else {
         containerFaltas.innerHTML = '';
         faltasLista.forEach((f, idx) => {
@@ -11765,7 +11765,7 @@ async function carregarDashboardExecutivo() {
 }
 
 // =============================================================
-// 11. CENTRAL UNIFICADA DE RELATÓRIOS
+// 11. CENTRAL UNIFICADA DE RELATÃ“RIOS
 // =============================================================
 function abrirRelatorio(tipo) {
   state.relatorioTipoAtual = tipo;
@@ -11794,11 +11794,11 @@ async function carregarRelatorioAtual() {
   const dataEmissaoEl = document.getElementById('relatorioDataEmissao');
 
   if (dataEmissaoEl) {
-    dataEmissaoEl.textContent = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`;
+    dataEmissaoEl.textContent = `Emitido em: ${new Date().toLocaleDateString('pt-BR')} Ã s ${new Date().toLocaleTimeString('pt-BR')}`;
   }
 
   if (tabelaContainer) {
-    tabelaContainer.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Gerando relatório consolidado...</div>`;
+    tabelaContainer.innerHTML = `<div class="py-12 text-center text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Gerando relatÃ³rio consolidado...</div>`;
   }
 
   let endpoint = '';
@@ -11828,58 +11828,58 @@ async function carregarRelatorioAtual() {
       const totalAtivos = data.total_ativos ?? data.resumo?.efetivoTotalAtivo ?? 0;
       const turnover = (data.taxa_turnover ?? data.resumo?.taxaRotatividade ?? 0) + '%';
 
-      if (tituloEl) tituloEl.textContent = 'Relatório de Admissões, Demissões & Turnover';
-      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Efetivo Total Ativo: ${totalAtivos}`;
+      if (tituloEl) tituloEl.textContent = 'RelatÃ³rio de AdmissÃµes, DemissÃµes & Turnover';
+      if (subtituloEl) subtituloEl.textContent = `CompetÃªncia: ${mes} | Efetivo Total Ativo: ${totalAtivos}`;
 
       if (cardsContainer) {
         cardsContainer.innerHTML = `
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-emerald-800">Total Admitidos</span>
             <div class="text-2xl font-black text-emerald-700 mt-1">${totalAdm}</div>
-            <span class="text-[10px] text-emerald-600 font-semibold">Novas contratações</span>
+            <span class="text-[10px] text-emerald-600 font-semibold">Novas contrataÃ§Ãµes</span>
           </div>
           <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-rose-800">Total Demitidos</span>
             <div class="text-2xl font-black text-rose-700 mt-1">${totalDem}</div>
-            <span class="text-[10px] text-rose-600 font-semibold">Desligamentos no mês</span>
+            <span class="text-[10px] text-rose-600 font-semibold">Desligamentos no mÃªs</span>
           </div>
           <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm">
-            <span class="text-[11px] font-bold uppercase text-blue-800">Saldo Líquido</span>
+            <span class="text-[11px] font-bold uppercase text-blue-800">Saldo LÃ­quido</span>
             <div class="text-2xl font-black ${(totalAdm - totalDem) >= 0 ? 'text-blue-700' : 'text-red-700'} mt-1">
               ${(totalAdm - totalDem) > 0 ? '+' : ''}${totalAdm - totalDem}
             </div>
-            <span class="text-[10px] text-blue-600 font-semibold">Variação do efetivo</span>
+            <span class="text-[10px] text-blue-600 font-semibold">VariaÃ§Ã£o do efetivo</span>
           </div>
           <div class="bg-purple-50 border border-purple-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-purple-800">Taxa de Turnover</span>
             <div class="text-2xl font-black text-purple-700 mt-1">${turnover}</div>
-            <span class="text-[10px] text-purple-600 font-semibold">Índice de rotatividade</span>
+            <span class="text-[10px] text-purple-600 font-semibold">Ãndice de rotatividade</span>
           </div>
         `;
       }
 
       if (tabelaContainer) {
         if (!lista || lista.length === 0) {
-          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhuma movimentação de admissão ou demissão registrada no período.</div>`;
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhuma movimentaÃ§Ã£o de admissÃ£o ou demissÃ£o registrada no perÃ­odo.</div>`;
         } else {
           let rowsHtml = '';
           lista.forEach(item => {
             const isDem = (item.status_colaborador === 'Demitido' || item.ativo === 0) && item.data_demissao;
             const dataEvento = isDem ? item.data_demissao : item.data_admissao;
-            const motivo = isDem ? (item.motivo_demissao || 'Desligamento') : 'Contratação / Admissão';
+            const motivo = isDem ? (item.motivo_demissao || 'Desligamento') : 'ContrataÃ§Ã£o / AdmissÃ£o';
 
             rowsHtml += `
               <tr class="hover:bg-slate-50 transition border-b border-slate-100">
                 <td class="px-4 py-3 text-center">
                   <span class="px-2 py-0.5 rounded text-xs font-bold ${!isDem ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
-                    ${!isDem ? '<i class="fa-solid fa-user-plus mr-1"></i>Admissão' : '<i class="fa-solid fa-user-minus mr-1"></i>Demissão'}
+                    ${!isDem ? '<i class="fa-solid fa-user-plus mr-1"></i>AdmissÃ£o' : '<i class="fa-solid fa-user-minus mr-1"></i>DemissÃ£o'}
                   </span>
                 </td>
                 <td class="px-4 py-3 font-bold text-slate-900">${item.nome}</td>
-                <td class="px-4 py-3 font-mono text-xs text-slate-500">${item.cpf || 'Não informado'}</td>
+                <td class="px-4 py-3 font-mono text-xs text-slate-500">${item.cpf || 'NÃ£o informado'}</td>
                 <td class="px-4 py-3 text-xs font-semibold text-slate-700">${item.nome_cargo || '-'}</td>
                 <td class="px-4 py-3 text-xs text-slate-600">
-                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Reserva Técnica'}</div>
+                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Reserva TÃ©cnica'}</div>
                   <div class="text-[11px] text-slate-500">${item.nome_posto || 'Sem posto'}</div>
                 </td>
                 <td class="px-4 py-3 text-xs font-bold text-slate-800">${formatarData(dataEvento)}</td>
@@ -11895,7 +11895,7 @@ async function carregarRelatorioAtual() {
                   <th class="px-4 py-3 text-center">Tipo</th>
                   <th class="px-4 py-3">Colaborador</th>
                   <th class="px-4 py-3">CPF</th>
-                  <th class="px-4 py-3">Função</th>
+                  <th class="px-4 py-3">FunÃ§Ã£o</th>
                   <th class="px-4 py-3">Cliente / Posto</th>
                   <th class="px-4 py-3">Data do Evento</th>
                   <th class="px-4 py-3">Motivo / Detalhes</th>
@@ -11908,7 +11908,7 @@ async function carregarRelatorioAtual() {
       }
     }
 
-    // 2. FÉRIAS MENSAIS & COBERTURAS
+    // 2. FÃ‰RIAS MENSAIS & COBERTURAS
     else if (tipo === 'ferias-mensais') {
       const lista = data.ferias || data.lista || [];
       state.dadosRelatorioAtual.lista = lista;
@@ -11917,20 +11917,20 @@ async function carregarRelatorioAtual() {
       const totalCobertos = data.total_cobertos_freelance ?? data.resumo?.cobertasFreelancer ?? 0;
       const custoTotal = data.custo_total_cobertura ?? data.resumo?.custoTotalCoberturas ?? 0;
 
-      if (tituloEl) tituloEl.textContent = 'Relatório Mensal de Férias & Coberturas Operacionais';
-      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Histórico e Programação`;
+      if (tituloEl) tituloEl.textContent = 'RelatÃ³rio Mensal de FÃ©rias & Coberturas Operacionais';
+      if (subtituloEl) subtituloEl.textContent = `CompetÃªncia: ${mes} | HistÃ³rico e ProgramaÃ§Ã£o`;
 
       if (cardsContainer) {
         cardsContainer.innerHTML = `
           <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5 shadow-sm">
-            <span class="text-[11px] font-bold uppercase text-sky-800">Total em Férias</span>
+            <span class="text-[11px] font-bold uppercase text-sky-800">Total em FÃ©rias</span>
             <div class="text-2xl font-black text-sky-700 mt-1">${totalFerias}</div>
-            <span class="text-[10px] text-sky-600 font-semibold">Colaboradores no mês</span>
+            <span class="text-[10px] text-sky-600 font-semibold">Colaboradores no mÃªs</span>
           </div>
           <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 shadow-sm">
-            <span class="text-[11px] font-bold uppercase text-indigo-800">Períodos Registrados</span>
+            <span class="text-[11px] font-bold uppercase text-indigo-800">PerÃ­odos Registrados</span>
             <div class="text-2xl font-black text-indigo-700 mt-1">${lista.length}</div>
-            <span class="text-[10px] text-indigo-600 font-semibold">Histórico no mês</span>
+            <span class="text-[10px] text-indigo-600 font-semibold">HistÃ³rico no mÃªs</span>
           </div>
           <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-amber-800">Com Freelancer</span>
@@ -11940,14 +11940,14 @@ async function carregarRelatorioAtual() {
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-emerald-800">Custo Coberturas</span>
             <div class="text-2xl font-black text-emerald-700 mt-1">${formatarMoeda(custoTotal)}</div>
-            <span class="text-[10px] text-emerald-600 font-semibold">Investimento em diárias</span>
+            <span class="text-[10px] text-emerald-600 font-semibold">Investimento em diÃ¡rias</span>
           </div>
         `;
       }
 
       if (tabelaContainer) {
         if (!lista || lista.length === 0) {
-          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum registro de férias encontrado para a competência.</div>`;
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum registro de fÃ©rias encontrado para a competÃªncia.</div>`;
         } else {
           let rowsHtml = '';
           lista.forEach(item => {
@@ -11963,7 +11963,7 @@ async function carregarRelatorioAtual() {
                 </td>
                 <td class="px-4 py-3 text-xs font-semibold text-slate-700">${item.nome_cargo || '-'}</td>
                 <td class="px-4 py-3 text-xs text-slate-600">
-                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Reserva Técnica'}</div>
+                  <div class="font-bold text-slate-800">${item.cliente_nome || 'Reserva TÃ©cnica'}</div>
                   <div class="text-[11px] text-slate-500">${item.nome_posto || 'Sem posto'}</div>
                 </td>
                 <td class="px-4 py-3 text-xs font-bold text-slate-800">${formatarData(item.data_inicio)}</td>
@@ -11986,10 +11986,10 @@ async function carregarRelatorioAtual() {
               <thead class="bg-slate-100 text-slate-700 uppercase font-semibold text-xs border-b border-slate-200">
                 <tr>
                   <th class="px-4 py-3">Colaborador</th>
-                  <th class="px-4 py-3">Função</th>
+                  <th class="px-4 py-3">FunÃ§Ã£o</th>
                   <th class="px-4 py-3">Cliente / Posto</th>
-                  <th class="px-4 py-3">Início</th>
-                  <th class="px-4 py-3">Término</th>
+                  <th class="px-4 py-3">InÃ­cio</th>
+                  <th class="px-4 py-3">TÃ©rmino</th>
                   <th class="px-4 py-3 text-center">Dias</th>
                   <th class="px-4 py-3">Tipo</th>
                   <th class="px-4 py-3 text-center">Cobertura</th>
@@ -12004,7 +12004,7 @@ async function carregarRelatorioAtual() {
       }
     }
 
-    // 3. FREELANCERS & DIÁRIAS
+    // 3. FREELANCERS & DIÃRIAS
     else if (tipo === 'freelancers') {
       const lista = data.freelancers || data.lista || [];
       state.dadosRelatorioAtual.lista = lista;
@@ -12014,25 +12014,25 @@ async function carregarRelatorioAtual() {
       const valorPago = data.valor_total_pago ?? data.resumo?.totalPago ?? 0;
       const valorPendente = data.valor_total_pendente ?? data.resumo?.totalPendente ?? (valorGeral - valorPago);
 
-      if (tituloEl) tituloEl.textContent = 'Demonstrativo Mensal de Freelancers & Diárias';
-      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Fechamento de Diárias e PIX`;
+      if (tituloEl) tituloEl.textContent = 'Demonstrativo Mensal de Freelancers & DiÃ¡rias';
+      if (subtituloEl) subtituloEl.textContent = `CompetÃªncia: ${mes} | Fechamento de DiÃ¡rias e PIX`;
 
       if (cardsContainer) {
         cardsContainer.innerHTML = `
           <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 shadow-sm">
-            <span class="text-[11px] font-bold uppercase text-slate-600">Total Diárias</span>
+            <span class="text-[11px] font-bold uppercase text-slate-600">Total DiÃ¡rias</span>
             <div class="text-2xl font-black text-slate-900 mt-1">${totalDiarias}</div>
-            <span class="text-[10px] text-slate-500 font-semibold">Escalações realizadas</span>
+            <span class="text-[10px] text-slate-500 font-semibold">EscalaÃ§Ãµes realizadas</span>
           </div>
           <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-amber-800">Valor Total</span>
             <div class="text-2xl font-black text-amber-700 mt-1">${formatarMoeda(valorGeral)}</div>
-            <span class="text-[10px] text-amber-600 font-semibold">Custo total do período</span>
+            <span class="text-[10px] text-amber-600 font-semibold">Custo total do perÃ­odo</span>
           </div>
           <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-emerald-800">Total Pago</span>
             <div class="text-2xl font-black text-emerald-700 mt-1">${formatarMoeda(valorPago)}</div>
-            <span class="text-[10px] text-emerald-600 font-semibold">Diárias já quitadas</span>
+            <span class="text-[10px] text-emerald-600 font-semibold">DiÃ¡rias jÃ¡ quitadas</span>
           </div>
           <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-rose-800">Total a Pagar</span>
@@ -12044,7 +12044,7 @@ async function carregarRelatorioAtual() {
 
       if (tabelaContainer) {
         if (!lista || lista.length === 0) {
-          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum registro de freelancer encontrado para a competência.</div>`;
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum registro de freelancer encontrado para a competÃªncia.</div>`;
         } else {
           let rowsHtml = '';
           lista.forEach(item => {
@@ -12062,7 +12062,7 @@ async function carregarRelatorioAtual() {
                 </td>
                 <td class="px-4 py-3 font-mono text-xs font-bold text-blue-700">${item.chave_pix || '-'} <span class="text-[10px] text-slate-400 font-normal">(${item.tipo_chave_pix || 'PIX'})</span></td>
                 <td class="px-4 py-3 text-xs text-slate-600">${item.banco || '-'}</td>
-                <td class="px-4 py-3 text-center text-xs font-bold text-indigo-700">${diarias} plantão(ões)</td>
+                <td class="px-4 py-3 text-center text-xs font-bold text-indigo-700">${diarias} plantÃ£o(Ãµes)</td>
                 <td class="px-4 py-3 text-right font-bold text-xs text-emerald-700">${formatarMoeda(valPago)}</td>
                 <td class="px-4 py-3 text-right font-bold text-xs ${valPendente > 0 ? 'text-rose-700' : 'text-slate-400'}">${formatarMoeda(valPendente)}</td>
                 <td class="px-4 py-3 text-right font-black text-xs text-slate-900">${formatarMoeda(valTotal)}</td>
@@ -12082,11 +12082,11 @@ async function carregarRelatorioAtual() {
                   <th class="px-4 py-3">Freelancer</th>
                   <th class="px-4 py-3">Chave PIX</th>
                   <th class="px-4 py-3">Banco</th>
-                  <th class="px-4 py-3 text-center">Total Plantões</th>
+                  <th class="px-4 py-3 text-center">Total PlantÃµes</th>
                   <th class="px-4 py-3 text-right">Valor Pago</th>
                   <th class="px-4 py-3 text-right">Valor Pendente</th>
                   <th class="px-4 py-3 text-right">Valor Total</th>
-                  <th class="px-4 py-3 text-center">Situação</th>
+                  <th class="px-4 py-3 text-center">SituaÃ§Ã£o</th>
                 </tr>
               </thead>
               <tbody>${rowsHtml}</tbody>
@@ -12115,20 +12115,20 @@ async function carregarRelatorioAtual() {
       const valorDescontado = data.valor_descontado_fatura ?? data.resumo?.valorGlosasDescontadas ?? 0;
       const valorPendente = data.valor_pendente_glosas ?? data.resumo?.valorGlosasPendentes ?? (valorGlosado - valorDescontado);
 
-      if (tituloEl) tituloEl.textContent = 'Relatório de Glosas & Descontos de Faturamento';
-      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Postos Descobertos e Descontos`;
+      if (tituloEl) tituloEl.textContent = 'RelatÃ³rio de Glosas & Descontos de Faturamento';
+      if (subtituloEl) subtituloEl.textContent = `CompetÃªncia: ${mes} | Postos Descobertos e Descontos`;
 
       if (cardsContainer) {
         cardsContainer.innerHTML = `
           <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-rose-800">Faltas Descobertas</span>
             <div class="text-2xl font-black text-rose-700 mt-1">${totalGlosas}</div>
-            <span class="text-[10px] text-rose-600 font-semibold">Ausências sem cobertura</span>
+            <span class="text-[10px] text-rose-600 font-semibold">AusÃªncias sem cobertura</span>
           </div>
           <div class="bg-red-50 border border-red-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-red-800">Valor Total Glosas</span>
             <div class="text-2xl font-black text-red-700 mt-1">${formatarMoeda(valorGlosado)}</div>
-            <span class="text-[10px] text-red-600 font-semibold">Prejuízo total estimado</span>
+            <span class="text-[10px] text-red-600 font-semibold">PrejuÃ­zo total estimado</span>
           </div>
           <div class="bg-blue-50 border border-blue-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-blue-800">Glosado em NF</span>
@@ -12138,14 +12138,14 @@ async function carregarRelatorioAtual() {
           <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
             <span class="text-[11px] font-bold uppercase text-amber-800">Glosas a Deduzir</span>
             <div class="text-2xl font-black text-amber-700 mt-1">${formatarMoeda(valorPendente)}</div>
-            <span class="text-[10px] text-amber-600 font-semibold">Ainda não faturadas</span>
+            <span class="text-[10px] text-amber-600 font-semibold">Ainda nÃ£o faturadas</span>
           </div>
         `;
       }
 
       if (tabelaContainer) {
         if (!lista || lista.length === 0) {
-          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhuma ocorrência de glosa ou posto descoberto no período.</div>`;
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhuma ocorrÃªncia de glosa ou posto descoberto no perÃ­odo.</div>`;
         } else {
           let rowsHtml = '';
           lista.forEach(item => {
@@ -12179,15 +12179,15 @@ async function carregarRelatorioAtual() {
                   <th class="px-4 py-3">Colaborador Ausente</th>
                   <th class="px-4 py-3">Cliente</th>
                   <th class="px-4 py-3">Posto / Unidade</th>
-                  <th class="px-4 py-3">Motivo da Ausência</th>
+                  <th class="px-4 py-3">Motivo da AusÃªncia</th>
                   <th class="px-4 py-3 text-right">Desconto Glosa (R$)</th>
-                  <th class="px-4 py-3 text-center">Situação Faturamento</th>
+                  <th class="px-4 py-3 text-center">SituaÃ§Ã£o Faturamento</th>
                 </tr>
               </thead>
               <tbody>${rowsHtml}</tbody>
               <tfoot class="bg-slate-900 text-white font-bold text-xs">
                 <tr>
-                  <td colspan="5" class="px-4 py-3 text-right uppercase">Total de Glosas no Período:</td>
+                  <td colspan="5" class="px-4 py-3 text-right uppercase">Total de Glosas no PerÃ­odo:</td>
                   <td class="px-4 py-3 text-right text-red-300 text-sm">${formatarMoeda(valorGlosado)}</td>
                   <td></td>
                 </tr>
@@ -12198,7 +12198,7 @@ async function carregarRelatorioAtual() {
       }
     }
 
-    // 5. FOLHA DE BENEFÍCIOS (VA E VT SEPARADOS)
+    // 5. FOLHA DE BENEFÃCIOS (VA E VT SEPARADOS)
     else if (tipo === 'beneficios') {
       const lista = data.itens || data.lista || [];
       state.dadosRelatorioAtual.lista = lista;
@@ -12208,8 +12208,8 @@ async function carregarRelatorioAtual() {
       const totalGeral = data.total_geral_beneficios ?? data.resumo?.totalGeralBeneficios ?? (totalVT + totalVA);
       const faltasAbatidas = data.total_faltas_descontadas ?? data.resumo?.totalEconomiaFaltas ?? 0;
 
-      if (tituloEl) tituloEl.textContent = 'Demonstrativo de Benefícios (VA e VT Segregados)';
-      if (subtituloEl) subtituloEl.textContent = `Competência: ${mes} | Apuração Individual com Dias Úteis e Faltas Deduzidas`;
+      if (tituloEl) tituloEl.textContent = 'Demonstrativo de BenefÃ­cios (VA e VT Segregados)';
+      if (subtituloEl) subtituloEl.textContent = `CompetÃªncia: ${mes} | ApuraÃ§Ã£o Individual com Dias Ãšteis e Faltas Deduzidas`;
 
       if (cardsContainer) {
         cardsContainer.innerHTML = `
@@ -12219,7 +12219,7 @@ async function carregarRelatorioAtual() {
             <span class="text-[10px] text-emerald-600 font-semibold">Calculado separadamente</span>
           </div>
           <div class="bg-purple-50 border border-purple-200 rounded-xl p-3.5 shadow-sm">
-            <span class="text-[11px] font-bold uppercase text-purple-800">Total Vale Alimentação (VA)</span>
+            <span class="text-[11px] font-bold uppercase text-purple-800">Total Vale AlimentaÃ§Ã£o (VA)</span>
             <div class="text-2xl font-black text-purple-700 mt-1">${formatarMoeda(totalVA)}</div>
             <span class="text-[10px] text-purple-600 font-semibold">Calculado separadamente</span>
           </div>
@@ -12238,7 +12238,7 @@ async function carregarRelatorioAtual() {
 
       if (tabelaContainer) {
         if (!lista || lista.length === 0) {
-          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum colaborador ativo no período selecionado.</div>`;
+          tabelaContainer.innerHTML = `<div class="py-8 text-center text-slate-400 font-medium">Nenhum colaborador ativo no perÃ­odo selecionado.</div>`;
         } else {
           let rowsHtml = '';
           lista.forEach(item => {
@@ -12282,9 +12282,9 @@ async function carregarRelatorioAtual() {
                   <th class="px-4 py-3 text-center">Dias Efetivos</th>
                   <th class="px-4 py-3 text-right">Tarifa VT</th>
                   <th class="px-4 py-3 text-right text-emerald-800 bg-emerald-100/50">Total VT (R$)</th>
-                  <th class="px-4 py-3 text-right">Diária VA</th>
+                  <th class="px-4 py-3 text-right">DiÃ¡ria VA</th>
                   <th class="px-4 py-3 text-right text-purple-800 bg-purple-100/50">Total VA (R$)</th>
-                  <th class="px-4 py-3 text-right text-blue-900 bg-blue-100/50">Total Benefícios (R$)</th>
+                  <th class="px-4 py-3 text-right text-blue-900 bg-blue-100/50">Total BenefÃ­cios (R$)</th>
                 </tr>
               </thead>
               <tbody>${rowsHtml}</tbody>
@@ -12304,16 +12304,16 @@ async function carregarRelatorioAtual() {
     }
 
   } catch (err) {
-    console.error('Erro ao gerar relatório:', err);
+    console.error('Erro ao gerar relatÃ³rio:', err);
     if (tabelaContainer) {
-      tabelaContainer.innerHTML = `<div class="py-8 text-center text-red-600 font-semibold">Erro ao carregar dados do relatório: ${err.message}</div>`;
+      tabelaContainer.innerHTML = `<div class="py-8 text-center text-red-600 font-semibold">Erro ao carregar dados do relatÃ³rio: ${err.message}</div>`;
     }
   }
 }
 
 function exportarRelatorioAtualExcel() {
   if (!state.dadosRelatorioAtual || !state.dadosRelatorioAtual.lista || state.dadosRelatorioAtual.lista.length === 0) {
-    alert('Nenhum dado para exportar. Selecione os filtros e gere o relatório primeiro.');
+    alert('Nenhum dado para exportar. Selecione os filtros e gere o relatÃ³rio primeiro.');
     return;
   }
 
@@ -12327,28 +12327,28 @@ function exportarRelatorioAtualExcel() {
     dadosExport = lista.map(item => {
       const isDem = (item.status_colaborador === 'Demitido' || item.ativo === 0) && item.data_demissao;
       return {
-        'Tipo': isDem ? 'Demissão' : 'Admissão',
+        'Tipo': isDem ? 'DemissÃ£o' : 'AdmissÃ£o',
         'Nome do Colaborador': item.nome,
         'CPF': item.cpf || '',
-        'Cargo / Função': item.nome_cargo || '',
-        'Cliente': item.cliente_nome || 'Reserva Técnica',
+        'Cargo / FunÃ§Ã£o': item.nome_cargo || '',
+        'Cliente': item.cliente_nome || 'Reserva TÃ©cnica',
         'Posto de Trabalho': item.nome_posto || '',
         'Data do Evento': isDem ? (item.data_demissao || '') : (item.data_admissao || ''),
-        'Motivo / Detalhes': isDem ? (item.motivo_demissao || 'Desligamento') : 'Contratação'
+        'Motivo / Detalhes': isDem ? (item.motivo_demissao || 'Desligamento') : 'ContrataÃ§Ã£o'
       };
     });
   } else if (tipo === 'ferias-mensais') {
     dadosExport = lista.map(item => ({
       'Colaborador': item.titular_nome || item.nome_colaborador || item.nome,
       'CPF': item.cpf || item.colaborador_cpf || '',
-      'Função': item.nome_cargo || '',
+      'FunÃ§Ã£o': item.nome_cargo || '',
       'Cliente': item.cliente_nome || '',
       'Posto': item.nome_posto || '',
-      'Início das Férias': item.data_inicio || '',
-      'Fim das Férias': item.data_fim || '',
-      'Dias de Férias': item.dias_ferias || 30,
-      'Tipo de Período': item.tipo_ferias || '',
-      'Houve Cobertura?': item.havera_cobertura ? 'Sim' : 'Não',
+      'InÃ­cio das FÃ©rias': item.data_inicio || '',
+      'Fim das FÃ©rias': item.data_fim || '',
+      'Dias de FÃ©rias': item.dias_ferias || 30,
+      'Tipo de PerÃ­odo': item.tipo_ferias || '',
+      'Houve Cobertura?': item.havera_cobertura ? 'Sim' : 'NÃ£o',
       'Freelancer Designado': item.freelancer_nome || item.nome_freelancer || '',
       'Valor da Cobertura (R$)': item.valor_cobertura || 0
     }));
@@ -12363,7 +12363,7 @@ function exportarRelatorioAtualExcel() {
         'Chave PIX': item.chave_pix || '',
         'Tipo Chave': item.tipo_chave_pix || 'PIX',
         'Banco': item.banco || '',
-        'Total de Diárias': item.total_diarias_mes ?? item.diarias ?? 0,
+        'Total de DiÃ¡rias': item.total_diarias_mes ?? item.diarias ?? 0,
         'Valor Pago (R$)': valPago,
         'Valor Pendente (R$)': valPendente,
         'Valor Total (R$)': valTotal
@@ -12377,7 +12377,7 @@ function exportarRelatorioAtualExcel() {
       'Posto / Unidade': item.nome_posto || item.nome_unidade || '',
       'Motivo': item.motivo_falta || item.motivo || '',
       'Valor Desconto Glosa (R$)': item.valor_glosa ?? item.valor_desconto_glosa ?? 0,
-      'Situação Faturamento': item.status_faturamento || ''
+      'SituaÃ§Ã£o Faturamento': item.status_faturamento || ''
     }));
   } else if (tipo === 'beneficios') {
     dadosExport = lista.map(item => {
@@ -12395,9 +12395,9 @@ function exportarRelatorioAtualExcel() {
         'Tarifa VT (R$)': item.valor_passagem_unitaria || 0,
         'Passagens por Dia': item.quantidade_passagens_dia || 2,
         'Total VT (R$)': vt,
-        'Diária VA (R$)': item.valor_diario_va || 0,
+        'DiÃ¡ria VA (R$)': item.valor_diario_va || 0,
         'Total VA (R$)': va,
-        'Total Geral Benefícios (R$)': totalColab
+        'Total Geral BenefÃ­cios (R$)': totalColab
       };
     });
   }
@@ -12405,10 +12405,10 @@ function exportarRelatorioAtualExcel() {
   if (typeof XLSX !== 'undefined') {
     const ws = XLSX.utils.json_to_sheet(dadosExport);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+    XLSX.utils.book_append_sheet(wb, ws, 'RelatÃ³rio');
     XLSX.writeFile(wb, `${nomeArquivo}.xlsx`);
   } else {
-    alert('Biblioteca XLSX não está disponível no momento.');
+    alert('Biblioteca XLSX nÃ£o estÃ¡ disponÃ­vel no momento.');
   }
 }
 
@@ -12431,7 +12431,7 @@ state.dadosPostoDestinoVincular = {
 };
 
 async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clienteNome, cargoId, cargoNome, vagasDisponiveis, escalaPosto) {
-  // Configurar IDs e dados do posto de destino no formulário
+  // Configurar IDs e dados do posto de destino no formulÃ¡rio
   document.getElementById('vincularPostoId').value = postoId;
   document.getElementById('vincularClienteId').value = clienteId;
   document.getElementById('vincularPostoCargoId').value = cargoId || '';
@@ -12446,7 +12446,7 @@ async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clie
   const qtdVagasEl = document.getElementById('qtdVagasLivresPostoInfo');
   if (qtdVagasEl) qtdVagasEl.textContent = vagasDisponiveis;
 
-  document.getElementById('txtSyncCargoNome').textContent = cargoNome || 'Padrão do Posto';
+  document.getElementById('txtSyncCargoNome').textContent = cargoNome || 'PadrÃ£o do Posto';
   document.getElementById('txtSyncEscalaNome').textContent = escalaPosto || '5x2';
 
   document.getElementById('chkSyncCargo').checked = true;
@@ -12474,7 +12474,7 @@ async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clie
     console.error('Erro ao atualizar colaboradores:', e);
   }
 
-  // Filtrar colaboradores ativos que NÁO estão já alocados neste mesmo posto
+  // Filtrar colaboradores ativos que NÃO estÃ£o jÃ¡ alocados neste mesmo posto
   const listaBase = Array.isArray(state.colaboradores) ? state.colaboradores : [];
   state.colaboradoresParaVinculacao = listaBase.filter(c => 
     c.ativo === 1 && c.status_colaborador !== 'Demitido' && c.posto_trabalho_id !== postoId
@@ -12482,14 +12482,14 @@ async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clie
 
   filtrarColaboradoresVinculacao();
 
-  // Alerta de Lotação do Posto de Destino e Opção de Troca
+  // Alerta de LotaÃ§Ã£o do Posto de Destino e OpÃ§Ã£o de Troca
   const boxAlertaDest = document.getElementById('boxAlertaLotacaoDestinoVincular');
   const selTrocarDest = document.getElementById('selTrocarDestinoVincularPosto');
   const txtAlertaDest = document.getElementById('txtAlertaLotacaoDestinoVincular');
 
   if (vagasDisponiveis <= 0) {
     if (boxAlertaDest) boxAlertaDest.classList.remove('hidden');
-    if (txtAlertaDest) txtAlertaDest.textContent = `Atenção: O setor "${postoNome}" já atingiu a capacidade máxima (0 vagas disponíveis)!`;
+    if (txtAlertaDest) txtAlertaDest.textContent = `AtenÃ§Ã£o: O setor "${postoNome}" jÃ¡ atingiu a capacidade mÃ¡xima (0 vagas disponÃ­veis)!`;
     if (selTrocarDest) {
       selTrocarDest.innerHTML = '<option value="">-- Selecione outro setor deste cliente com vagas --</option>';
       const outrosPostos = (state.postos || []).filter(p => p.cliente_id === clienteId && p.id !== postoId);
@@ -12502,7 +12502,7 @@ async function abrirModalVincularColaborador(clienteId, postoId, postoNome, clie
           const livres = Math.max(0, lim - ocup);
           const estaLotado = livres <= 0;
           selTrocarDest.innerHTML += `<option value="${p.id}" ${estaLotado ? 'disabled class="text-slate-400 bg-slate-100"' : 'class="font-semibold text-emerald-800"'}>
-            ${p.nome_posto} (${estaLotado ? '⚠️ LOTADO' : `✅ ${livres} vaga(s) livre(s)`})
+            ${p.nome_posto} (${estaLotado ? 'âš ï¸ LOTADO' : `âœ… ${livres} vaga(s) livre(s)`})
           </option>`;
         });
       }
@@ -12610,12 +12610,12 @@ function filtrarColaboradoresVinculacao() {
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-bold text-xs text-slate-900 truncate">${c.nome}</span>
             <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${isReserva ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}">
-              ${isReserva ? '🟢 Reserva Técnica' : `🟠 Transf: ${(c.cliente_nome || 'Cliente').toUpperCase()}`}
+              ${isReserva ? 'ðŸŸ¢ Reserva TÃ©cnica' : `ðŸŸ  Transf: ${(c.cliente_nome || 'Cliente').toUpperCase()}`}
             </span>
           </div>
           <div class="text-[11px] text-slate-500 truncate mt-0.5">
-            CPF: <span class="font-mono text-slate-600">${c.cpf || 'S/ CPF'}</span> • Cargo: <b class="text-slate-700">${c.nome_cargo || 'Geral'}</b>
-            ${!isReserva ? ` • Posto atual: <i>${c.nome_posto || 'Posto'}</i>` : ''}
+            CPF: <span class="font-mono text-slate-600">${c.cpf || 'S/ CPF'}</span> â€¢ Cargo: <b class="text-slate-700">${c.nome_cargo || 'Geral'}</b>
+            ${!isReserva ? ` â€¢ Posto atual: <i>${c.nome_posto || 'Posto'}</i>` : ''}
           </div>
         </div>
       </label>
@@ -12658,7 +12658,7 @@ function atualizarDiagnosticoVinculacao() {
 
   const btnConfirmar = document.getElementById('btnConfirmarVinculacao');
   if (btnConfirmar) {
-    btnConfirmar.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Confirmar Vinculação (${total} selecionado${total === 1 ? '' : 's'})`;
+    btnConfirmar.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Confirmar VinculaÃ§Ã£o (${total} selecionado${total === 1 ? '' : 's'})`;
   }
 
   const diag = document.getElementById('vincularCardDiagnostico');
@@ -12696,10 +12696,10 @@ function atualizarDiagnosticoVinculacao() {
     diag.innerHTML = `
       <div class="font-bold flex items-center gap-1.5 text-rose-800">
         <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
-        <span>LIMITE DE VAGAS EXCEDIDO: ${total} selecionados para ${vagasLivres} vaga(s) disponível(is)</span>
+        <span>LIMITE DE VAGAS EXCEDIDO: ${total} selecionados para ${vagasLivres} vaga(s) disponÃ­vel(is)</span>
       </div>
       <p class="text-[11px] text-rose-800 leading-relaxed">
-        Você selecionou mais colaboradores do que o posto comporta. Por favor, <b>desmarque ${total - vagasLivres} colaborador(es)</b> para respeitar o limite contratual do posto.
+        VocÃª selecionou mais colaboradores do que o posto comporta. Por favor, <b>desmarque ${total - vagasLivres} colaborador(es)</b> para respeitar o limite contratual do posto.
       </p>
     `;
     if (btnConfirmar) btnConfirmar.disabled = true;
@@ -12713,7 +12713,7 @@ function atualizarDiagnosticoVinculacao() {
   if (transferencias > 0) {
     detalhesTransf = `
       <div class="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-1 space-y-0.5">
-        <span class="font-bold block text-amber-950">⚠️ Impacto nas vagas dos postos anteriores:</span>
+        <span class="font-bold block text-amber-950">âš ï¸ Impacto nas vagas dos postos anteriores:</span>
         <ul class="list-disc list-inside space-y-0.5">
           ${origensTransf.map(item => `<li>${item}</li>`).join('')}
         </ul>
@@ -12723,12 +12723,12 @@ function atualizarDiagnosticoVinculacao() {
 
   diag.innerHTML = `
     <div class="font-bold flex items-center justify-between text-indigo-900">
-      <span class="flex items-center gap-1.5"><i class="fa-solid fa-users text-indigo-600"></i> Resumo da Vinculação em Lote:</span>
+      <span class="flex items-center gap-1.5"><i class="fa-solid fa-users text-indigo-600"></i> Resumo da VinculaÃ§Ã£o em Lote:</span>
       <span class="bg-indigo-200/80 text-indigo-950 px-2 py-0.5 rounded font-bold">${total} de ${vagasLivres} vaga(s) preenchida(s)</span>
     </div>
     <div class="text-[11px] text-slate-700 flex flex-wrap items-center gap-3 pt-0.5">
-      <span>🟢 Da Reserva Técnica: <b>${reservas}</b></span>
-      <span>🟠 Por Transferência: <b>${transferencias}</b></span>
+      <span>ðŸŸ¢ Da Reserva TÃ©cnica: <b>${reservas}</b></span>
+      <span>ðŸŸ  Por TransferÃªncia: <b>${transferencias}</b></span>
     </div>
     ${detalhesTransf}
   `;
@@ -12745,7 +12745,7 @@ async function salvarVinculacaoColaborador(e) {
 
   const vagasLivres = state.dadosPostoDestinoVincular.vagasLivres || 0;
   if (ids.length > vagasLivres) {
-    alert(`Você selecionou ${ids.length} colaboradores, mas este posto possui apenas ${vagasLivres} vaga(s) livre(s). Reduza a quantidade selecionada.`);
+    alert(`VocÃª selecionou ${ids.length} colaboradores, mas este posto possui apenas ${vagasLivres} vaga(s) livre(s). Reduza a quantidade selecionada.`);
     return;
   }
 
@@ -12793,13 +12793,13 @@ async function salvarVinculacaoColaborador(e) {
   } finally {
     if (btnConfirmar) {
       btnConfirmar.disabled = false;
-      btnConfirmar.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar Vinculação ao Posto';
+      btnConfirmar.innerHTML = '<i class="fa-solid fa-check"></i> Confirmar VinculaÃ§Ã£o ao Posto';
     }
   }
 }
 
 async function desvincularParaReservaTecnica(colabId, colabNome, postoNome, clienteNome) {
-  if (!confirm(`Deseja mover o colaborador "${colabNome}" do posto "${postoNome}" (${clienteNome}) para a RESERVA TÉCNICA?\n\nIsso liberará 1 vaga neste posto sem demitir o funcionário.`)) {
+  if (!confirm(`Deseja mover o colaborador "${colabNome}" do posto "${postoNome}" (${clienteNome}) para a RESERVA TÃ‰CNICA?\n\nIsso liberarÃ¡ 1 vaga neste posto sem demitir o funcionÃ¡rio.`)) {
     return;
   }
 
@@ -12813,7 +12813,7 @@ async function desvincularParaReservaTecnica(colabId, colabNome, postoNome, clie
       await carregarDadosBase();
       if (state.abaAtiva === 'clientes') carregarClientesComPostos();
       if (state.abaAtiva === 'colaboradores') carregarColaboradores();
-      alert(json.message || `Colaborador ${colabNome} movido para a Reserva Técnica com sucesso!`);
+      alert(json.message || `Colaborador ${colabNome} movido para a Reserva TÃ©cnica com sucesso!`);
     } else {
       alert('Erro: ' + json.message);
     }
@@ -12823,7 +12823,7 @@ async function desvincularParaReservaTecnica(colabId, colabNome, postoNome, clie
 }
 
 // =============================================================
-// 9. DOSSIÊ E HISTÓRICO DA VIDA DO COLABORADOR (LINHA DO TEMPO 360°)
+// 9. DOSSIÃŠ E HISTÃ“RICO DA VIDA DO COLABORADOR (LINHA DO TEMPO 360Â°)
 // =============================================================
 state.historicoColaboradorAtual = null;
 state.filtroHistoricoAtivo = 'TODOS';
@@ -12837,12 +12837,12 @@ async function abrirModalHistoricoColaborador(id) {
     container.innerHTML = `
       <div class="text-center py-12 text-slate-400 font-medium">
         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-indigo-600 block"></i>
-        Carregando histórico completo da vida do colaborador...
+        Carregando histÃ³rico completo da vida do colaborador...
       </div>
     `;
   }
 
-  // Esconder formulário de anotação
+  // Esconder formulÃ¡rio de anotaÃ§Ã£o
   const boxForm = document.getElementById('boxFormAnotacaoHistorico');
   if (boxForm) boxForm.classList.add('hidden');
 
@@ -12851,7 +12851,7 @@ async function abrirModalHistoricoColaborador(id) {
     const json = await res.json();
 
     if (!json || json.error) {
-      alert('Erro ao carregar histórico: ' + (json?.message || 'Colaborador não encontrado'));
+      alert('Erro ao carregar histÃ³rico: ' + (json?.message || 'Colaborador nÃ£o encontrado'));
       fecharModal('modalHistoricoColaborador');
       return;
     }
@@ -12860,14 +12860,14 @@ async function abrirModalHistoricoColaborador(id) {
     const colab = json.colaborador;
     const stats = json.estatisticas;
 
-    // Cabeçalho
+    // CabeÃ§alho
     document.getElementById('histColabNome').textContent = colab.nome;
-    document.getElementById('histColabCargo').textContent = colab.nome_cargo || 'Função Contratual';
-    document.getElementById('histColabCliente').textContent = (colab.cliente_nome ? colab.cliente_nome : 'Reserva Técnica') + (colab.nome_posto ? ' • ' + colab.nome_posto : '');
-    document.getElementById('histColabCPF').textContent = colab.cpf || 'Não informado';
+    document.getElementById('histColabCargo').textContent = colab.nome_cargo || 'FunÃ§Ã£o Contratual';
+    document.getElementById('histColabCliente').textContent = (colab.cliente_nome ? colab.cliente_nome : 'Reserva TÃ©cnica') + (colab.nome_posto ? ' â€¢ ' + colab.nome_posto : '');
+    document.getElementById('histColabCPF').textContent = colab.cpf || 'NÃ£o informado';
 
     const isDemitido = colab.ativo === 0 || colab.status_colaborador === 'Demitido';
-    const isFerias = colab.status_ferias_atual === 'Em Férias';
+    const isFerias = colab.status_ferias_atual === 'Em FÃ©rias';
     const badgeStatus = document.getElementById('histColabStatusBadge');
 
     if (isDemitido) {
@@ -12875,7 +12875,7 @@ async function abrirModalHistoricoColaborador(id) {
       badgeStatus.textContent = 'Demitido / Desligado';
     } else if (isFerias) {
       badgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30';
-      badgeStatus.textContent = 'Em Férias';
+      badgeStatus.textContent = 'Em FÃ©rias';
     } else {
       badgeStatus.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
       badgeStatus.textContent = 'Ativo no Posto';
@@ -12883,17 +12883,17 @@ async function abrirModalHistoricoColaborador(id) {
 
     // KPIs
     document.getElementById('kpiTempoEmpresa').textContent = stats.tempo_empresa || 'Recente';
-    document.getElementById('kpiDataAdmissao').textContent = colab.data_admissao ? `Admitido em ${formatarData(colab.data_admissao)}` : 'Sem data de admissão';
-    document.getElementById('kpiTotalFerias').textContent = `${stats.total_ferias || 0} período(s)`;
+    document.getElementById('kpiDataAdmissao').textContent = colab.data_admissao ? `Admitido em ${formatarData(colab.data_admissao)}` : 'Sem data de admissÃ£o';
+    document.getElementById('kpiTotalFerias').textContent = `${stats.total_ferias || 0} perÃ­odo(s)`;
     document.getElementById('kpiTotalFaltas').textContent = `${stats.total_faltas || 0} falta(s) | ${stats.total_atestados || 0} atestado(s)`;
-    document.getElementById('kpiTotalTransferencias').textContent = `${stats.total_transferencias || 0} movimentação(ões)`;
+    document.getElementById('kpiTotalTransferencias').textContent = `${stats.total_transferencias || 0} movimentaÃ§Ã£o(Ãµes)`;
 
     // Resetar filtro e renderizar
     filtrarPillHistorico('TODOS');
 
   } catch (err) {
-    console.error('Erro ao abrir histórico do colaborador:', err);
-    alert('Falha de conexão ao buscar histórico: ' + err.message);
+    console.error('Erro ao abrir histÃ³rico do colaborador:', err);
+    alert('Falha de conexÃ£o ao buscar histÃ³rico: ' + err.message);
   }
 }
 
@@ -12952,14 +12952,14 @@ function renderizarLinhaDoTempoHistorico() {
         iconClass = 'fa-solid fa-user-check';
         iconBg = 'bg-emerald-600 text-white shadow-emerald-200';
         badgeBorder = 'border-emerald-200 bg-emerald-50/40';
-        badgeTipoTexto = 'Admissão';
+        badgeTipoTexto = 'AdmissÃ£o';
         badgeTipoColor = 'bg-emerald-100 text-emerald-800 border border-emerald-200';
         break;
       case 'FERIAS':
         iconClass = 'fa-solid fa-umbrella-beach';
         iconBg = 'bg-amber-500 text-white shadow-amber-200';
         badgeBorder = 'border-amber-200 bg-amber-50/40';
-        badgeTipoTexto = 'Férias';
+        badgeTipoTexto = 'FÃ©rias';
         badgeTipoColor = 'bg-amber-100 text-amber-800 border border-amber-200';
         break;
       case 'FALTA':
@@ -12973,28 +12973,28 @@ function renderizarLinhaDoTempoHistorico() {
         iconClass = 'fa-solid fa-file-medical';
         iconBg = 'bg-purple-600 text-white shadow-purple-200';
         badgeBorder = 'border-purple-200 bg-purple-50/40';
-        badgeTipoTexto = 'Atestado Médico';
+        badgeTipoTexto = 'Atestado MÃ©dico';
         badgeTipoColor = 'bg-purple-100 text-purple-800 border border-purple-200';
         break;
       case 'TRANSFERENCIA':
         iconClass = 'fa-solid fa-arrows-rotate';
         iconBg = 'bg-blue-600 text-white shadow-blue-200';
         badgeBorder = 'border-blue-200 bg-blue-50/40';
-        badgeTipoTexto = 'Mudança de Posto / Setor';
+        badgeTipoTexto = 'MudanÃ§a de Posto / Setor';
         badgeTipoColor = 'bg-blue-100 text-blue-800 border border-blue-200';
         break;
       case 'ALTERACAO_BENEFICIO':
         iconClass = 'fa-solid fa-bus';
         iconBg = 'bg-teal-600 text-white shadow-teal-200';
         badgeBorder = 'border-teal-200 bg-teal-50/40';
-        badgeTipoTexto = 'Transporte / Benefício';
+        badgeTipoTexto = 'Transporte / BenefÃ­cio';
         badgeTipoColor = 'bg-teal-100 text-teal-800 border border-teal-200';
         break;
       case 'DEMISSAO':
         iconClass = 'fa-solid fa-user-slash';
         iconBg = 'bg-rose-800 text-white shadow-rose-200';
         badgeBorder = 'border-rose-300 bg-rose-50/50';
-        badgeTipoTexto = 'Desligamento / Demissão';
+        badgeTipoTexto = 'Desligamento / DemissÃ£o';
         badgeTipoColor = 'bg-rose-100 text-rose-900 border border-rose-300';
         break;
       case 'ELOGIO':
@@ -13008,7 +13008,7 @@ function renderizarLinhaDoTempoHistorico() {
         iconClass = 'fa-solid fa-triangle-exclamation';
         iconBg = 'bg-orange-600 text-white shadow-orange-200';
         badgeBorder = 'border-orange-200 bg-orange-50/40';
-        badgeTipoTexto = 'Advertência';
+        badgeTipoTexto = 'AdvertÃªncia';
         badgeTipoColor = 'bg-orange-100 text-orange-800 border border-orange-200';
         break;
       case 'TREINAMENTO':
@@ -13022,7 +13022,7 @@ function renderizarLinhaDoTempoHistorico() {
         iconClass = 'fa-solid fa-note-sticky';
         iconBg = 'bg-slate-700 text-white shadow-slate-200';
         badgeBorder = 'border-slate-200 bg-white';
-        badgeTipoTexto = 'Anotação';
+        badgeTipoTexto = 'AnotaÃ§Ã£o';
         badgeTipoColor = 'bg-slate-100 text-slate-700 border border-slate-200';
         break;
     }
@@ -13052,7 +13052,7 @@ function renderizarLinhaDoTempoHistorico() {
           </div>
 
           <p class="text-xs text-slate-600 leading-relaxed">
-            ${ev.descricao || 'Sem descrição informada.'}
+            ${ev.descricao || 'Sem descriÃ§Ã£o informada.'}
           </p>
 
           <div class="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-400">
@@ -13105,12 +13105,12 @@ async function salvarNovaAnotacaoHistorico(e) {
     if (json.success) {
       alternarFormAnotacaoHistorico();
       await abrirModalHistoricoColaborador(colabId);
-      alert('Ocorrência registrada no histórico com sucesso!');
+      alert('OcorrÃªncia registrada no histÃ³rico com sucesso!');
     } else {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro ao registrar ocorrência: ' + err.message);
+    alert('Erro ao registrar ocorrÃªncia: ' + err.message);
   }
 }
 
@@ -13140,7 +13140,7 @@ function imprimirHistoricoColaborador() {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Dossiê e Histórico - ${colab.nome}</title>
+      <title>DossiÃª e HistÃ³rico - ${colab.nome}</title>
       <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 30px; color: #1e293b; }
         h1 { font-size: 20px; margin-bottom: 4px; }
@@ -13159,11 +13159,11 @@ function imprimirHistoricoColaborador() {
     <body>
       <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 15px;">
         <div>
-          <h1>DOSSIÊ DO COLABORADOR • HISTÓRICO INTEGRADO 360°</h1>
-          <div class="sub">SISFAC 2.0 • Sistema Integrado de Facilidades e Terceirização</div>
+          <h1>DOSSIÃŠ DO COLABORADOR â€¢ HISTÃ“RICO INTEGRADO 360Â°</h1>
+          <div class="sub">SISFAC 2.0 â€¢ Sistema Integrado de Facilidades e TerceirizaÃ§Ã£o</div>
         </div>
         <div style="text-align: right; font-size: 11px; color: #64748b;">
-          Emissão: ${new Date().toLocaleString('pt-BR')}<br>
+          EmissÃ£o: ${new Date().toLocaleString('pt-BR')}<br>
           Status: <b>${colab.status_colaborador || (colab.ativo ? 'Ativo' : 'Demitido')}</b>
         </div>
       </div>
@@ -13171,8 +13171,8 @@ function imprimirHistoricoColaborador() {
       <div style="margin: 20px 0;">
         <h2 style="font-size: 16px; margin: 0;">${colab.nome}</h2>
         <div style="font-size: 12px; color: #475569; margin-top: 4px;">
-          <b>Função:</b> ${colab.nome_cargo || 'N/I'} &nbsp;|&nbsp; 
-          <b>Cliente/Posto:</b> ${colab.cliente_nome || 'Reserva Técnica'} - ${colab.nome_posto || 'Sem posto fixo'} &nbsp;|&nbsp; 
+          <b>FunÃ§Ã£o:</b> ${colab.nome_cargo || 'N/I'} &nbsp;|&nbsp; 
+          <b>Cliente/Posto:</b> ${colab.cliente_nome || 'Reserva TÃ©cnica'} - ${colab.nome_posto || 'Sem posto fixo'} &nbsp;|&nbsp; 
           <b>Escala:</b> ${colab.escala || '5x2'} &nbsp;|&nbsp; 
           <b>CPF:</b> ${colab.cpf || 'N/I'}
         </div>
@@ -13182,30 +13182,30 @@ function imprimirHistoricoColaborador() {
         <div class="card">
           <div class="card-title">Tempo de Casa</div>
           <div class="card-val">${stats.tempo_empresa}</div>
-          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Admissão: ${formatarData(colab.data_admissao)}</div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 2px;">AdmissÃ£o: ${formatarData(colab.data_admissao)}</div>
         </div>
         <div class="card">
-          <div class="card-title">Férias Gozadas</div>
-          <div class="card-val">${stats.total_ferias} períodos</div>
+          <div class="card-title">FÃ©rias Gozadas</div>
+          <div class="card-val">${stats.total_ferias} perÃ­odos</div>
         </div>
         <div class="card">
           <div class="card-title">Faltas & Atestados</div>
           <div class="card-val">${stats.total_faltas} faltas | ${stats.total_atestados} atestados</div>
         </div>
         <div class="card">
-          <div class="card-title">Movimentações de Posto</div>
+          <div class="card-title">MovimentaÃ§Ãµes de Posto</div>
           <div class="card-val">${stats.total_transferencias} vezes</div>
         </div>
       </div>
 
-      <h3 style="font-size: 13px; text-transform: uppercase; color: #334155; margin-bottom: 8px;">Linha do Tempo Cronológica de Ocorrências e Eventos</h3>
+      <h3 style="font-size: 13px; text-transform: uppercase; color: #334155; margin-bottom: 8px;">Linha do Tempo CronolÃ³gica de OcorrÃªncias e Eventos</h3>
       <table>
         <thead>
           <tr>
             <th style="width: 90px;">Data</th>
             <th style="width: 130px;">Categoria</th>
-            <th>Evento / Ocorrência Registrada</th>
-            <th style="width: 120px;">Responsável</th>
+            <th>Evento / OcorrÃªncia Registrada</th>
+            <th style="width: 120px;">ResponsÃ¡vel</th>
           </tr>
         </thead>
         <tbody>
@@ -13226,13 +13226,13 @@ function imprimirHistoricoColaborador() {
 
 
 // =============================================================
-// 10. CONCESSÁO COLETIVA DE BENEFÍCIOS EM LOTE (SETOR DE BENEFÍCIOS)
+// 10. CONCESSÃO COLETIVA DE BENEFÃCIOS EM LOTE (SETOR DE BENEFÃCIOS)
 // =============================================================
 function abrirModalConcessaoLoteBeneficios(idsPreSelecionados = []) {
   const modal = document.getElementById('modalConcessaoColetivaBeneficios');
   if (modal) modal.classList.remove('hidden');
 
-  // Mês de competência padrão
+  // MÃªs de competÃªncia padrÃ£o
   const anoMesInput = document.getElementById('loteAnoMes');
   const mesAtual = document.getElementById('benefAnoMes')?.value || new Date().toISOString().slice(0, 7);
   if (anoMesInput) anoMesInput.value = mesAtual;
@@ -13246,7 +13246,7 @@ function abrirModalConcessaoLoteBeneficios(idsPreSelecionados = []) {
     });
   }
 
-  // Preencher datas padrão (primeiro e último dia do mês)
+  // Preencher datas padrÃ£o (primeiro e Ãºltimo dia do mÃªs)
   aoMudarMesLote();
 
   // Renderizar lista de colaboradores com checkboxes
@@ -13256,7 +13256,7 @@ function abrirModalConcessaoLoteBeneficios(idsPreSelecionados = []) {
 function abrirModalConcessaoLoteComSelecionados() {
   const marcados = Array.from(document.querySelectorAll('.chk-benef-item:checked')).map(chk => parseInt(chk.value, 10));
   if (marcados.length === 0) {
-    alert('Nenhum colaborador foi selecionado na tabela de benefícios.');
+    alert('Nenhum colaborador foi selecionado na tabela de benefÃ­cios.');
     return;
   }
   abrirModalConcessaoLoteBeneficios(marcados);
@@ -13307,7 +13307,7 @@ function calcularDiasCalendarioLocal(iniStr, fimStr, escala) {
   let step12x36 = 0;
 
   while (curr <= fim) {
-    const day = curr.getDay(); // 0 = Domingo, 6 = Sábado
+    const day = curr.getDay(); // 0 = Domingo, 6 = SÃ¡bado
     if (escala.includes('5x2')) {
       if (day !== 0 && day !== 6) total++;
     } else if (escala.includes('6x1')) {
@@ -13353,7 +13353,7 @@ function renderizarListaColaboradoresLote(idsPreSelecionados = []) {
                  ${isChecked ? 'checked' : ''} onchange="atualizarContadorSelecionadosLote()">
           <div>
             <div class="text-xs font-bold text-slate-800">${c.nome}</div>
-            <div class="text-[11px] text-slate-400">${c.cliente_nome || 'Reserva Técnica'} • ${c.nome_posto || 'Posto Padrão'}</div>
+            <div class="text-[11px] text-slate-400">${c.cliente_nome || 'Reserva TÃ©cnica'} â€¢ ${c.nome_posto || 'Posto PadrÃ£o'}</div>
           </div>
         </div>
         <div class="flex items-center gap-2 text-[11px]">
@@ -13439,7 +13439,7 @@ async function salvarConcessaoLoteBeneficios(e) {
 
   const selecionados = Array.from(document.querySelectorAll('.chk-lote-colab:checked')).map(chk => parseInt(chk.value, 10));
   if (selecionados.length === 0) {
-    alert('Atenção: Selecione ao menos 1 colaborador para aplicar a concessão de benefícios em lote.');
+    alert('AtenÃ§Ã£o: Selecione ao menos 1 colaborador para aplicar a concessÃ£o de benefÃ­cios em lote.');
     return;
   }
 
@@ -13483,33 +13483,33 @@ async function salvarConcessaoLoteBeneficios(e) {
 
     if (json.success) {
       fecharModal('modalConcessaoColetivaBeneficios');
-      // Atualizar o seletor da competência de benefícios se for diferente
+      // Atualizar o seletor da competÃªncia de benefÃ­cios se for diferente
       const selMesPrinc = document.getElementById('benefAnoMes');
       if (selMesPrinc && selMesPrinc.value !== anoMes) {
         selMesPrinc.value = anoMes;
       }
       await carregarBeneficios();
-      alert(json.message || `Concessão de benefícios aplicada com sucesso para ${json.count} colaboradores!`);
+      alert(json.message || `ConcessÃ£o de benefÃ­cios aplicada com sucesso para ${json.count} colaboradores!`);
     } else {
-      alert('Erro: ' + (json.message || 'Falha ao processar concessão em lote'));
+      alert('Erro: ' + (json.message || 'Falha ao processar concessÃ£o em lote'));
     }
   } catch (err) {
-    alert('Erro ao processar concessão em lote: ' + err.message);
+    alert('Erro ao processar concessÃ£o em lote: ' + err.message);
   } finally {
     if (btnSalvar) {
       btnSalvar.disabled = false;
-      btnSalvar.innerHTML = '<i class="fa-solid fa-rocket"></i> Aplicar Concessão para Todos os Selecionados';
+      btnSalvar.innerHTML = '<i class="fa-solid fa-rocket"></i> Aplicar ConcessÃ£o para Todos os Selecionados';
     }
   }
 }
 
 // =============================================================
-// EDIÇÁO DE POSTOS DE TRABALHO (EXCLUSIVO ADMINISTRADOR MASTER)
+// EDIÃ‡ÃO DE POSTOS DE TRABALHO (EXCLUSIVO ADMINISTRADOR MASTER)
 // =============================================================
 
 async function abrirModalEditarPosto(postoId) {
   if (!isUsuarioAdminMaster()) {
-    alert('Acesso Restrito: Apenas o Administrador Master tem autorização para editar postos de clientes (aditivos de contrato ou correção).');
+    alert('Acesso Restrito: Apenas o Administrador Master tem autorizaÃ§Ã£o para editar postos de clientes (aditivos de contrato ou correÃ§Ã£o).');
     return;
   }
 
@@ -13527,7 +13527,7 @@ async function abrirModalEditarPosto(postoId) {
     document.getElementById('editarPostoNome').value = p.nome_posto || '';
     document.getElementById('editarPostoLimiteVagas').value = p.quantidade_vagas_limite || 1;
     document.getElementById('editarPostoLimiteVagas').min = p.total_ocupados || 1;
-    document.getElementById('editarPostoAvisoOcupacao').innerHTML = `Ocupadas: <b>${p.total_ocupados || 0}</b> colaborador(es) atualmente alocado(s). (Mínimo permitido: ${p.total_ocupados || 1})`;
+    document.getElementById('editarPostoAvisoOcupacao').innerHTML = `Ocupadas: <b>${p.total_ocupados || 0}</b> colaborador(es) atualmente alocado(s). (MÃ­nimo permitido: ${p.total_ocupados || 1})`;
     document.getElementById('editarPostoEscala').value = p.escala || '5x2';
     document.getElementById('editarPostoTurno').value = p.turno || '';
     document.getElementById('editarPostoObservacoes').value = p.observacoes || '';
@@ -13535,7 +13535,7 @@ async function abrirModalEditarPosto(postoId) {
 
     // Popular Unidades do Cliente
     const selectUnidade = document.getElementById('editarPostoUnidadeId');
-    selectUnidade.innerHTML = '<option value="">Matriz / Unidade Central (Padrão)</option>';
+    selectUnidade.innerHTML = '<option value="">Matriz / Unidade Central (PadrÃ£o)</option>';
     try {
       const resU = await fetch(`/api/unidades?cliente_id=${p.cliente_id}`);
       const unidades = await resU.json();
@@ -13544,7 +13544,7 @@ async function abrirModalEditarPosto(postoId) {
       });
     } catch(e) {}
 
-    // Popular Funções / Cargos
+    // Popular FunÃ§Ãµes / Cargos
     const selectCargo = document.getElementById('editarPostoCargoId');
     selectCargo.innerHTML = '';
     (state.cargos || []).forEach(cg => {
@@ -13553,15 +13553,15 @@ async function abrirModalEditarPosto(postoId) {
 
     abrirModal('modalEditarPosto');
   } catch (err) {
-    console.error('Erro ao abrir edição de posto:', err);
-    alert('Não foi possível carregar o posto para edição: ' + err.message);
+    console.error('Erro ao abrir ediÃ§Ã£o de posto:', err);
+    alert('NÃ£o foi possÃ­vel carregar o posto para ediÃ§Ã£o: ' + err.message);
   }
 }
 
 async function salvarEdicaoPosto(event) {
   event.preventDefault();
   if (!isUsuarioAdminMaster()) {
-    alert('Acesso Restrito: Apenas o Administrador Master pode salvar alterações de postos e aditivos de contratos.');
+    alert('Acesso Restrito: Apenas o Administrador Master pode salvar alteraÃ§Ãµes de postos e aditivos de contratos.');
     return;
   }
 
@@ -13577,11 +13577,11 @@ async function salvarEdicaoPosto(event) {
   const ativo = document.getElementById('editarPostoAtivo').checked ? 1 : 0;
 
   if (!nome_posto) {
-    alert('Informe o nome de identificação do posto.');
+    alert('Informe o nome de identificaÃ§Ã£o do posto.');
     return;
   }
   if (!cargo_id) {
-    alert('Selecione a função/cargo do posto.');
+    alert('Selecione a funÃ§Ã£o/cargo do posto.');
     return;
   }
 
@@ -13624,7 +13624,7 @@ async function salvarEdicaoPosto(event) {
     await carregarClientesComPostos();
     if (state.abaAtiva === 'dashboard') carregarDashboardExecutivo();
   } catch (err) {
-    console.error('Erro ao salvar edição de posto:', err);
+    console.error('Erro ao salvar ediÃ§Ã£o de posto:', err);
     alert('Erro: ' + err.message);
   } finally {
     if (btn) {
@@ -13635,7 +13635,7 @@ async function salvarEdicaoPosto(event) {
 }
 
 // =============================================================
-// EXPLORADOR ANALÍTICO DE OCORRÊNCIAS & FALTAS DO DASHBOARD
+// EXPLORADOR ANALÃTICO DE OCORRÃŠNCIAS & FALTAS DO DASHBOARD
 // =============================================================
 
 state.exploradorOcorrencias = {
@@ -13681,7 +13681,7 @@ async function carregarExploradorOcorrencias() {
   const qtdEl = document.getElementById('explorarQtdExibida');
 
   if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando ocorrências detalhadas da competência...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando ocorrÃªncias detalhadas da competÃªncia...</td></tr>`;
   }
 
   let url = `/api/faltas?mes=${mes}`;
@@ -13724,7 +13724,7 @@ async function carregarExploradorOcorrencias() {
 
     renderizarLinhasExplorador(state.exploradorOcorrencias.dados);
   } catch (err) {
-    console.error('Erro ao carregar explorador de ocorrências:', err);
+    console.error('Erro ao carregar explorador de ocorrÃªncias:', err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-red-500 font-bold">Erro ao buscar dados: ${err.message}</td></tr>`;
   }
 }
@@ -13758,7 +13758,7 @@ function renderizarLinhasExplorador(lista) {
   if (qtdEl) qtdEl.textContent = lista ? lista.length : 0;
 
   if (!lista || lista.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrência encontrada para os filtros selecionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Nenhuma ocorrÃªncia encontrada para os filtros selecionados.</td></tr>`;
     return;
   }
 
@@ -13809,7 +13809,7 @@ function renderizarLinhasExplorador(lista) {
         </td>
         <td class="px-3 py-2.5">
           <div class="font-bold text-slate-800">${item.colaborador_nome}</div>
-          <div class="text-[10px] text-slate-400">${item.nome_cargo || 'Função'} ${item.colaborador_cpf ? `• CPF: ${item.colaborador_cpf}` : ''}</div>
+          <div class="text-[10px] text-slate-400">${item.nome_cargo || 'FunÃ§Ã£o'} ${item.colaborador_cpf ? `â€¢ CPF: ${item.colaborador_cpf}` : ''}</div>
         </td>
         <td class="px-3 py-2.5">
           <span class="text-slate-700">${item.motivo_falta || 'Falta injustificada'}</span>
@@ -13827,10 +13827,10 @@ function renderizarLinhasExplorador(lista) {
         </td>
         <td class="px-3 py-2.5">
           <div class="font-semibold text-slate-700 text-xs">${item.criado_por || item.supervisor_exibicao || 'Sistema'}</div>
-          <div class="text-[10px] text-slate-400">${item.origem_lancamento === 'mobile_supervisor' ? '📱 Mobile Supervisor' : '💻 Portal Web'}</div>
+          <div class="text-[10px] text-slate-400">${item.origem_lancamento === 'mobile_supervisor' ? 'ðŸ“± Mobile Supervisor' : 'ðŸ’» Portal Web'}</div>
         </td>
         <td class="px-3 py-2.5 text-center whitespace-nowrap">
-          <button onclick="irParaApontamentoFalta(${item.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold p-1.5 rounded text-xs transition" title="Abrir esta ocorrência na aba de Apontamentos">
+          <button onclick="irParaApontamentoFalta(${item.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold p-1.5 rounded text-xs transition" title="Abrir esta ocorrÃªncia na aba de Apontamentos">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
           </button>
         </td>
@@ -13847,7 +13847,7 @@ function irParaApontamentoFalta(faltaId) {
 function exportarExploradorExcel() {
   const dados = state.exploradorOcorrencias.dados || [];
   if (dados.length === 0) {
-    alert('Nenhum dado disponível para exportação.');
+    alert('Nenhum dado disponÃ­vel para exportaÃ§Ã£o.');
     return;
   }
 
@@ -13889,7 +13889,7 @@ function exportarExploradorExcel() {
 }
 
 // =============================================================================
-// 10. MÓDULO: SETOR COMERCIAL & NOVOS CONTRATOS (CRM / FUNIL / IMPLANTAÇÕES)
+// 10. MÃ“DULO: SETOR COMERCIAL & NOVOS CONTRATOS (CRM / FUNIL / IMPLANTAÃ‡Ã•ES)
 // =============================================================================
 
 state.comercial = {
@@ -13916,7 +13916,7 @@ async function carregarComercial() {
     // Atualizar Cards de KPIs
     atualizarKpisComercial(state.comercial.kpis);
 
-    // Renderizar visualização ativa
+    // Renderizar visualizaÃ§Ã£o ativa
     if (state.comercial.view === 'kanban') {
       renderizarKanbanComercial();
     } else {
@@ -14007,7 +14007,7 @@ function renderizarKanbanComercial() {
           <div class="text-[11px] text-slate-600 space-y-1">
             <div class="flex items-center gap-1.5 truncate">
               <i class="fa-solid fa-user-tie text-slate-400 text-[10px]"></i>
-              <span>${lead.contato_nome || 'Não informado'} ${lead.contato_cargo ? `(${lead.contato_cargo})` : ''}</span>
+              <span>${lead.contato_nome || 'NÃ£o informado'} ${lead.contato_cargo ? `(${lead.contato_cargo})` : ''}</span>
             </div>
             ${lead.contato_telefone ? `
             <div class="flex items-center gap-1.5 truncate">
@@ -14029,11 +14029,11 @@ function renderizarKanbanComercial() {
               <i class="fa-solid fa-comments"></i> Detalhes
             </button>
             ${etapa === 'ganho' || etapa === 'negociacao' ? `
-              <button onclick="abrirModalEfetivarContrato(${lead.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-2.5 rounded text-[10px] flex items-center gap-1 shadow-xs transition" title="Efetivar Contrato & Gerar Implantação">
+              <button onclick="abrirModalEfetivarContrato(${lead.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1 px-2.5 rounded text-[10px] flex items-center gap-1 shadow-xs transition" title="Efetivar Contrato & Gerar ImplantaÃ§Ã£o">
                 <i class="fa-solid fa-file-contract"></i> Efetivar
               </button>
             ` : `
-              <button onclick="avancarRapidoEtapaLead(${lead.id}, '${etapa}')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold p-1 px-2 rounded text-[10px] transition" title="Avançar etapa">
+              <button onclick="avancarRapidoEtapaLead(${lead.id}, '${etapa}')" class="bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold p-1 px-2 rounded text-[10px] transition" title="AvanÃ§ar etapa">
                 <i class="fa-solid fa-angles-right"></i>
               </button>
             `}
@@ -14054,10 +14054,10 @@ function renderizarTabelaComercial(leads) {
   }
 
   const etapasLabels = {
-    'prospeccao': { nome: '1. Prospecção', cor: 'bg-blue-100 text-blue-800' },
-    'visita_tecnica': { nome: '2. Visita Técnica', cor: 'bg-amber-100 text-amber-800' },
+    'prospeccao': { nome: '1. ProspecÃ§Ã£o', cor: 'bg-blue-100 text-blue-800' },
+    'visita_tecnica': { nome: '2. Visita TÃ©cnica', cor: 'bg-amber-100 text-amber-800' },
     'proposta': { nome: '3. Proposta Enviada', cor: 'bg-indigo-100 text-indigo-800' },
-    'negociacao': { nome: '4. Em Negociação', cor: 'bg-purple-100 text-purple-800' },
+    'negociacao': { nome: '4. Em NegociaÃ§Ã£o', cor: 'bg-purple-100 text-purple-800' },
     'ganho': { nome: '5. Contrato Ganho', cor: 'bg-emerald-100 text-emerald-800' },
     'perdido': { nome: 'Perdido', cor: 'bg-red-100 text-red-800' }
   };
@@ -14067,7 +14067,7 @@ function renderizarTabelaComercial(leads) {
     const valorFmt = Number(l.valor_mensal_estimado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const ultimaInteracao = l.ultima_interacao 
       ? `${new Date(l.ultima_interacao).toLocaleDateString('pt-BR')} - ${l.tipo_ultima_interacao || ''}`
-      : 'Nenhuma interação';
+      : 'Nenhuma interaÃ§Ã£o';
 
     return `
       <tr class="hover:bg-slate-50 transition">
@@ -14089,13 +14089,13 @@ function renderizarTabelaComercial(leads) {
         </td>
         <td class="px-4 py-3 text-slate-500 text-[11px] truncate max-w-xs">${ultimaInteracao}</td>
         <td class="px-4 py-3 text-right whitespace-nowrap space-x-1">
-          <button onclick="abrirModalDetalhesLead(${l.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 p-1.5 px-2.5 rounded font-bold text-xs transition" title="Ver Detalhes e Interações">
+          <button onclick="abrirModalDetalhesLead(${l.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 p-1.5 px-2.5 rounded font-bold text-xs transition" title="Ver Detalhes e InteraÃ§Ãµes">
             <i class="fa-solid fa-comments"></i>
           </button>
           <button onclick="abrirModalEfetivarContrato(${l.id})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-1.5 px-2.5 rounded font-bold text-xs transition" title="Efetivar Contrato & Gerar Postos">
             <i class="fa-solid fa-file-contract"></i>
           </button>
-          <button onclick="abrirModalNovoLead(${l.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-xs transition" title="Editar Informações">
+          <button onclick="abrirModalNovoLead(${l.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-xs transition" title="Editar InformaÃ§Ãµes">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
           <button onclick="excluirLeadComercial(${l.id}, '${(l.razao_social || '').replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 p-1.5 text-xs transition" title="Excluir Lead">
@@ -14137,19 +14137,19 @@ function abrirModalNovoLead(id = null) {
 
   if (id) {
     const lead = (state.comercial.leads || []).find(x => x.id === id);
-    if (!lead) return alert('Lead não encontrado.');
+    if (!lead) return alert('Lead nÃ£o encontrado.');
     if (titulo) titulo.textContent = 'Editar Oportunidade / Lead';
     if (editId) editId.value = lead.id;
 
     document.getElementById('leadRazaoSocial').value = lead.razao_social || '';
     document.getElementById('leadNomeFantasia').value = lead.nome_fantasia || '';
     document.getElementById('leadCnpj').value = lead.cnpj || '';
-    document.getElementById('leadSegmento').value = lead.segmento || 'Facilities & Condomínios';
+    document.getElementById('leadSegmento').value = lead.segmento || 'Facilities & CondomÃ­nios';
     document.getElementById('leadContatoNome').value = lead.contato_nome || '';
     document.getElementById('leadContatoCargo').value = lead.contato_cargo || '';
     document.getElementById('leadContatoTelefone').value = lead.contato_telefone || '';
     document.getElementById('leadContatoEmail').value = lead.contato_email || '';
-    document.getElementById('leadOrigem').value = lead.origem || 'Prospecção Ativa';
+    document.getElementById('leadOrigem').value = lead.origem || 'ProspecÃ§Ã£o Ativa';
     document.getElementById('leadVagasEstimadas').value = lead.vagas_estimadas || '';
     document.getElementById('leadValorEstimado').value = lead.valor_mensal_estimado || '';
     document.getElementById('leadEndereco').value = lead.endereco || '';
@@ -14207,7 +14207,7 @@ async function abrirModalDetalhesLead(id) {
   try {
     const res = await fetch(`/api/comercial/leads/${id}`);
     const lead = await res.json();
-    if (!lead || !lead.id) return alert('Detalhes do lead não encontrados.');
+    if (!lead || !lead.id) return alert('Detalhes do lead nÃ£o encontrados.');
 
     state.comercial.leadAtual = lead;
 
@@ -14226,8 +14226,8 @@ async function abrirModalDetalhesLead(id) {
     document.getElementById('detalhesLeadVagas').textContent = lead.vagas_estimadas || 0;
     document.getElementById('detalhesLeadValor').textContent = Number(lead.valor_mensal_estimado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     document.getElementById('detalhesLeadOrigem').textContent = lead.origem || '-';
-    document.getElementById('detalhesLeadEndereco').textContent = lead.endereco || 'Não informado';
-    document.getElementById('detalhesLeadObs').textContent = lead.observacoes || 'Nenhuma observação registrada.';
+    document.getElementById('detalhesLeadEndereco').textContent = lead.endereco || 'NÃ£o informado';
+    document.getElementById('detalhesLeadObs').textContent = lead.observacoes || 'Nenhuma observaÃ§Ã£o registrada.';
 
     if (document.getElementById('detalhesLeadMoverSelect')) {
       document.getElementById('detalhesLeadMoverSelect').value = lead.etapa || 'prospeccao';
@@ -14251,7 +14251,7 @@ function renderizarTimelineInteracoes(interacoes) {
     container.innerHTML = `
       <div class="py-6 text-center text-slate-400 bg-white border border-slate-200 rounded-xl">
         <i class="fa-regular fa-comment-dots text-xl mb-1 block"></i>
-        Nenhuma interação registrada ainda. Registre a primeira acima!
+        Nenhuma interaÃ§Ã£o registrada ainda. Registre a primeira acima!
       </div>`;
     return;
   }
@@ -14272,7 +14272,7 @@ function renderizarTimelineInteracoes(interacoes) {
         <p class="text-slate-600 text-[11px] whitespace-pre-wrap leading-relaxed">${item.descricao}</p>
         <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
           <span>Por: <b>${item.usuario_nome || 'Operador'}</b></span>
-          ${dataProx ? `<span class="bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-medium">Próximo Contato: ${dataProx}</span>` : ''}
+          ${dataProx ? `<span class="bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-medium">PrÃ³ximo Contato: ${dataProx}</span>` : ''}
         </div>
       </div>
     `;
@@ -14305,10 +14305,10 @@ async function salvarNovaInteracaoLead(e) {
       await abrirModalDetalhesLead(lead.id);
       await carregarComercial();
     } else {
-      alert('Erro ao registrar interação: ' + json.message);
+      alert('Erro ao registrar interaÃ§Ã£o: ' + json.message);
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -14332,7 +14332,7 @@ async function salvarMudancaEtapaLeadAtual() {
       alert('Erro: ' + json.message);
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -14352,7 +14352,7 @@ async function avancarRapidoEtapaLead(leadId, etapaAtual) {
     if (json.success) {
       await carregarComercial();
     } else {
-      alert('Erro ao avançar etapa: ' + json.message);
+      alert('Erro ao avanÃ§ar etapa: ' + json.message);
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -14390,12 +14390,12 @@ async function excluirLeadComercial(id, nome) {
 }
 
 // -------------------------------------------------------------
-// 10.2 EFETIVAÇÁO DE CONTRATO & ORDENS DE IMPLANTAÇÁO
+// 10.2 EFETIVAÃ‡ÃO DE CONTRATO & ORDENS DE IMPLANTAÃ‡ÃO
 // -------------------------------------------------------------
 
 function abrirModalEfetivarContrato(leadId) {
   const lead = (state.comercial.leads || []).find(x => x.id === leadId) || state.comercial.leadAtual;
-  if (!lead) return alert('Lead não encontrado.');
+  if (!lead) return alert('Lead nÃ£o encontrado.');
 
   document.getElementById('efetivarLeadId').value = lead.id;
   document.getElementById('efetivarRazaoSocial').value = lead.razao_social || '';
@@ -14406,7 +14406,7 @@ function abrirModalEfetivarContrato(leadId) {
   document.getElementById('efetivarEnderecoOperacional').value = lead.endereco || '';
   document.getElementById('efetivarGestorCliente').value = lead.contato_nome || '';
 
-  // Gerar número sugerido de contrato e data inicial padrão (ex: daqui 7 dias úteis)
+  // Gerar nÃºmero sugerido de contrato e data inicial padrÃ£o (ex: daqui 7 dias Ãºteis)
   const hoje = new Date();
   hoje.setDate(hoje.getDate() + 7);
   const dataSugerida = hoje.toISOString().split('T')[0];
@@ -14455,7 +14455,7 @@ function adicionarLinhaPostoEfetivacao(dados = {}) {
         <input type="text" name="postoNome" required value="${dados.nome || 'Portaria Principal'}" placeholder="Ex: Portaria Principal" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none">
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Função Contratada *</label>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">FunÃ§Ã£o Contratada *</label>
         <input type="text" name="postoFuncao" required value="${dados.funcao || 'Porteiro'}" placeholder="Ex: Porteiro, Vigilante, Limpeza" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none">
       </div>
     </div>
@@ -14475,7 +14475,7 @@ function adicionarLinhaPostoEfetivacao(dados = {}) {
         <input type="number" name="postoQtdVagas" required min="1" value="${dados.vagas || 1}" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none font-bold text-slate-800">
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Valor Unitário (R$)</label>
+        <label class="block font-semibold text-slate-700 mb-0.5 text-[11px]">Valor UnitÃ¡rio (R$)</label>
         <input type="number" step="0.01" name="postoValorUnitario" value="${dados.valor || 4500}" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs focus:outline-none font-mono">
       </div>
       <div class="flex justify-end">
@@ -14517,7 +14517,7 @@ async function salvarEfetivacaoContrato(e) {
     const valorUnitario = parseFloat(r.querySelector('[name="postoValorUnitario"]')?.value) || 0;
 
     if (!nome || !funcao) {
-      return alert('Preencha os campos obrigatórios de todos os postos de trabalho.');
+      return alert('Preencha os campos obrigatÃ³rios de todos os postos de trabalho.');
     }
 
     postos.push({
@@ -14555,7 +14555,7 @@ async function salvarEfetivacaoContrato(e) {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalEfetivarContratoComercial');
-      alert(`🎉 SUCESSO!\n\nCliente "${payload.nome_fantasia}" e ${postos.length} postos de trabalho foram ativados no SISFAC!\n\nAs 5 tarefas da Ordem de Implantação foram geradas e o comunicado urgente foi disparado no Mural da empresa.`);
+      alert(`ðŸŽ‰ SUCESSO!\n\nCliente "${payload.nome_fantasia}" e ${postos.length} postos de trabalho foram ativados no SISFAC!\n\nAs 5 tarefas da Ordem de ImplantaÃ§Ã£o foram geradas e o comunicado urgente foi disparado no Mural da empresa.`);
       await carregarComercial();
       await carregarClientesComPostos();
       await verificarComunicadosNaoLidos();
@@ -14563,14 +14563,14 @@ async function salvarEfetivacaoContrato(e) {
       alert('Erro ao efetivar contrato: ' + json.message);
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
 async function abrirModalOrdensImplantacao() {
   const container = document.getElementById('ordensImplantacaoContainer');
   if (container) {
-    container.innerHTML = `<div class="py-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Carregando ordens de implantação...</div>`;
+    container.innerHTML = `<div class="py-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Carregando ordens de implantaÃ§Ã£o...</div>`;
   }
   document.getElementById('modalOrdensImplantacao').classList.remove('hidden');
 
@@ -14583,7 +14583,7 @@ async function abrirModalOrdensImplantacao() {
       container.innerHTML = `
         <div class="py-12 text-center text-slate-400 bg-slate-50 border border-slate-200 rounded-xl">
           <i class="fa-solid fa-clipboard-check text-2xl mb-2 block"></i>
-          Nenhuma ordem de implantação em andamento no momento.
+          Nenhuma ordem de implantaÃ§Ã£o em andamento no momento.
         </div>`;
       return;
     }
@@ -14616,11 +14616,11 @@ async function abrirModalOrdensImplantacao() {
               <div class="flex items-center gap-2">
                 <h4 class="font-bold text-slate-800 text-sm">${ordem.cliente_nome}</h4>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ordem.status === 'concluido' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}">
-                  ${ordem.status === 'concluido' ? 'Operação Implantada' : 'Implantação Ativa'}
+                  ${ordem.status === 'concluido' ? 'OperaÃ§Ã£o Implantada' : 'ImplantaÃ§Ã£o Ativa'}
                 </span>
               </div>
               <div class="text-[11px] text-slate-500 mt-0.5">
-                Contrato: <b>${ordem.numero_contrato || '-'}</b> | Início das Operações: <b class="text-orange-700">${inicioFmt}</b>
+                Contrato: <b>${ordem.numero_contrato || '-'}</b> | InÃ­cio das OperaÃ§Ãµes: <b class="text-orange-700">${inicioFmt}</b>
               </div>
             </div>
             <div class="text-right">
@@ -14656,7 +14656,7 @@ async function abrirModalOrdensImplantacao() {
                     <select onchange="atualizarStatusTarefaImplantacao(${t.id}, this.value, '${(ordem.cliente_nome || '').replace(/'/g, "\\'")}')" class="border border-slate-300 rounded px-1.5 py-1 text-[10px] bg-white focus:outline-none">
                       <option value="pendente" ${t.status === 'pendente' ? 'selected' : ''}>Pendente</option>
                       <option value="em_andamento" ${t.status === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
-                      <option value="concluido" ${t.status === 'concluido' ? 'selected' : ''}>Concluído</option>
+                      <option value="concluido" ${t.status === 'concluido' ? 'selected' : ''}>ConcluÃ­do</option>
                     </select>
                     <span class="text-[9px] text-slate-400">Prazo: ${t.data_limite ? new Date(t.data_limite + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</span>
                   </div>
@@ -14691,7 +14691,7 @@ async function atualizarStatusTarefaImplantacao(tarefaId, novoStatus, clienteNom
 }
 
 // =============================================================================
-// 11. MÓDULO: MURAL DE COMUNICADOS CORPORATIVOS
+// 11. MÃ“DULO: MURAL DE COMUNICADOS CORPORATIVOS
 // =============================================================================
 
 state.comunicados = {
@@ -14706,7 +14706,7 @@ async function carregarComunicados() {
     container.innerHTML = `<div class="py-12 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin text-xl mr-2"></i> Carregando avisos corporativos...</div>`;
   }
 
-  // Ajustar botão "Novo Comunicado" conforme permissão
+  // Ajustar botÃ£o "Novo Comunicado" conforme permissÃ£o
   const btnNovo = document.getElementById('btnNovoComunicado');
   if (btnNovo) {
     const pode = isUsuarioAdminMaster() || (state.usuarioLogado?.pode_enviar_comunicados === 1);
@@ -14806,7 +14806,7 @@ function renderizarFeedComunicados(filtro = 'todos') {
       <div class="py-12 text-center text-slate-400 bg-white border border-slate-200 rounded-2xl p-6">
         <i class="fa-regular fa-bell text-3xl text-slate-300 mb-2 block"></i>
         <span class="font-semibold text-slate-600 text-sm">Nenhum comunicado encontrado para este filtro.</span>
-        <p class="text-xs text-slate-400 mt-1">Você está em dia com todas as notícias e orientações corporativas!</p>
+        <p class="text-xs text-slate-400 mt-1">VocÃª estÃ¡ em dia com todas as notÃ­cias e orientaÃ§Ãµes corporativas!</p>
       </div>`;
     return;
   }
@@ -14861,15 +14861,15 @@ function renderizarFeedComunicados(filtro = 'todos') {
           </div>
         </div>
 
-        <!-- Título e Mensagem -->
+        <!-- TÃ­tulo e Mensagem -->
         <div>
           <h3 class="font-black text-base text-slate-900 mb-2 leading-snug">${c.titulo}</h3>
           <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">${c.mensagem}</p>
         </div>
 
-        <!-- BARRA DE REAÇÕES COM EMOJIS (INTERATIVO) -->
+        <!-- BARRA DE REAÃ‡Ã•ES COM EMOJIS (INTERATIVO) -->
         <div class="pt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-100/80">
-          <!-- Pílulas de Emojis que já possuem reações -->
+          <!-- PÃ­lulas de Emojis que jÃ¡ possuem reaÃ§Ãµes -->
           ${(c.reacoes || []).map(r => `
             <button type="button" onclick="alternarReacaoComunicado(${c.id}, '${r.emoji}')"
               class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition border ${
@@ -14883,7 +14883,7 @@ function renderizarFeedComunicados(filtro = 'todos') {
             </button>
           `).join('')}
 
-          <!-- Seletor Rápido de Emojis (+ Reagir) -->
+          <!-- Seletor RÃ¡pido de Emojis (+ Reagir) -->
           <div class="relative inline-block" id="emojiPickerWrap_${c.id}">
             <button type="button" onclick="toggleEmojiPickerMenu(${c.id})" 
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition"
@@ -14892,28 +14892,28 @@ function renderizarFeedComunicados(filtro = 'todos') {
               <span class="text-[11px] font-medium">+ Reagir</span>
             </button>
 
-            <!-- Popover de Emojis Rápidos -->
+            <!-- Popover de Emojis RÃ¡pidos -->
             <div id="emojiPopover_${c.id}" class="hidden absolute left-0 bottom-full mb-1.5 z-30 bg-white rounded-full shadow-lg border border-slate-200 px-2 py-1 flex items-center gap-1.5 animate-fade-in">
-              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '👍')" class="hover:scale-130 transition p-1 text-base leading-none" title="Joinha / Ciente">👍</button>
-              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '❤️')" class="hover:scale-130 transition p-1 text-base leading-none" title="Adorei / Parabéns">❤️</button>
-              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '👏')" class="hover:scale-130 transition p-1 text-base leading-none" title="Palmas / Reconhecimento">👏</button>
-              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '🚀')" class="hover:scale-130 transition p-1 text-base leading-none" title="Foguete / Pra cima">🚀</button>
-              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '🔥')" class="hover:scale-130 transition p-1 text-base leading-none" title="Sensacional / Bora">🔥</button>
-              <button type="button" onclick="alternarReacaoComunicado(${c.id}, '🎯')" class="hover:scale-130 transition p-1 text-base leading-none" title="Na Meta / Foco">🎯</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, 'ðŸ‘')" class="hover:scale-130 transition p-1 text-base leading-none" title="Joinha / Ciente">ðŸ‘</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, 'â¤ï¸')" class="hover:scale-130 transition p-1 text-base leading-none" title="Adorei / ParabÃ©ns">â¤ï¸</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, 'ðŸ‘')" class="hover:scale-130 transition p-1 text-base leading-none" title="Palmas / Reconhecimento">ðŸ‘</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, 'ðŸš€')" class="hover:scale-130 transition p-1 text-base leading-none" title="Foguete / Pra cima">ðŸš€</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, 'ðŸ”¥')" class="hover:scale-130 transition p-1 text-base leading-none" title="Sensacional / Bora">ðŸ”¥</button>
+              <button type="button" onclick="alternarReacaoComunicado(${c.id}, 'ðŸŽ¯')" class="hover:scale-130 transition p-1 text-base leading-none" title="Na Meta / Foco">ðŸŽ¯</button>
             </div>
           </div>
 
           <!-- Resumo de quem reagiu -->
           ${(() => {
             const totalReacoes = (c.reacoes || []).reduce((acc, curr) => acc + curr.count, 0);
-            if (totalReacoes === 0) return '<span class="text-[11px] text-slate-400 ml-1 italic hidden sm:inline">Deixe sua reação!</span>';
+            if (totalReacoes === 0) return '<span class="text-[11px] text-slate-400 ml-1 italic hidden sm:inline">Deixe sua reaÃ§Ã£o!</span>';
             const todosUsuarios = Array.from(new Set((c.reacoes || []).flatMap(r => r.usuarios || [])));
             const nomesTexto = todosUsuarios.slice(0, 3).join(', ') + (todosUsuarios.length > 3 ? ` e mais ${todosUsuarios.length - 3}` : '');
             return `<span class="text-[11px] text-slate-500 ml-1 font-medium hidden sm:inline"><i class="fa-solid fa-heart text-rose-500/80 mr-1 text-[10px]"></i>${nomesTexto} reagiu</span>`;
           })()}
         </div>
 
-        <!-- Rodapé com Confirmação de Leitura e Auditoria -->
+        <!-- RodapÃ© com ConfirmaÃ§Ã£o de Leitura e Auditoria -->
         <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             ${c.ja_leu ? `
@@ -14931,7 +14931,7 @@ function renderizarFeedComunicados(filtro = 'todos') {
 
           <div class="flex items-center gap-2">
             ${isAdminOuEmissor ? `
-              <button onclick="abrirAuditoriaLeiturasComunicado(${c.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 flex items-center gap-1.5 transition" title="Ver quem já leu este comunicado">
+              <button onclick="abrirAuditoriaLeiturasComunicado(${c.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 flex items-center gap-1.5 transition" title="Ver quem jÃ¡ leu este comunicado">
                 <i class="fa-solid fa-users-viewfinder text-cyan-600"></i>
                 Auditoria (${c.total_leituras || 0} lidos)
               </button>
@@ -14975,11 +14975,11 @@ async function alternarReacaoComunicado(comunicadoId, emoji) {
 
   const usuario = state.usuarioLogado;
   if (!usuario) {
-    alert('Você precisa estar autenticado para reagir a comunicados.');
+    alert('VocÃª precisa estar autenticado para reagir a comunicados.');
     return;
   }
 
-  // Atualização otimista imediata na interface
+  // AtualizaÃ§Ã£o otimista imediata na interface
   const com = (state.comunicados.lista || []).find(x => x.id === comunicadoId);
   const meuNome = usuario.nome || 'Eu';
 
@@ -15028,7 +15028,7 @@ async function alternarReacaoComunicado(comunicadoId, emoji) {
       renderizarFeedComunicados(state.comunicados.filtro);
     }
   } catch (err) {
-    console.error('Erro ao registrar reação:', err);
+    console.error('Erro ao registrar reaÃ§Ã£o:', err);
   }
 }
 
@@ -15050,7 +15050,7 @@ function atualizarOpcoesAudienteComunicado(valor) {
     if (state.usuarios && state.usuarios.length > 0) {
       renderizarCheckboxesUsuariosComunicado(state.usuarios);
     } else {
-      container.innerHTML = '<div class="p-2 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Carregando usuários...</div>';
+      container.innerHTML = '<div class="p-2 text-slate-400 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Carregando usuÃ¡rios...</div>';
       fetch('/api/usuarios')
         .then(r => r.json())
         .then(us => {
@@ -15058,7 +15058,7 @@ function atualizarOpcoesAudienteComunicado(valor) {
           renderizarCheckboxesUsuariosComunicado(state.usuarios);
         })
         .catch(() => {
-          container.innerHTML = '<div class="p-2 text-rose-500 text-xs">Erro ao carregar lista de usuários.</div>';
+          container.innerHTML = '<div class="p-2 text-rose-500 text-xs">Erro ao carregar lista de usuÃ¡rios.</div>';
         });
     }
   } else {
@@ -15071,7 +15071,7 @@ function renderizarCheckboxesUsuariosComunicado(usuarios) {
   if (!container) return;
   const ativos = (usuarios || []).filter(u => u.ativo === 1 || u.ativo === undefined);
   if (ativos.length === 0) {
-    container.innerHTML = '<div class="p-2 text-slate-400 text-xs">Nenhum usuário cadastrado.</div>';
+    container.innerHTML = '<div class="p-2 text-slate-400 text-xs">Nenhum usuÃ¡rio cadastrado.</div>';
     return;
   }
   container.innerHTML = ativos.map(u => `
@@ -15095,7 +15095,7 @@ async function salvarNovoComunicado(e) {
     destinatarios_tipo = 'usuarios';
     const checked = Array.from(document.querySelectorAll('input[name="usuarioComunicadoCheckbox"]:checked')).map(cb => parseInt(cb.value, 10));
     if (checked.length === 0) {
-      return alert('Por favor, selecione ao menos um usuário que receberá o comunicado.');
+      return alert('Por favor, selecione ao menos um usuÃ¡rio que receberÃ¡ o comunicado.');
     }
     destinatarios_alvo_json = JSON.stringify(checked);
   } else {
@@ -15130,10 +15130,10 @@ async function salvarNovoComunicado(e) {
       alert('Comunicado corporativo publicado com sucesso para a equipe!');
       await carregarComunicados();
     } else {
-      alert('Erro: ' + (json.message || 'Não foi possível publicar'));
+      alert('Erro: ' + (json.message || 'NÃ£o foi possÃ­vel publicar'));
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -15163,7 +15163,7 @@ async function abrirAuditoriaLeiturasComunicado(comunicadoId) {
   document.getElementById('modalAuditoriaLeiturasComunicado').classList.remove('hidden');
   const tbodyLidos = document.getElementById('auditoriaTabelaLidosBody');
   const tbodyPend = document.getElementById('auditoriaTabelaPendentesBody');
-  if (tbodyLidos) tbodyLidos.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando relatório...</td></tr>`;
+  if (tbodyLidos) tbodyLidos.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando relatÃ³rio...</td></tr>`;
 
   try {
     const res = await fetch(`/api/comunicados/${comunicadoId}/leituras`);
@@ -15205,7 +15205,7 @@ async function abrirAuditoriaLeiturasComunicado(comunicadoId) {
     // Renderizar Pendentes
     if (tbodyPend) {
       if ((data.pendentes || []).length === 0) {
-        tbodyPend.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Todos os colaboradores já confirmaram a leitura!</td></tr>`;
+        tbodyPend.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1"></i> Todos os colaboradores jÃ¡ confirmaram a leitura!</td></tr>`;
       } else {
         tbodyPend.innerHTML = data.pendentes.map(u => `
           <tr class="hover:bg-slate-50">
@@ -15260,7 +15260,7 @@ async function excluirComunicado(id) {
 }
 
 // =============================================================
-// REAJUSTES EM MASSA DE BENEFÍCIOS (VA E VT POR SETOR)
+// REAJUSTES EM MASSA DE BENEFÃCIOS (VA E VT POR SETOR)
 // =============================================================
 
 function abrirModalReajusteMassaVA() {
@@ -15344,7 +15344,7 @@ async function executarReajusteMassaVA(e) {
   const escopo = document.getElementById('reajusteVAEscopo')?.value || 'todos';
   const novoValor = parseFloat(document.getElementById('reajusteVANovoValor')?.value);
   if (isNaN(novoValor) || novoValor <= 0) {
-    alert('Informe um novo valor diário de VA válido maior que zero.');
+    alert('Informe um novo valor diÃ¡rio de VA vÃ¡lido maior que zero.');
     return;
   }
 
@@ -15370,12 +15370,12 @@ async function executarReajusteMassaVA(e) {
   } else if (escopo === 'cargo') {
     payload.cargo_id = parseInt(document.getElementById('reajusteVACargoId')?.value, 10);
     if (!payload.cargo_id) {
-      alert('Selecione o cargo/função para aplicar o reajuste.');
+      alert('Selecione o cargo/funÃ§Ã£o para aplicar o reajuste.');
       return;
     }
   }
 
-  if (!confirm(`Confirma o reajuste do Vale Alimentação para R$ ${novoValor.toFixed(2)}/dia para os colaboradores selecionados?`)) {
+  if (!confirm(`Confirma o reajuste do Vale AlimentaÃ§Ã£o para R$ ${novoValor.toFixed(2)}/dia para os colaboradores selecionados?`)) {
     return;
   }
 
@@ -15397,7 +15397,7 @@ async function executarReajusteMassaVA(e) {
       alert(json.message || 'Erro ao aplicar reajuste de VA.');
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -15418,7 +15418,7 @@ function abrirModalReajusteMassaVT() {
     selSetor.innerHTML = '<option value="">Selecione o Setor / Posto de Trabalho...</option>';
     (state.postos || []).forEach(p => {
       const colabsNoPosto = (state.colaboradores || []).filter(c => c.posto_trabalho_id === p.id && c.ativo === 1).length;
-      selSetor.innerHTML += `<option value="${p.id}" data-qtd="${colabsNoPosto}">${escapeHtml(p.nome_posto)} — ${escapeHtml(p.cliente_nome || '')} (${colabsNoPosto} colaboradores alocados)</option>`;
+      selSetor.innerHTML += `<option value="${p.id}" data-qtd="${colabsNoPosto}">${escapeHtml(p.nome_posto)} â€” ${escapeHtml(p.cliente_nome || '')} (${colabsNoPosto} colaboradores alocados)</option>`;
     });
   }
 
@@ -15464,11 +15464,11 @@ async function executarReajusteMassaVT(e) {
   const novoValorDiario = parseFloat(document.getElementById('reajusteVTNovoValorDiario')?.value);
 
   if (tipoReajuste === 'tarifa_unitaria' && (isNaN(novaTarifa) || novaTarifa <= 0)) {
-    alert('Informe uma nova tarifa unitária de transporte válida maior que zero.');
+    alert('Informe uma nova tarifa unitÃ¡ria de transporte vÃ¡lida maior que zero.');
     return;
   }
   if (tipoReajuste === 'valor_diario_fixo' && (isNaN(novoValorDiario) || novoValorDiario <= 0)) {
-    alert('Informe um novo valor diário de transporte fixo válido maior que zero.');
+    alert('Informe um novo valor diÃ¡rio de transporte fixo vÃ¡lido maior que zero.');
     return;
   }
 
@@ -15485,7 +15485,7 @@ async function executarReajusteMassaVT(e) {
   const selSetor = document.getElementById('reajusteVTSetorId');
   const nomeSetor = selSetor.options[selSetor.selectedIndex]?.text || 'setor selecionado';
 
-  if (!confirm(`Confirma a alteração em massa do VT para todos os colaboradores do setor:\n"${nomeSetor}"?`)) {
+  if (!confirm(`Confirma a alteraÃ§Ã£o em massa do VT para todos os colaboradores do setor:\n"${nomeSetor}"?`)) {
     return;
   }
 
@@ -15507,12 +15507,12 @@ async function executarReajusteMassaVT(e) {
       alert(json.message || 'Erro ao aplicar reajuste de VT.');
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
 // =============================================================
-// GESTÁO DE FORNECEDORES & CARTELA DE PRODUTOS E PREÇOS
+// GESTÃO DE FORNECEDORES & CARTELA DE PRODUTOS E PREÃ‡OS
 // =============================================================
 
 state.fornecedores = [];
@@ -15652,7 +15652,7 @@ function renderizarFornecedores(fornecedores = state.fornecedores) {
           <button type="button" onclick="abrirModalNovoProdutoCartela(${f.id})" class="text-slate-600 hover:text-teal-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Adicionar 1 Produto para este Fornecedor">
             <i class="fa-solid fa-plus-circle"></i>
           </button>
-          <button type="button" onclick="abrirModalCadastroLoteProdutos(${f.id})" class="text-slate-600 hover:text-indigo-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Cadastrar Vários Produtos para este Fornecedor (Massa)">
+          <button type="button" onclick="abrirModalCadastroLoteProdutos(${f.id})" class="text-slate-600 hover:text-indigo-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Cadastrar VÃ¡rios Produtos para este Fornecedor (Massa)">
             <i class="fa-solid fa-list-check"></i>
           </button>
           <button type="button" onclick="abrirModalImportarProdutosCartela(${f.id})" class="text-slate-600 hover:text-emerald-700 p-1.5 rounded hover:bg-slate-100 transition cursor-pointer" title="Importar Planilha Excel para este Fornecedor">
@@ -15707,7 +15707,7 @@ function filtrarCartelaProdutos() {
   const fornNome = fornId ? (state.fornecedores || []).find(f => String(f.id) === String(fornId))?.nome_empresa : '';
   const tituloEl = document.getElementById('tituloTabelaCartela');
   if (tituloEl) {
-    tituloEl.innerText = fornNome ? `Cartela de Produtos - ${fornNome}` : 'Cartela Consolidada de Produtos & Preços';
+    tituloEl.innerText = fornNome ? `Cartela de Produtos - ${fornNome}` : 'Cartela Consolidada de Produtos & PreÃ§os';
   }
 
   const contEl = document.getElementById('contadorItensCartela');
@@ -15729,7 +15729,7 @@ function renderizarTabelaCartela(produtos) {
           <i class="fa-solid fa-boxes-stacked text-2xl text-slate-300 mb-1 block"></i>
           Nenhum produto encontrado com os filtros atuais.<br>
           <button type="button" onclick="abrirModalNovoProdutoCartela()" class="mt-2 text-teal-700 font-bold underline cursor-pointer">
-            Clique aqui para adicionar um produto à cartela.
+            Clique aqui para adicionar um produto Ã  cartela.
           </button>
         </td>
       </tr>
@@ -15741,9 +15741,9 @@ function renderizarTabelaCartela(produtos) {
     <tr class="hover:bg-slate-50/80 transition" id="row-prod-${p.id}">
       <td class="py-2.5 px-3 text-center"><input type="checkbox" class="chk-produto-row w-3.5 h-3.5 rounded text-teal-600 cursor-pointer" value="${p.id}" onchange="atualizarBtnExcluirLote()"></td>
       <td class="py-2.5 px-3 text-center text-slate-400 font-mono text-[11px]">${p.id}</td>
-      <td class="py-2.5 px-3 font-mono text-[11px] font-bold text-slate-700">${escapeHtml(p.codigo_referencia || '—')}</td>
+      <td class="py-2.5 px-3 font-mono text-[11px] font-bold text-slate-700">${escapeHtml(p.codigo_referencia || 'â€”')}</td>
       <td class="py-2.5 px-3 font-semibold text-slate-900">${escapeHtml(p.descricao)}</td>
-      <td class="py-2.5 px-3 text-slate-600">${escapeHtml(p.marca || '—')}</td>
+      <td class="py-2.5 px-3 text-slate-600">${escapeHtml(p.marca || 'â€”')}</td>
       <td class="py-2.5 px-3">
         <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
           ${escapeHtml(p.categoria || 'Geral')}
@@ -15756,11 +15756,11 @@ function renderizarTabelaCartela(produtos) {
         </span>
       </td>
       <td class="py-2.5 px-3 text-slate-700 text-xs font-medium">
-        <i class="fa-solid fa-truck text-slate-400 mr-1 text-[11px]"></i>${escapeHtml(p.fornecedor_nome || 'Não vinculado')}
+        <i class="fa-solid fa-truck text-slate-400 mr-1 text-[11px]"></i>${escapeHtml(p.fornecedor_nome || 'NÃ£o vinculado')}
       </td>
       <td class="py-2.5 px-3 text-center">
         <div class="flex items-center justify-center gap-1">
-          <button type="button" onclick="abrirModalEditarProdutoCartela(${p.id})" class="text-teal-600 hover:text-teal-800 p-1.5 rounded hover:bg-teal-50 transition cursor-pointer" title="Editar Preço e Dados do Produto">
+          <button type="button" onclick="abrirModalEditarProdutoCartela(${p.id})" class="text-teal-600 hover:text-teal-800 p-1.5 rounded hover:bg-teal-50 transition cursor-pointer" title="Editar PreÃ§o e Dados do Produto">
             <i class="fa-solid fa-pen-to-square"></i>
           </button>
           <button type="button" onclick="excluirProdutoCartela(${p.id})" class="text-slate-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition cursor-pointer" title="Excluir Produto da Cartela">
@@ -15787,7 +15787,7 @@ async function salvarNovoFornecedor(e) {
   e.preventDefault();
   const nome = document.getElementById('fornCadNome')?.value.trim();
   if (!nome) {
-    alert('Razão Social / Nome da empresa é obrigatório.');
+    alert('RazÃ£o Social / Nome da empresa Ã© obrigatÃ³rio.');
     return;
   }
 
@@ -15830,7 +15830,7 @@ async function abrirModalEditarFornecedor(id) {
   document.getElementById('fornEditId').value = forn.id;
   document.getElementById('fornEditNome').value = forn.nome_empresa || '';
   document.getElementById('fornEditCnpj').value = forn.cnpj || '';
-  document.getElementById('fornEditTipo').value = forn.tipo_fornecedor || 'Limpeza & Químicos';
+  document.getElementById('fornEditTipo').value = forn.tipo_fornecedor || 'Limpeza & QuÃ­micos';
   document.getElementById('fornEditContato').value = forn.contato || '';
   document.getElementById('fornEditTelefone').value = forn.telefone || '';
   document.getElementById('fornEditPrazo').value = forn.prazo_entrega_dias || 3;
@@ -15929,11 +15929,11 @@ async function salvarNovoProdutoCartela(e) {
     return;
   }
   if (!desc) {
-    alert('A descrição do produto é obrigatória.');
+    alert('A descriÃ§Ã£o do produto Ã© obrigatÃ³ria.');
     return;
   }
   if (isNaN(preco) || preco < 0) {
-    alert('Informe um preço unitário válido.');
+    alert('Informe um preÃ§o unitÃ¡rio vÃ¡lido.');
     return;
   }
 
@@ -15967,7 +15967,7 @@ async function salvarNovoProdutoCartela(e) {
 }
 
 // -------------------------------------------------------------
-// IMPORTAÇÁO DE PRODUTOS DA CARTELA POR PLANILHA (.XLSX, .CSV)
+// IMPORTAÃ‡ÃO DE PRODUTOS DA CARTELA POR PLANILHA (.XLSX, .CSV)
 // -------------------------------------------------------------
 function baixarModeloImportacaoProdutos() {
   const wb = XLSX.utils.book_new();
@@ -15975,45 +15975,45 @@ function baixarModeloImportacaoProdutos() {
   // Aba 1: Modelo de Produtos
   const dadosExemplo = [
     {
-      'Fornecedor_Nome_ou_ID': 'Distribuidora Nacional de Químicos & Descartáveis',
+      'Fornecedor_Nome_ou_ID': 'Distribuidora Nacional de QuÃ­micos & DescartÃ¡veis',
       'Descricao_Produto': 'Detergente Neutro Concentrado 5L',
       'Categoria': 'Limpeza Geral',
       'Unidade': 'GL 5L',
       'Preco_Unitario': 24.90,
       'Codigo_SKU': 'DET-NEU-5L',
-      'Marca': 'Ypê'
+      'Marca': 'YpÃª'
     },
     {
-      'Fornecedor_Nome_ou_ID': 'Distribuidora Nacional de Químicos & Descartáveis',
+      'Fornecedor_Nome_ou_ID': 'Distribuidora Nacional de QuÃ­micos & DescartÃ¡veis',
       'Descricao_Produto': 'Desinfetante Floral Lavanda 5L',
       'Categoria': 'Limpeza Geral',
       'Unidade': 'GL 5L',
       'Preco_Unitario': 28.50,
       'Codigo_SKU': 'DES-LAV-5L',
-      'Marca': 'Ypê'
+      'Marca': 'YpÃª'
     },
     {
-      'Fornecedor_Nome_ou_ID': 'SegurMaster EPIs e Proteção Individual',
-      'Descricao_Produto': 'Luva de Látex Amarela Tam M',
-      'Categoria': 'EPIs & Segurança',
+      'Fornecedor_Nome_ou_ID': 'SegurMaster EPIs e ProteÃ§Ã£o Individual',
+      'Descricao_Produto': 'Luva de LÃ¡tex Amarela Tam M',
+      'Categoria': 'EPIs & SeguranÃ§a',
       'Unidade': 'PAR',
       'Preco_Unitario': 4.50,
       'Codigo_SKU': 'LUV-LAT-M',
       'Marca': 'Volk'
     },
     {
-      'Fornecedor_Nome_ou_ID': 'SegurMaster EPIs e Proteção Individual',
-      'Descricao_Produto': 'Óculos de Proteção Incolor Anti-risco',
-      'Categoria': 'EPIs & Segurança',
+      'Fornecedor_Nome_ou_ID': 'SegurMaster EPIs e ProteÃ§Ã£o Individual',
+      'Descricao_Produto': 'Ã“culos de ProteÃ§Ã£o Incolor Anti-risco',
+      'Categoria': 'EPIs & SeguranÃ§a',
       'Unidade': 'UN',
       'Preco_Unitario': 8.90,
       'Codigo_SKU': 'OCU-INC-01',
       'Marca': 'Kalipso'
     },
     {
-      'Fornecedor_Nome_ou_ID': 'Botas Fortex & Calçados de Segurança',
-      'Descricao_Produto': 'Calçado de Segurança Biqueira PVC Tam 41',
-      'Categoria': 'Calçados & Sapatos',
+      'Fornecedor_Nome_ou_ID': 'Botas Fortex & CalÃ§ados de SeguranÃ§a',
+      'Descricao_Produto': 'CalÃ§ado de SeguranÃ§a Biqueira PVC Tam 41',
+      'Categoria': 'CalÃ§ados & Sapatos',
       'Unidade': 'PAR',
       'Preco_Unitario': 68.00,
       'Codigo_SKU': 'BOT-PVC-41',
@@ -16094,7 +16094,7 @@ function processarArquivoImportacaoProdutos(input) {
       const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
       if (!rawRows || rawRows.length === 0) {
-        alert('A planilha selecionada está vazia ou não possui linhas de dados.');
+        alert('A planilha selecionada estÃ¡ vazia ou nÃ£o possui linhas de dados.');
         return;
       }
 
@@ -16113,14 +16113,14 @@ function processarArquivoImportacaoProdutos(input) {
         };
 
         const descricao = findVal(/descri|produto|item/) || findVal(/^nome$/);
-        const rawPreco = findVal(/pre[cç]o|valor|unitario|custo|anual/);
+        const rawPreco = findVal(/pre[cÃ§]o|valor|unitario|custo|anual/);
         const categoria = findVal(/categ/) || 'Limpeza Geral';
         const unidade = (findVal(/unid|medida/) || 'UN').toUpperCase();
         const sku = findVal(/sku|cod|ref/);
         const marca = findVal(/marca|fabric/);
         const rawForn = findVal(/fornec|distribuidor/);
 
-        // Tratamento de preço
+        // Tratamento de preÃ§o
         let preco = null;
         if (rawPreco) {
           const limpo = rawPreco.replace('R$', '').replace(/\s+/g, '').replace(',', '.');
@@ -16130,7 +16130,7 @@ function processarArquivoImportacaoProdutos(input) {
           }
         }
 
-        // Resolução de fornecedor
+        // ResoluÃ§Ã£o de fornecedor
         let resolvedFornId = null;
         let resolvedFornNome = null;
 
@@ -16138,7 +16138,7 @@ function processarArquivoImportacaoProdutos(input) {
           resolvedFornId = fornecedorPadraoObj.id;
           resolvedFornNome = fornecedorPadraoObj.nome_empresa;
         } else if (rawForn) {
-          // Tentar por ID numérico
+          // Tentar por ID numÃ©rico
           const maybeId = parseInt(rawForn, 10);
           const fById = !isNaN(maybeId) ? fornecedores.find(f => f.id === maybeId) : null;
           if (fById) {
@@ -16164,10 +16164,10 @@ function processarArquivoImportacaoProdutos(input) {
         let statusClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
 
         if (!descricao) {
-          statusMsg = 'Sem Descrição';
+          statusMsg = 'Sem DescriÃ§Ã£o';
           statusClass = 'text-rose-700 bg-rose-50 border-rose-200';
         } else if (preco === null) {
-          statusMsg = 'Preço Inválido';
+          statusMsg = 'PreÃ§o InvÃ¡lido';
           statusClass = 'text-amber-700 bg-amber-50 border-amber-200';
         } else if (!resolvedFornId) {
           statusMsg = 'Fornecedor Pendente';
@@ -16219,10 +16219,10 @@ function renderizarPreviewImportacaoProdutos() {
   const validos = itens.filter(i => i.valido);
   const invalidos = itens.filter(i => !i.valido);
 
-  badgeValidos.textContent = `${validos.length} item(ns) válido(s)`;
+  badgeValidos.textContent = `${validos.length} item(ns) vÃ¡lido(s)`;
   if (invalidos.length > 0) {
     badgeErros.classList.remove('hidden');
-    badgeErros.textContent = `${invalidos.length} com pendência`;
+    badgeErros.textContent = `${invalidos.length} com pendÃªncia`;
   } else {
     badgeErros.classList.add('hidden');
   }
@@ -16235,7 +16235,7 @@ function renderizarPreviewImportacaoProdutos() {
       <td class="p-2 text-slate-600">${escapeHtml(item.categoria)}</td>
       <td class="p-2 text-slate-700 font-bold">${escapeHtml(item.unidade_medida)}</td>
       <td class="p-2 text-right font-black ${item.preco_anual_fechado !== null ? 'text-teal-700' : 'text-rose-600'}">
-        ${item.preco_anual_fechado !== null ? formatarMoeda(item.preco_anual_fechado) : 'Inválido'}
+        ${item.preco_anual_fechado !== null ? formatarMoeda(item.preco_anual_fechado) : 'InvÃ¡lido'}
       </td>
       <td class="p-2 font-mono text-[10px] text-slate-500">${escapeHtml(item.codigo_referencia || '-')}</td>
       <td class="p-2 text-slate-600">${escapeHtml(item.marca || '-')}</td>
@@ -16253,7 +16253,7 @@ function renderizarPreviewImportacaoProdutos() {
       btnConfirmar.innerHTML = `<i class="fa-solid fa-file-circle-check"></i> Confirmar e Cadastrar ${validos.length} Produto(s)`;
     } else {
       btnConfirmar.disabled = true;
-      btnConfirmar.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Nenhum Produto Válido para Inserir';
+      btnConfirmar.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Nenhum Produto VÃ¡lido para Inserir';
     }
   }
 }
@@ -16261,7 +16261,7 @@ function renderizarPreviewImportacaoProdutos() {
 async function confirmarImportacaoProdutos() {
   const itens = (state.produtosImportacaoPrevia || []).filter(i => i.valido);
   if (itens.length === 0) {
-    alert('Nenhum item válido para importar. Verifique se a descrição, preço e fornecedor estão preenchidos.');
+    alert('Nenhum item vÃ¡lido para importar. Verifique se a descriÃ§Ã£o, preÃ§o e fornecedor estÃ£o preenchidos.');
     return;
   }
 
@@ -16290,13 +16290,13 @@ async function confirmarImportacaoProdutos() {
       }
     }
   } catch (err) {
-    alert('Erro de conexão ao importar produtos: ' + err.message);
+    alert('Erro de conexÃ£o ao importar produtos: ' + err.message);
     if (btnConfirmar) btnConfirmar.disabled = false;
   }
 }
 
 // -------------------------------------------------------------
-// CADASTRO EM MASSA DE MÚLTIPLOS PRODUTOS (TABELA DINÂMICA)
+// CADASTRO EM MASSA DE MÃšLTIPLOS PRODUTOS (TABELA DINÃ‚MICA)
 // -------------------------------------------------------------
 function abrirModalCadastroLoteProdutos(fornecedorIdPadrao = null) {
   // Popular select de fornecedores
@@ -16337,12 +16337,12 @@ function adicionarLinhaProdutoLote(qtd = 1) {
       <td class="p-1.5">
         <select class="lote-cat w-full border border-slate-300 rounded px-1.5 py-1 text-xs bg-white focus:outline-none">
           <option value="Limpeza Geral">Limpeza Geral</option>
-          <option value="Químicos Pesados">Químicos Pesados</option>
-          <option value="Descartáveis & Papéis">Descartáveis & Papéis</option>
-          <option value="EPIs & Segurança">EPIs & Segurança</option>
-          <option value="Uniformes & Vestuário">Uniformes & Vestuário</option>
-          <option value="Calçados & Sapatos">Calçados & Sapatos</option>
-          <option value="Equipamentos & Utensílios">Equipamentos & Utensílios</option>
+          <option value="QuÃ­micos Pesados">QuÃ­micos Pesados</option>
+          <option value="DescartÃ¡veis & PapÃ©is">DescartÃ¡veis & PapÃ©is</option>
+          <option value="EPIs & SeguranÃ§a">EPIs & SeguranÃ§a</option>
+          <option value="Uniformes & VestuÃ¡rio">Uniformes & VestuÃ¡rio</option>
+          <option value="CalÃ§ados & Sapatos">CalÃ§ados & Sapatos</option>
+          <option value="Equipamentos & UtensÃ­lios">Equipamentos & UtensÃ­lios</option>
           <option value="Demais / Outros">Demais / Outros</option>
         </select>
       </td>
@@ -16414,7 +16414,7 @@ function atualizarContadorLinhasLote() {
 async function salvarProdutosLote() {
   const fornecedorId = document.getElementById('loteProdFornecedorPadrao')?.value;
   if (!fornecedorId) {
-    alert('Por favor, selecione o Fornecedor padrão para os produtos.');
+    alert('Por favor, selecione o Fornecedor padrÃ£o para os produtos.');
     document.getElementById('loteProdFornecedorPadrao')?.focus();
     return;
   }
@@ -16441,12 +16441,12 @@ async function salvarProdutosLote() {
     if (!desc && !rawPreco && !sku && !marca) return;
 
     if (!desc) {
-      erros.push(`Linha #${idx + 1}: Informe a descrição do produto.`);
+      erros.push(`Linha #${idx + 1}: Informe a descriÃ§Ã£o do produto.`);
       return;
     }
     const preco = parseFloat(rawPreco);
     if (isNaN(preco) || preco < 0) {
-      erros.push(`Linha #${idx + 1} (${desc}): Informe um preço unitário válido.`);
+      erros.push(`Linha #${idx + 1} (${desc}): Informe um preÃ§o unitÃ¡rio vÃ¡lido.`);
       return;
     }
 
@@ -16462,7 +16462,7 @@ async function salvarProdutosLote() {
   });
 
   if (erros.length > 0) {
-    alert('Corrija as seguintes inconsistências antes de salvar:\n\n' + erros.slice(0, 5).join('\n'));
+    alert('Corrija as seguintes inconsistÃªncias antes de salvar:\n\n' + erros.slice(0, 5).join('\n'));
     return;
   }
 
@@ -16518,7 +16518,7 @@ async function salvarEdicaoProdutoCartela(e) {
   const preco = parseFloat(document.getElementById('prodEditPreco')?.value);
 
   if (!fornId || !desc || isNaN(preco) || preco < 0) {
-    alert('Fornecedor, descrição e preço válido são obrigatórios.');
+    alert('Fornecedor, descriÃ§Ã£o e preÃ§o vÃ¡lido sÃ£o obrigatÃ³rios.');
     return;
   }
 
@@ -16572,7 +16572,7 @@ async function excluirProdutoCartela(id) {
 }
 
 // =============================================================
-// EXPORTAÇÁO COMPLETA DA BASE DE COLABORADORES & RE-IMPORTAÇÁO SEM DUPLICIDADE
+// EXPORTAÃ‡ÃO COMPLETA DA BASE DE COLABORADORES & RE-IMPORTAÃ‡ÃO SEM DUPLICIDADE
 // =============================================================
 
 async function exportarBaseCompletaColaboradoresExcel() {
@@ -16580,7 +16580,7 @@ async function exportarBaseCompletaColaboradoresExcel() {
     const res = await fetch('/api/colaboradores?status=todos');
     const colaboradores = await res.json();
     if (!Array.isArray(colaboradores) || colaboradores.length === 0) {
-      return alert('Nenhum colaborador encontrado para exportação.');
+      return alert('Nenhum colaborador encontrado para exportaÃ§Ã£o.');
     }
 
     const dadosPlanilha = colaboradores.map(c => {
@@ -16623,15 +16623,15 @@ async function exportarBaseCompletaColaboradoresExcel() {
 }
 
 // =============================================================
-// MÓDULO DE SEGURANÇA E SAÚDE DO TRABALHO (SST - NR-01)
+// MÃ“DULO DE SEGURANÃ‡A E SAÃšDE DO TRABALHO (SST - NR-01)
 // =============================================================
 
 // =============================================================
-// MÓDULO SST E INTEGRAÇÃO (ONBOARDING)
+// MÃ“DULO SST E INTEGRAÃ‡ÃƒO (ONBOARDING)
 // =============================================================
 
 function carregarPainelSST() {
-   // Apenas renderiza um visual bonito simulando os dados de integração
+   // Apenas renderiza um visual bonito simulando os dados de integraÃ§Ã£o
    const containerAguardando = document.getElementById('kbSstAguardandoLista');
    const containerIntegrando = document.getElementById('kbSstIntegrandoLista');
    const containerLiberado = document.getElementById('kbSstLiberadoLista');
@@ -16661,16 +16661,16 @@ function carregarPainelSST() {
 
       
    containerAguardando.innerHTML = 
-      admissaoHTML('João Silva', 'Porteiro', 'Hoje', 1) + 
+      admissaoHTML('JoÃ£o Silva', 'Porteiro', 'Hoje', 1) + 
       admissaoHTML('Maria Oliveira', 'Recepcionista', 'Hoje', 1) + 
       admissaoHTML('Carlos Mendes', 'Aux. Limpeza', 'Ontem', 1);
       
    containerIntegrando.innerHTML = 
-      admissaoHTML('Ana Clara', 'Líder Limpeza', '01/Out', 2) + 
+      admissaoHTML('Ana Clara', 'LÃ­der Limpeza', '01/Out', 2) + 
       admissaoHTML('Roberto Carlos', 'Porteiro', '30/Set', 2);
       
    containerLiberado.innerHTML = 
-      admissaoHTML('Fábio Júnior', 'Jardineiro', '28/Set', 3) +
+      admissaoHTML('FÃ¡bio JÃºnior', 'Jardineiro', '28/Set', 3) +
       admissaoHTML('Sandra Rosa', 'Recepcionista', '28/Set', 3) +
       admissaoHTML('Thiago Silva', 'Vigia', '25/Set', 3) +
       admissaoHTML('Fernanda Lima', 'Aux. Limpeza', '25/Set', 3);
@@ -16803,7 +16803,7 @@ function renderizarTabelaSST(docs) {
     const isLP = (d.tipo_documento || '').toUpperCase().includes('TREINAMENTO') || (d.tipo_documento || '').toLowerCase().includes('presenca');
     const tipoBadge = isLP
       ? '<span class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-clipboard-check"></i> Treinamento NR-01</span>'
-      : '<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-file-shield"></i> Ordem de Serviço</span>';
+      : '<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-file-shield"></i> Ordem de ServiÃ§o</span>';
 
     const statusAssin = (d.status_assinatura || '').toLowerCase();
     let assinBadge = '';
@@ -16818,12 +16818,12 @@ function renderizarTabelaSST(docs) {
     const arqStatus = (d.arquivo_status || d.status_arquivo || '').toLowerCase();
     let arqBadge = '';
     if (arqStatus === 'arquivado') {
-      const cx = d.localizacao_caixa || d.caixa_arquivo || 'Físico';
+      const cx = d.localizacao_caixa || d.caixa_arquivo || 'FÃ­sico';
       arqBadge = `<span class="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1" title="Arquivado na ${cx}"><i class="fa-solid fa-box-archive"></i> Arquivado (${cx})</span>`;
     } else if (arqStatus === 'solicitado') {
       arqBadge = '<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-paper-plane"></i> Aguardando Guarda</span>';
     } else {
-      arqBadge = '<span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-circle-dot"></i> Não Arquivado</span>';
+      arqBadge = '<span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><i class="fa-solid fa-circle-dot"></i> NÃ£o Arquivado</span>';
     }
 
     const dataAdmissaoFormatada = d.data_admissao ? formatarData(d.data_admissao) : '-';
@@ -16841,20 +16841,20 @@ function renderizarTabelaSST(docs) {
             ${escapeHtml(d.colaborador_cpf || 'Sem CPF')}
           </div>
         </td>
-        <!-- 2. Função & Cliente -->
+        <!-- 2. FunÃ§Ã£o & Cliente -->
         <td class="py-3 px-4">
           <div class="font-semibold text-slate-800 text-xs">${escapeHtml(d.cargo_nome || 'Operacional')}</div>
-          <div class="text-[10px] text-slate-500">${escapeHtml(d.cliente_nome || 'Base / Matriz')} • ${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</div>
+          <div class="text-[10px] text-slate-500">${escapeHtml(d.cliente_nome || 'Base / Matriz')} â€¢ ${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</div>
         </td>
         <!-- 3. Tipo de Documento -->
         <td class="py-3 px-4">
           ${tipoBadge}
           <div class="text-[10px] text-slate-400 mt-0.5 font-mono">Reg. #${d.id.toString().padStart(5, '0')}</div>
         </td>
-        <!-- 4. Data Geração -->
+        <!-- 4. Data GeraÃ§Ã£o -->
         <td class="py-3 px-4">
           <div class="text-xs text-slate-800 font-semibold">${dataEmissaoFormatada}</div>
-          <div class="text-[10px] text-slate-400">Admissão: ${dataAdmissaoFormatada}</div>
+          <div class="text-[10px] text-slate-400">AdmissÃ£o: ${dataAdmissaoFormatada}</div>
         </td>
         <!-- 5. Assinatura -->
         <td class="py-3 px-4 text-center">
@@ -16865,17 +16865,17 @@ function renderizarTabelaSST(docs) {
         <td class="py-3 px-4 text-center">
           ${arqBadge}
         </td>
-        <!-- 7. Ações Operacionais -->
+        <!-- 7. AÃ§Ãµes Operacionais -->
         <td class="py-3 px-4 text-right">
           <div class="flex items-center justify-end gap-1.5 flex-wrap">
-            <button onclick="visualizarDocumentoSST(${d.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Visualizar Documento em formato A4 para impressão">
+            <button onclick="visualizarDocumentoSST(${d.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer" title="Visualizar Documento em formato A4 para impressÃ£o">
               <i class="fa-solid fa-file-lines"></i> Visualizar (A4)
             </button>
-            <button onclick="abrirModalEditarDocumentoSST(${d.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" title="Editar Conteúdo / Cronograma">
+            <button onclick="abrirModalEditarDocumentoSST(${d.id})" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2.5 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" title="Editar ConteÃºdo / Cronograma">
               <i class="fa-solid fa-pen-to-square"></i> Editar
             </button>
             ${arqStatus !== 'arquivado' ? `
-              <button onclick="abrirModalSolicitarArquivamento(${d.id}, ${d.colaborador_id}, '${d.tipo_documento}', '${escapeJsString(d.titulo)}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-2 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" title="Informar ao Arquivo que documento está disponível">
+              <button onclick="abrirModalSolicitarArquivamento(${d.id}, ${d.colaborador_id}, '${d.tipo_documento}', '${escapeJsString(d.titulo)}')" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-2 py-1.5 rounded-lg text-xs transition flex items-center gap-1 cursor-pointer" title="Informar ao Arquivo que documento estÃ¡ disponÃ­vel">
                 <i class="fa-solid fa-box-archive"></i> Enviar ao Arquivo
               </button>
             ` : ''}
@@ -16895,14 +16895,14 @@ async function visualizarDocumentoSST(id) {
     }
     state.docSSTVisualizando = d;
 
-    if (!d || !d.id) return alert('Documento não encontrado.');
+    if (!d || !d.id) return alert('Documento nÃ£o encontrado.');
 
     const isLP = (d.tipo_documento || '').toUpperCase().includes('TREINAMENTO') || (d.tipo_documento || '').toLowerCase().includes('presenca');
 
     const barraTit = document.getElementById('visualizarSSTTituloBarra');
     const barraSub = document.getElementById('visualizarSSTSubtituloBarra');
-    if (barraTit) barraTit.textContent = d.titulo || (isLP ? 'Lista de Presença - Treinamento NR-01' : 'Ordem de Serviço (OS NR-01)');
-    if (barraSub) barraSub.textContent = `Colaborador: ${d.colaborador_nome} | Função: ${d.cargo_nome || 'Operacional'} | Cliente: ${d.cliente_nome || 'Matriz'}`;
+    if (barraTit) barraTit.textContent = d.titulo || (isLP ? 'Lista de PresenÃ§a - Treinamento NR-01' : 'Ordem de ServiÃ§o (OS NR-01)');
+    if (barraSub) barraSub.textContent = `Colaborador: ${d.colaborador_nome} | FunÃ§Ã£o: ${d.cargo_nome || 'Operacional'} | Cliente: ${d.cliente_nome || 'Matriz'}`;
 
     const btnEditar = document.getElementById('btnEditarDocSSTModal');
     if (btnEditar) btnEditar.onclick = () => editarDocumentoSSTAtual();
@@ -16927,15 +16927,15 @@ async function visualizarDocumentoSST(id) {
     }
 
     const dataEmissao = d.data_geracao ? formatarData(d.data_geracao.slice(0, 10)) : (d.data_criacao ? formatarData(d.data_criacao.slice(0, 10)) : new Date().toLocaleDateString('pt-BR'));
-    const dataAdmissao = d.data_admissao ? formatarData(d.data_admissao) : 'Não informada';
+    const dataAdmissao = d.data_admissao ? formatarData(d.data_admissao) : 'NÃ£o informada';
     const statusAssin = (d.status_assinatura || '').toUpperCase();
 
     if (isLP) {
       let cronogramaLinhas = '';
       if (Array.isArray(conteudo.cronograma)) {
-        cronogramaLinhas = conteudo.cronograma.map(c => `• ${c.modulo || ''}: ${c.tema || ''} (${c.carga_horaria || ''} - ${c.instrutor || ''})`).join('\n');
+        cronogramaLinhas = conteudo.cronograma.map(c => `â€¢ ${c.modulo || ''}: ${c.tema || ''} (${c.carga_horaria || ''} - ${c.instrutor || ''})`).join('\n');
       } else {
-        cronogramaLinhas = conteudo.conteudo_programatico || conteudo.cronograma || '• Módulo 1: Apresentação da Empresa e Política de Segurança e Saúde no Trabalho.\n• Módulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\n• Módulo 3: Riscos Físicos, Químicos, Biológicos, Ergonômicos e Riscos de Acidentes específicos da função.\n• Módulo 4: NR-06 - Equipamentos de Proteção Individual (EPI): Guarda, higienização e obrigatoriedade de uso.\n• Módulo 5: Procedimentos de Emergência, Primeiros Socorros e Comunicação Imediata de Acidentes (CAT).\n• Módulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.';
+        cronogramaLinhas = conteudo.conteudo_programatico || conteudo.cronograma || 'â€¢ MÃ³dulo 1: ApresentaÃ§Ã£o da Empresa e PolÃ­tica de SeguranÃ§a e SaÃºde no Trabalho.\nâ€¢ MÃ³dulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\nâ€¢ MÃ³dulo 3: Riscos FÃ­sicos, QuÃ­micos, BiolÃ³gicos, ErgonÃ´micos e Riscos de Acidentes especÃ­ficos da funÃ§Ã£o.\nâ€¢ MÃ³dulo 4: NR-06 - Equipamentos de ProteÃ§Ã£o Individual (EPI): Guarda, higienizaÃ§Ã£o e obrigatoriedade de uso.\nâ€¢ MÃ³dulo 5: Procedimentos de EmergÃªncia, Primeiros Socorros e ComunicaÃ§Ã£o Imediata de Acidentes (CAT).\nâ€¢ MÃ³dulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.';
       }
 
       area.innerHTML = `
@@ -16946,13 +16946,13 @@ async function visualizarDocumentoSST(id) {
                 <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
               </div>
               <div>
-                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
-                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
-                <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</div>
+                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÃ‡A E SAÃšDE DO TRABALHO - SESMT</div>
+                <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nÂº 4.219/2022)</div>
               </div>
             </div>
             <div class="text-right text-[11px] font-mono text-slate-600">
-              <div><b>DATA EMISSÁO:</b> ${dataEmissao}</div>
+              <div><b>DATA EMISSÃO:</b> ${dataEmissao}</div>
               <div><b>REGISTRO SST:</b> #${d.id.toString().padStart(5, '0')}</div>
               <div><b>STATUS:</b> <span>${statusAssin}</span></div>
             </div>
@@ -16960,9 +16960,9 @@ async function visualizarDocumentoSST(id) {
 
           <div class="text-center my-4 pb-2 border-b border-slate-300">
             <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
-              LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST
+              LISTA DE PRESENÃ‡A E COMPROVANTE DE TREINAMENTO INTRODUTÃ“RIO DE SST
             </h1>
-            <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
+            <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de IntegraÃ§Ã£o, PrevenÃ§Ã£o de Acidentes e Uso de EPIs</p>
           </div>
 
           <div class="mb-4 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
@@ -16971,9 +16971,9 @@ async function visualizarDocumentoSST(id) {
             </div>
             <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
               <div><span class="text-slate-500">Nome Completo:</span> <b class="text-slate-900">${escapeHtml(d.colaborador_nome)}</b></div>
-              <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">${escapeHtml(d.colaborador_cpf || 'Não informado')}</b></div>
-              <div><span class="text-slate-500">Função / Cargo:</span> <b class="text-slate-900">${escapeHtml(d.cargo_nome || 'Operacional')}</b></div>
-              <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${dataAdmissao}</b></div>
+              <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">${escapeHtml(d.colaborador_cpf || 'NÃ£o informado')}</b></div>
+              <div><span class="text-slate-500">FunÃ§Ã£o / Cargo:</span> <b class="text-slate-900">${escapeHtml(d.cargo_nome || 'Operacional')}</b></div>
+              <div><span class="text-slate-500">Data de AdmissÃ£o:</span> <b class="text-slate-900">${dataAdmissao}</b></div>
               <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">${escapeHtml(d.cliente_nome || 'Base Operacional')}</b></div>
               <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</b></div>
             </div>
@@ -16981,12 +16981,12 @@ async function visualizarDocumentoSST(id) {
 
           <div class="mb-4 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
             <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center justify-between">
-              <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & Conteúdo Programático</span>
-              <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga Horária: ${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '06 Horas')}</span>
+              <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & ConteÃºdo ProgramÃ¡tico</span>
+              <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga HorÃ¡ria: ${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '06 Horas')}</span>
             </div>
             <div class="grid grid-cols-2 gap-2 mb-2 text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
-              <div><b>Instrutor:</b> ${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'SESMT / Técnico de Segurança')}</div>
-              <div><b>Local:</b> ${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Base Operacional / Posto de Serviço')}</div>
+              <div><b>Instrutor:</b> ${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'SESMT / TÃ©cnico de SeguranÃ§a')}</div>
+              <div><b>Local:</b> ${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Base Operacional / Posto de ServiÃ§o')}</div>
             </div>
             <div class="text-xs text-slate-700 whitespace-pre-line leading-relaxed bg-slate-50/70 p-3 rounded border border-slate-200 font-sans">
 ${escapeHtml(cronogramaLinhas)}
@@ -16994,7 +16994,7 @@ ${escapeHtml(cronogramaLinhas)}
           </div>
 
           <div class="mb-6 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
-            <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento Introdutório de Segurança e Saúde no Trabalho acima especificado, compreendendo os riscos inerentes à minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteção e procedimentos estabelecidos.</p>
+            <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento IntrodutÃ³rio de SeguranÃ§a e SaÃºde no Trabalho acima especificado, compreendendo os riscos inerentes Ã  minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteÃ§Ã£o e procedimentos estabelecidos.</p>
           </div>
 
           <div class="mt-12 pt-6 grid grid-cols-2 gap-8 text-center text-xs">
@@ -17012,7 +17012,7 @@ ${escapeHtml(cronogramaLinhas)}
                 <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
               </div>
               <div class="font-bold text-slate-900 uppercase">${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'SESMT / Instrutor TST')}</div>
-              <div class="text-[11px] text-slate-500">Responsável pela Aplicação do Treinamento</div>
+              <div class="text-[11px] text-slate-500">ResponsÃ¡vel pela AplicaÃ§Ã£o do Treinamento</div>
               <div class="text-[10px] text-slate-400">${escapeHtml(conteudo.instrutor_registro || 'Registro SESMT / MTE')}</div>
             </div>
           </div>
@@ -17024,13 +17024,13 @@ ${escapeHtml(cronogramaLinhas)}
 
       const riscosHtml = riscos.length > 0 ? riscos.map(r => {
         const txt = typeof r === 'object' ? `${r.tipo ? `[${r.tipo.toUpperCase()}] ` : ''}${r.descricao || r.nome}` : r;
-        return `<div class="p-1.5 bg-slate-50 rounded border border-slate-200 text-[11px] text-slate-700">• ${escapeHtml(txt)}</div>`;
+        return `<div class="p-1.5 bg-slate-50 rounded border border-slate-200 text-[11px] text-slate-700">â€¢ ${escapeHtml(txt)}</div>`;
       }).join('') : '<div class="text-slate-500 text-[11px] italic p-2 bg-slate-50 rounded">Riscos ocupacionais conforme PGR da empresa e rotina operacional do posto.</div>';
 
       const episHtml = epis.length > 0 ? epis.map(e => {
         const txt = typeof e === 'object' ? `${e.nome || e.epi} ${e.ca ? `(CA: ${e.ca})` : ''}` : e;
-        return `<div class="p-1 bg-white rounded border border-slate-200 text-[11px] text-slate-800 font-semibold">• ${escapeHtml(txt)}</div>`;
-      }).join('') : '<div class="text-slate-500 text-[11px] italic p-2 bg-slate-50 rounded">EPIs definidos conforme a função e riscos do cliente.</div>';
+        return `<div class="p-1 bg-white rounded border border-slate-200 text-[11px] text-slate-800 font-semibold">â€¢ ${escapeHtml(txt)}</div>`;
+      }).join('') : '<div class="text-slate-500 text-[11px] italic p-2 bg-slate-50 rounded">EPIs definidos conforme a funÃ§Ã£o e riscos do cliente.</div>';
 
       area.innerHTML = `
         <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
@@ -17040,46 +17040,46 @@ ${escapeHtml(cronogramaLinhas)}
                 <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
               </div>
               <div>
-                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
-                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
-                <div class="text-[10px] text-slate-500">Ordem de Serviço de Segurança do Trabalho - NR-01 / Portaria MTP nº 4.219/2022</div>
+                <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</div>
+                <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÃ‡A E SAÃšDE DO TRABALHO - SESMT</div>
+                <div class="text-[10px] text-slate-500">Ordem de ServiÃ§o de SeguranÃ§a do Trabalho - NR-01 / Portaria MTP nÂº 4.219/2022</div>
               </div>
             </div>
             <div class="text-right text-[11px] font-mono text-slate-600">
-              <div><b>EMISSÁO:</b> ${dataEmissao}</div>
-              <div><b>ORDEM DE SERVIÇO:</b> #${d.id.toString().padStart(5, '0')}</div>
+              <div><b>EMISSÃO:</b> ${dataEmissao}</div>
+              <div><b>ORDEM DE SERVIÃ‡O:</b> #${d.id.toString().padStart(5, '0')}</div>
               <div><b>STATUS:</b> <span>${statusAssin}</span></div>
             </div>
           </div>
 
           <div class="text-center my-3 pb-2 border-b border-slate-300">
             <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
-              ORDEM DE SERVIÇO SOBRE SEGURANÇA E SAÚDE NO TRABALHO (OS - NR-01)
+              ORDEM DE SERVIÃ‡O SOBRE SEGURANÃ‡A E SAÃšDE NO TRABALHO (OS - NR-01)
             </h1>
             <p class="text-xs text-slate-600 mt-0.5">Em cumprimento ao subitem 1.4.1 da NR-01 e aos Artigos 157 e 158 da CLT</p>
           </div>
 
           <div class="mb-3 bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs leading-relaxed">
             <div class="font-bold text-slate-800 uppercase mb-1.5 border-b border-slate-200 pb-1 flex items-center gap-1.5">
-              <i class="fa-solid fa-user-check"></i> 1. Identificação do Trabalhador e da Função
+              <i class="fa-solid fa-user-check"></i> 1. IdentificaÃ§Ã£o do Trabalhador e da FunÃ§Ã£o
             </div>
             <div class="grid grid-cols-2 gap-y-1 gap-x-4">
               <div><span class="text-slate-500">Colaborador:</span> <b class="text-slate-900">${escapeHtml(d.colaborador_nome)}</b></div>
-              <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">${escapeHtml(d.colaborador_cpf || 'Não informado')}</b></div>
-              <div><span class="text-slate-500">Função Registrada:</span> <b class="text-slate-900">${escapeHtml(d.cargo_nome || 'Operacional')}</b></div>
-              <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${dataAdmissao}</b></div>
+              <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">${escapeHtml(d.colaborador_cpf || 'NÃ£o informado')}</b></div>
+              <div><span class="text-slate-500">FunÃ§Ã£o Registrada:</span> <b class="text-slate-900">${escapeHtml(d.cargo_nome || 'Operacional')}</b></div>
+              <div><span class="text-slate-500">Data de AdmissÃ£o:</span> <b class="text-slate-900">${dataAdmissao}</b></div>
               <div><span class="text-slate-500">Cliente / Contratante:</span> <b class="text-slate-900">${escapeHtml(d.cliente_nome || 'Cliente Operacional')}</b></div>
               <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">${escapeHtml(d.nome_posto || d.posto_nome || 'Posto Operacional')}</b></div>
-              ${conteudo.titulo_modelo ? `<div class="col-span-2 pt-1 border-t border-slate-200/80"><span class="text-slate-500">Modelo da Ordem de Serviço:</span> <b class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(conteudo.titulo_modelo)}</b></div>` : ''}
+              ${conteudo.titulo_modelo ? `<div class="col-span-2 pt-1 border-t border-slate-200/80"><span class="text-slate-500">Modelo da Ordem de ServiÃ§o:</span> <b class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(conteudo.titulo_modelo)}</b></div>` : ''}
             </div>
           </div>
 
           <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
-              <i class="fa-solid fa-briefcase"></i> 2. Descrição das Atividades Desenvolvidas
+              <i class="fa-solid fa-briefcase"></i> 2. DescriÃ§Ã£o das Atividades Desenvolvidas
             </div>
             <div class="text-slate-700 bg-slate-50/70 p-2.5 rounded border border-slate-200 whitespace-pre-line leading-relaxed">
-${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução das atividades operacionais específicas da função, garantindo os padrões técnicos, de asseio, conservação e vigilância do posto de trabalho.')}
+${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'ExecuÃ§Ã£o das atividades operacionais especÃ­ficas da funÃ§Ã£o, garantindo os padrÃµes tÃ©cnicos, de asseio, conservaÃ§Ã£o e vigilÃ¢ncia do posto de trabalho.')}
             </div>
           </div>
 
@@ -17094,7 +17094,7 @@ ${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução
 
           <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
-              <i class="fa-solid fa-vest"></i> 4. Equipamentos de Proteção Individual (EPI) de Uso Obrigatório
+              <i class="fa-solid fa-vest"></i> 4. Equipamentos de ProteÃ§Ã£o Individual (EPI) de Uso ObrigatÃ³rio
             </div>
             <div class="space-y-1 bg-slate-50/50 p-2 rounded border border-slate-200">
               ${episHtml}
@@ -17103,25 +17103,25 @@ ${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || 'Execução
 
           <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
-              <i class="fa-solid fa-circle-check text-emerald-600"></i> 5. Medidas Preventivas e Procedimentos de Segurança
+              <i class="fa-solid fa-circle-check text-emerald-600"></i> 5. Medidas Preventivas e Procedimentos de SeguranÃ§a
             </div>
             <div class="text-slate-700 bg-emerald-50/20 p-2.5 rounded border border-emerald-100 whitespace-pre-line leading-relaxed">
-${escapeHtml(conteudo.medidas_preventivas || '• Utilizar obrigatoriamente todos os EPIs fornecidos durante a execução das atividades no posto;\n• Não manusear produtos químicos ou maquinários sem capacitação e leitura prévia da FISPQ/rótulo;\n• Manter as vias de circulação desobstruídas e comunicar prontamente riscos ambientais;\n• Participar de todos os exames médicos periódicos e treinamentos de reciclagem convocados.')}
+${escapeHtml(conteudo.medidas_preventivas || 'â€¢ Utilizar obrigatoriamente todos os EPIs fornecidos durante a execuÃ§Ã£o das atividades no posto;\nâ€¢ NÃ£o manusear produtos quÃ­micos ou maquinÃ¡rios sem capacitaÃ§Ã£o e leitura prÃ©via da FISPQ/rÃ³tulo;\nâ€¢ Manter as vias de circulaÃ§Ã£o desobstruÃ­das e comunicar prontamente riscos ambientais;\nâ€¢ Participar de todos os exames mÃ©dicos periÃ³dicos e treinamentos de reciclagem convocados.')}
             </div>
           </div>
 
           <div class="mb-3 text-xs">
             <div class="font-bold text-slate-800 uppercase border-b border-slate-200 pb-1 mb-1 flex items-center gap-1.5">
-              <i class="fa-solid fa-ban text-rose-600"></i> 6. Proibições e Penalidades (Art. 158 da CLT)
+              <i class="fa-solid fa-ban text-rose-600"></i> 6. ProibiÃ§Ãµes e Penalidades (Art. 158 da CLT)
             </div>
             <div class="text-slate-700 bg-rose-50/20 p-2.5 rounded border border-rose-100 whitespace-pre-line leading-relaxed">
-${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É terminantemente proibido operar equipamentos sem autorização expressa da supervisão;\n• Proibido fumar ou consumir alimentos em áreas operacionais ou de risco químico;\n• A recusa injustificada do empregado ao uso do EPI ou ao cumprimento das normas de segurança constitui ato faltoso (CLT, Art. 158), sujeito a penalidades que variam de advertência por escrito, suspensão disciplinar até demissão por justa causa (CLT, Art. 482).')}
+${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || 'â€¢ Ã‰ terminantemente proibido operar equipamentos sem autorizaÃ§Ã£o expressa da supervisÃ£o;\nâ€¢ Proibido fumar ou consumir alimentos em Ã¡reas operacionais ou de risco quÃ­mico;\nâ€¢ A recusa injustificada do empregado ao uso do EPI ou ao cumprimento das normas de seguranÃ§a constitui ato faltoso (CLT, Art. 158), sujeito a penalidades que variam de advertÃªncia por escrito, suspensÃ£o disciplinar atÃ© demissÃ£o por justa causa (CLT, Art. 482).')}
             </div>
           </div>
 
           <div class="mb-4 p-2.5 border border-slate-300 rounded-lg text-[10px] text-slate-700 leading-relaxed text-justify bg-slate-50">
-            <div class="font-bold uppercase text-slate-900 mb-1">7. Termo de Recebimento, Ciência e Responsabilidade</div>
-            <p>${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || 'Declaro ter recebido uma via da presente Ordem de Serviço, tomando pleno conhecimento dos riscos da função e das medidas preventivas a serem adotadas. Comprometo-me a cumprir integralmente todas as determinações aqui contidas, zelando pela minha segurança e dos demais colaboradores.')}</p>
+            <div class="font-bold uppercase text-slate-900 mb-1">7. Termo de Recebimento, CiÃªncia e Responsabilidade</div>
+            <p>${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || 'Declaro ter recebido uma via da presente Ordem de ServiÃ§o, tomando pleno conhecimento dos riscos da funÃ§Ã£o e das medidas preventivas a serem adotadas. Comprometo-me a cumprir integralmente todas as determinaÃ§Ãµes aqui contidas, zelando pela minha seguranÃ§a e dos demais colaboradores.')}</p>
           </div>
 
           <div class="mt-8 pt-4 grid grid-cols-2 gap-8 text-center text-xs">
@@ -17138,47 +17138,47 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
                 <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
               </div>
-              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
-              <div class="text-[11px] text-slate-500">SESMT / Segurança do Trabalho</div>
-              <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
+              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</div>
+              <div class="text-[11px] text-slate-500">SESMT / SeguranÃ§a do Trabalho</div>
+              <div class="text-[10px] text-slate-400">Empregador / ResponsÃ¡vel TÃ©cnico</div>
             </div>
           </div>
 
         <div class="sst-documento-a4 p-8 bg-white text-slate-900 font-sans" style="page-break-before: always; min-height: 297mm; max-width: 210mm; margin: 0 auto; box-sizing: border-box; background: white;">
           <div class="text-center mb-6 pb-2 border-b border-slate-300">
              <h1 class="text-sm font-black uppercase tracking-wider text-slate-900 leading-tight">
-               PORTARIA 3214 DE 8 DE JUNHO DE 1978 <br> NORMA REGULAMENTADORA NÚMERO 1 (NR 1) DISPOSIÇÕES GERAIS
+               PORTARIA 3214 DE 8 DE JUNHO DE 1978 <br> NORMA REGULAMENTADORA NÃšMERO 1 (NR 1) DISPOSIÃ‡Ã•ES GERAIS
              </h1>
           </div>
           
           <div class="text-[11px] leading-relaxed text-justify space-y-3 text-slate-800">
               <p><b>1.7. CABE AO EMPREGADOR:</b><br>
-              a) Cumprir e fazer cumprir as disposições legais e regulamentares sobre segurança e medicina do trabalho;<br>
-              b) Elaborar ordens de serviço sobre segurança e medicina do trabalho, dando ciência aos empregados, com os seguintes objetivos:<br>
+              a) Cumprir e fazer cumprir as disposiÃ§Ãµes legais e regulamentares sobre seguranÃ§a e medicina do trabalho;<br>
+              b) Elaborar ordens de serviÃ§o sobre seguranÃ§a e medicina do trabalho, dando ciÃªncia aos empregados, com os seguintes objetivos:<br>
               &bull; Prevenir atos inseguros no desempenho do trabalho;<br>
-              &bull; Divulgar as obrigações e proibições que os empregados devam conhecer e cumprir;<br>
-              &bull; Dar conhecimento aos empregados de que serão passíveis de punição, pelo descumprimento das ordens de serviço expedidas;<br>
-              &bull; Determinar os procedimentos que deverão ser adotados em caso de acidente do trabalho e doenças profissionais ou do trabalho;<br>
+              &bull; Divulgar as obrigaÃ§Ãµes e proibiÃ§Ãµes que os empregados devam conhecer e cumprir;<br>
+              &bull; Dar conhecimento aos empregados de que serÃ£o passÃ­veis de puniÃ§Ã£o, pelo descumprimento das ordens de serviÃ§o expedidas;<br>
+              &bull; Determinar os procedimentos que deverÃ£o ser adotados em caso de acidente do trabalho e doenÃ§as profissionais ou do trabalho;<br>
               &bull; Adotar medidas determinadas pelo MTB;<br>
-              &bull; Adotar medidas para eliminar ou neutralizar a insalubridade e as condições inseguras de trabalho.<br>
+              &bull; Adotar medidas para eliminar ou neutralizar a insalubridade e as condiÃ§Ãµes inseguras de trabalho.<br>
               c) Informar aos trabalhadores:<br>
               &bull; Os riscos profissionais que possam originar-se nos locais de trabalho;<br>
               &bull; Os meios para prevenir e limitar tais riscos e as medidas adotadas pela empresa;<br>
-              &bull; Os resultados dos exames médicos e de exames complementares de diagnóstico aos quais os próprios trabalhadores forem submetidos;<br>
-              &bull; Os resultados das avaliações ambientais realizadas nos locais de trabalho.<br>
-              d) Permitir que representantes dos trabalhadores acompanharem a fiscalização dos preceitos legais e regulamentares sobre segurança e medicina do trabalho.</p>
+              &bull; Os resultados dos exames mÃ©dicos e de exames complementares de diagnÃ³stico aos quais os prÃ³prios trabalhadores forem submetidos;<br>
+              &bull; Os resultados das avaliaÃ§Ãµes ambientais realizadas nos locais de trabalho.<br>
+              d) Permitir que representantes dos trabalhadores acompanharem a fiscalizaÃ§Ã£o dos preceitos legais e regulamentares sobre seguranÃ§a e medicina do trabalho.</p>
 
               <p><b>1.8. CABE AO EMPREGADO:</b><br>
-              a) Cumprir as disposições legais e regulamentares sobre segurança e medicina do trabalho, inclusive as ordens de serviço expedidas pela empresa;<br>
-              b) Usar corretamente o EPI fornecido pelo empregador quando necessário e solicitar a substituição do mesmo quando estiver danificado ou em mal condição de uso.<br>
-              c) Submeter-se aos exames médicos previstos nas Normas Regulamentadoras - NR;<br>
-              d) Colaborar com a empresa na aplicação das Normas Regulamentadoras - NR.<br>
-              e) Planejar todas as atividades antes da execução, avaliando os riscos e adotando medidas de controle para bloqueio dos mesmos, evitando acidentes, caso necessite, solicite a presença do supervisor e ou encarregado ou até mesmo o técnico de segurança do trabalho.<br>
-              f) Informar ao seu superior imediato e / ou técnico de segurança do trabalho, toda condição que coloque em risco a sua integridade física e a de seus colegas de trabalho. Todo trabalho eventual (fora de rotina), deve ser comunicado ao responsável imediato para avaliação e análise de risco, ANTES da rotina ser executada.<br>
-              g) Comunicar de imediato todo e qualquer acidente de trabalho, inclusive de outro colaborador, ao setor de Segurança do Trabalho.<br>
-              h) Colaborar com a empresa na aplicação das Normas Regulamentadoras de Segurança e Medicina do Trabalho.<br>
-              i) Participar de treinamentos periódicos sobre prevenção de acidentes, quando convocado.<br>
-              j) Utilizar meios de transporte seguro para ir e vir do trabalho, obedecendo o estipulado no ato da admissão e não gerando desvio da rota estipulada.</p>
+              a) Cumprir as disposiÃ§Ãµes legais e regulamentares sobre seguranÃ§a e medicina do trabalho, inclusive as ordens de serviÃ§o expedidas pela empresa;<br>
+              b) Usar corretamente o EPI fornecido pelo empregador quando necessÃ¡rio e solicitar a substituiÃ§Ã£o do mesmo quando estiver danificado ou em mal condiÃ§Ã£o de uso.<br>
+              c) Submeter-se aos exames mÃ©dicos previstos nas Normas Regulamentadoras - NR;<br>
+              d) Colaborar com a empresa na aplicaÃ§Ã£o das Normas Regulamentadoras - NR.<br>
+              e) Planejar todas as atividades antes da execuÃ§Ã£o, avaliando os riscos e adotando medidas de controle para bloqueio dos mesmos, evitando acidentes, caso necessite, solicite a presenÃ§a do supervisor e ou encarregado ou atÃ© mesmo o tÃ©cnico de seguranÃ§a do trabalho.<br>
+              f) Informar ao seu superior imediato e / ou tÃ©cnico de seguranÃ§a do trabalho, toda condiÃ§Ã£o que coloque em risco a sua integridade fÃ­sica e a de seus colegas de trabalho. Todo trabalho eventual (fora de rotina), deve ser comunicado ao responsÃ¡vel imediato para avaliaÃ§Ã£o e anÃ¡lise de risco, ANTES da rotina ser executada.<br>
+              g) Comunicar de imediato todo e qualquer acidente de trabalho, inclusive de outro colaborador, ao setor de SeguranÃ§a do Trabalho.<br>
+              h) Colaborar com a empresa na aplicaÃ§Ã£o das Normas Regulamentadoras de SeguranÃ§a e Medicina do Trabalho.<br>
+              i) Participar de treinamentos periÃ³dicos sobre prevenÃ§Ã£o de acidentes, quando convocado.<br>
+              j) Utilizar meios de transporte seguro para ir e vir do trabalho, obedecendo o estipulado no ato da admissÃ£o e nÃ£o gerando desvio da rota estipulada.</p>
               
               <p><b>1.8.1.</b> Constitui ato faltoso, a recusa injustificada do empregado ao cumprimento do disposto no item anterior.</p>
           </div>
@@ -17197,9 +17197,9 @@ ${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '• É termin
               <div class="border-b border-slate-900 pb-1 mb-1.5 flex items-center justify-center" style="min-height: 44px;">
                 <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
               </div>
-              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
-              <div class="text-[11px] text-slate-500">SESMT / Segurança do Trabalho</div>
-              <div class="text-[10px] text-slate-400">Empregador / Responsável Técnico</div>
+              <div class="font-bold text-slate-900 uppercase">VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</div>
+              <div class="text-[11px] text-slate-500">SESMT / SeguranÃ§a do Trabalho</div>
+              <div class="text-[10px] text-slate-400">Empregador / ResponsÃ¡vel TÃ©cnico</div>
             </div>
           </div>
         </div>
@@ -17247,7 +17247,7 @@ async function abrirModalEditarDocumentoSST(id) {
     const res = await fetch(`/api/sst/documentos/${id}`);
     doc = await res.json();
   }
-  if (!doc || !doc.id) return alert('Documento não encontrado.');
+  if (!doc || !doc.id) return alert('Documento nÃ£o encontrado.');
 
   document.getElementById('editSSTDocId').value = doc.id;
   document.getElementById('editSSTTipoDoc').value = doc.tipo_documento;
@@ -17273,7 +17273,7 @@ async function abrirModalEditarDocumentoSST(id) {
   if (isLP) {
     let cronogramaLinhas = '';
     if (Array.isArray(conteudo.cronograma)) {
-      cronogramaLinhas = conteudo.cronograma.map(c => `• ${c.modulo || ''}: ${c.tema || ''} (${c.carga_horaria || ''} - ${c.instrutor || ''})`).join('\n');
+      cronogramaLinhas = conteudo.cronograma.map(c => `â€¢ ${c.modulo || ''}: ${c.tema || ''} (${c.carga_horaria || ''} - ${c.instrutor || ''})`).join('\n');
     } else {
       cronogramaLinhas = conteudo.conteudo_programatico || conteudo.cronograma || '';
     }
@@ -17281,11 +17281,11 @@ async function abrirModalEditarDocumentoSST(id) {
     container.innerHTML = `
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">Carga Horária</label>
+          <label class="block font-semibold text-slate-700 mb-1">Carga HorÃ¡ria</label>
           <input type="text" id="editSSTCargaHoraria" value="${escapeHtml(conteudo.carga_horaria_total || conteudo.carga_horaria || '04 Horas')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
         </div>
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">Instrutor / Resp. Técnico</label>
+          <label class="block font-semibold text-slate-700 mb-1">Instrutor / Resp. TÃ©cnico</label>
           <input type="text" id="editSSTInstrutor" value="${escapeHtml(conteudo.instrutor_nome || conteudo.instrutor || 'Cleverson Almeida')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500">
         </div>
         <div>
@@ -17294,12 +17294,12 @@ async function abrirModalEditarDocumentoSST(id) {
         </div>
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-1">Local de Realização</label>
+        <label class="block font-semibold text-slate-700 mb-1">Local de RealizaÃ§Ã£o</label>
         <input type="text" id="editSSTLocal" value="${escapeHtml(conteudo.local_treinamento || conteudo.local || 'Sede Village / Posto de Trabalho')}" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500">
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-1">Cronograma e Conteúdo Programático</label>
-        <textarea id="editSSTCronograma" rows="6" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(cronogramaLinhas || '• Módulo 1: Apresentação da Empresa e Política de Segurança e Saúde no Trabalho.\n• Módulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\n• Módulo 3: Riscos Físicos, Químicos, Biológicos, Ergonômicos e Riscos de Acidentes específicos da função.\n• Módulo 4: NR-06 - Equipamentos de Proteção Individual (EPI): Guarda, higienização e obrigatoriedade de uso.\n• Módulo 5: Procedimentos de Emergência, Primeiros Socorros e Comunicação Imediata de Acidentes (CAT).\n• Módulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.')}</textarea>
+        <label class="block font-semibold text-slate-700 mb-1">Cronograma e ConteÃºdo ProgramÃ¡tico</label>
+        <textarea id="editSSTCronograma" rows="6" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(cronogramaLinhas || 'â€¢ MÃ³dulo 1: ApresentaÃ§Ã£o da Empresa e PolÃ­tica de SeguranÃ§a e SaÃºde no Trabalho.\nâ€¢ MÃ³dulo 2: NR-01 - Gerenciamento de Riscos Ocupacionais e Perigos Ambientais.\nâ€¢ MÃ³dulo 3: Riscos FÃ­sicos, QuÃ­micos, BiolÃ³gicos, ErgonÃ´micos e Riscos de Acidentes especÃ­ficos da funÃ§Ã£o.\nâ€¢ MÃ³dulo 4: NR-06 - Equipamentos de ProteÃ§Ã£o Individual (EPI): Guarda, higienizaÃ§Ã£o e obrigatoriedade de uso.\nâ€¢ MÃ³dulo 5: Procedimentos de EmergÃªncia, Primeiros Socorros e ComunicaÃ§Ã£o Imediata de Acidentes (CAT).\nâ€¢ MÃ³dulo 6: Direitos e Deveres do Trabalhador segundo o Artigo 158 da CLT.')}</textarea>
       </div>
     `;
   } else {
@@ -17311,29 +17311,29 @@ async function abrirModalEditarDocumentoSST(id) {
 
     container.innerHTML = `
       <div>
-        <label class="block font-semibold text-slate-700 mb-1">Descrição das Atividades da Função</label>
+        <label class="block font-semibold text-slate-700 mb-1">DescriÃ§Ã£o das Atividades da FunÃ§Ã£o</label>
         <textarea id="editSSTAtividades" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.descricao_atividades || conteudo.atividades || '')}</textarea>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Riscos Ocupacionais (um por linha)</label>
-          <textarea id="editSSTRiscos" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: [FÍSICO] Ruído contínuo&#10;[ERGONÔMICO] Postura inadequada">${escapeHtml(txtRiscos)}</textarea>
+          <textarea id="editSSTRiscos" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: [FÃSICO] RuÃ­do contÃ­nuo&#10;[ERGONÃ”MICO] Postura inadequada">${escapeHtml(txtRiscos)}</textarea>
         </div>
         <div>
-          <label class="block font-semibold text-slate-700 mb-1">EPIs Obrigatórios (um por linha)</label>
-          <textarea id="editSSTEPIs" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: Calçado de segurança com biqueira (CA: 12345)&#10;Luva nitrílica">${escapeHtml(txtEpis)}</textarea>
+          <label class="block font-semibold text-slate-700 mb-1">EPIs ObrigatÃ³rios (um por linha)</label>
+          <textarea id="editSSTEPIs" rows="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono" placeholder="Ex: CalÃ§ado de seguranÃ§a com biqueira (CA: 12345)&#10;Luva nitrÃ­lica">${escapeHtml(txtEpis)}</textarea>
         </div>
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-1">Medidas Preventivas e Procedimentos de Segurança</label>
+        <label class="block font-semibold text-slate-700 mb-1">Medidas Preventivas e Procedimentos de SeguranÃ§a</label>
         <textarea id="editSSTMedidas" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.medidas_preventivas || '')}</textarea>
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-1">Proibições e Atos Inseguros (Art. 158 CLT)</label>
+        <label class="block font-semibold text-slate-700 mb-1">ProibiÃ§Ãµes e Atos Inseguros (Art. 158 CLT)</label>
         <textarea id="editSSTProibicoes" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono">${escapeHtml(conteudo.normas_proibicoes || conteudo.proibicoes || '')}</textarea>
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 mb-1">Termo de Ciência e Compromisso</label>
+        <label class="block font-semibold text-slate-700 mb-1">Termo de CiÃªncia e Compromisso</label>
         <textarea id="editSSTTermo" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-amber-500">${escapeHtml(conteudo.termo_compromisso || conteudo.termo_responsabilidade || '')}</textarea>
       </div>
     `;
@@ -17414,7 +17414,7 @@ async function salvarEdicaoDocumentoSST(e) {
       alert('Erro: ' + (json.message || 'Falha ao atualizar documento.'));
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -17428,7 +17428,7 @@ async function carregarModelosOSSST() {
     if (!grid) return;
 
     if (state.sstModelosOS.length === 0) {
-      grid.innerHTML = '<div class="col-span-3 text-center py-10 text-slate-400">Nenhum modelo de Ordem de Serviço cadastrado.</div>';
+      grid.innerHTML = '<div class="col-span-3 text-center py-10 text-slate-400">Nenhum modelo de Ordem de ServiÃ§o cadastrado.</div>';
       return;
     }
 
@@ -17448,16 +17448,16 @@ async function carregarModelosOSSST() {
                 ${escapeHtml(m.nome_cargo || m.nome_funcao)}
               </span>
             </div>
-            ${m.titulo_modelo && m.nome_funcao !== m.titulo_modelo ? `<div class="text-[11px] font-medium text-slate-500 mb-2">Função base: <b>${escapeHtml(m.nome_funcao)}</b></div>` : ''}
+            ${m.titulo_modelo && m.nome_funcao !== m.titulo_modelo ? `<div class="text-[11px] font-medium text-slate-500 mb-2">FunÃ§Ã£o base: <b>${escapeHtml(m.nome_funcao)}</b></div>` : ''}
             <p class="text-xs text-slate-600 line-clamp-3 leading-relaxed mb-3">
-              ${escapeHtml(m.descricao_atividades || 'Sem descrição cadastrada.')}
+              ${escapeHtml(m.descricao_atividades || 'Sem descriÃ§Ã£o cadastrada.')}
             </p>
             <div class="flex items-center gap-2 text-[10px]">
               <span class="bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-200">
                 <i class="fa-solid fa-triangle-exclamation mr-1"></i>${riscosList.length} Riscos Mapeados
               </span>
               <span class="bg-blue-50 text-blue-800 font-bold px-2 py-0.5 rounded border border-blue-200">
-                <i class="fa-solid fa-vest mr-1"></i>${episList.length} EPIs Obrigatórios
+                <i class="fa-solid fa-vest mr-1"></i>${episList.length} EPIs ObrigatÃ³rios
               </span>
             </div>
           </div>
@@ -17485,13 +17485,13 @@ function adicionarLinhaRiscoModeloOS(tipo = 'Acidente', desc = '') {
   div.className = 'linha-risco-item flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs';
   div.innerHTML = `
     <select class="risco-tipo border border-slate-300 rounded-md px-2 py-1 text-xs bg-slate-50 font-semibold text-slate-700 w-36 shrink-0 focus:outline-none">
-      <option value="Físico" ${tipo === 'Físico' ? 'selected' : ''}>Físico</option>
-      <option value="Químico" ${tipo === 'Químico' ? 'selected' : ''}>Químico</option>
-      <option value="Biológico" ${tipo === 'Biológico' ? 'selected' : ''}>Biológico</option>
-      <option value="Ergonômico" ${tipo === 'Ergonômico' ? 'selected' : ''}>Ergonômico</option>
-      <option value="Acidente" ${tipo === 'Acidente' ? 'selected' : ''}>Acidente / Mecânico</option>
+      <option value="FÃ­sico" ${tipo === 'FÃ­sico' ? 'selected' : ''}>FÃ­sico</option>
+      <option value="QuÃ­mico" ${tipo === 'QuÃ­mico' ? 'selected' : ''}>QuÃ­mico</option>
+      <option value="BiolÃ³gico" ${tipo === 'BiolÃ³gico' ? 'selected' : ''}>BiolÃ³gico</option>
+      <option value="ErgonÃ´mico" ${tipo === 'ErgonÃ´mico' ? 'selected' : ''}>ErgonÃ´mico</option>
+      <option value="Acidente" ${tipo === 'Acidente' ? 'selected' : ''}>Acidente / MecÃ¢nico</option>
     </select>
-    <input type="text" class="risco-desc w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Ruído contínuo, postura inadequada, contato com produtos de limpeza..." value="${escapeHtml(desc)}">
+    <input type="text" class="risco-desc w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: RuÃ­do contÃ­nuo, postura inadequada, contato com produtos de limpeza..." value="${escapeHtml(desc)}">
     <button type="button" onclick="this.closest('.linha-risco-item').remove()" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Remover este risco">
       <i class="fa-solid fa-trash-can text-xs"></i>
     </button>
@@ -17506,7 +17506,7 @@ function adicionarLinhaEPIModeloOS(nome = '', ca = '') {
   const div = document.createElement('div');
   div.className = 'linha-epi-item flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs';
   div.innerHTML = `
-    <input type="text" class="epi-nome w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: Calçado de segurança com biqueira, Luvas nitrílicas..." value="${escapeHtml(nome)}">
+    <input type="text" class="epi-nome w-full border border-slate-300 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Ex: CalÃ§ado de seguranÃ§a com biqueira, Luvas nitrÃ­licas..." value="${escapeHtml(nome)}">
     <input type="text" class="epi-ca w-32 shrink-0 border border-slate-300 rounded-md px-2.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="C.A. (opcional)" value="${escapeHtml(ca)}">
     <button type="button" onclick="this.closest('.linha-epi-item').remove()" class="text-rose-500 hover:text-rose-700 p-1.5 transition" title="Remover este EPI">
       <i class="fa-solid fa-trash-can text-xs"></i>
@@ -17547,9 +17547,9 @@ function abrirModalModeloOS(id = null) {
 
   if (id) {
     const mod = (state.sstModelosOS || []).find(m => m.id == id);
-    if (!mod) return alert('Modelo não encontrado.');
+    if (!mod) return alert('Modelo nÃ£o encontrado.');
 
-    if (tit) tit.textContent = 'Editar Modelo de Ordem de Serviço (OS)';
+    if (tit) tit.textContent = 'Editar Modelo de Ordem de ServiÃ§o (OS)';
     document.getElementById('modeloOSEditId').value = mod.id;
     document.getElementById('modeloOSTitulo').value = mod.titulo_modelo || mod.nome_funcao || '';
     document.getElementById('modeloOSNomeFuncao').value = mod.nome_funcao || '';
@@ -17583,13 +17583,13 @@ function abrirModalModeloOS(id = null) {
     document.getElementById('modeloOSProibicoes').value = mod.normas_proibicoes || mod.proibicoes || '';
     document.getElementById('modeloOSTermo').value = mod.termo_compromisso || mod.termo_responsabilidade || '';
   } else {
-    if (tit) tit.textContent = 'Cadastrar Novo Modelo de Ordem de Serviço (OS)';
+    if (tit) tit.textContent = 'Cadastrar Novo Modelo de Ordem de ServiÃ§o (OS)';
     document.getElementById('modeloOSEditId').value = '';
     document.getElementById('modeloOSTitulo').value = '';
     document.getElementById('modeloOSNomeFuncao').value = '';
     adicionarLinhaRiscoModeloOS('Acidente', '');
     adicionarLinhaEPIModeloOS('', '');
-    document.getElementById('modeloOSTermo').value = 'Declaro ter recebido uma via da presente Ordem de Serviço, bem como as devidas instruções e orientações sobre prevenção de acidentes e uso correto dos Equipamentos de Proteção Individual fornecidos gratuitamente pela empresa. Comprometo-me a cumprir integralmente todas as recomendações de segurança descritas neste documento, sob pena de incorrer nas sanções disciplinares previstas em lei.';
+    document.getElementById('modeloOSTermo').value = 'Declaro ter recebido uma via da presente Ordem de ServiÃ§o, bem como as devidas instruÃ§Ãµes e orientaÃ§Ãµes sobre prevenÃ§Ã£o de acidentes e uso correto dos Equipamentos de ProteÃ§Ã£o Individual fornecidos gratuitamente pela empresa. Comprometo-me a cumprir integralmente todas as recomendaÃ§Ãµes de seguranÃ§a descritas neste documento, sob pena de incorrer nas sanÃ§Ãµes disciplinares previstas em lei.';
   }
 
   abrirModal('modalModeloOS');
@@ -17606,7 +17606,7 @@ async function salvarModeloOS(e) {
   const proibicoes = document.getElementById('modeloOSProibicoes').value.trim();
   const termo = document.getElementById('modeloOSTermo').value.trim();
 
-  // Coleta riscos das linhas dinâmicas
+  // Coleta riscos das linhas dinÃ¢micas
   const containerRiscos = document.getElementById('listaRiscosModeloOS');
   const riscosArray = [];
   if (containerRiscos) {
@@ -17617,7 +17617,7 @@ async function salvarModeloOS(e) {
     });
   }
 
-  // Coleta EPIs das linhas dinâmicas
+  // Coleta EPIs das linhas dinÃ¢micas
   const containerEPIs = document.getElementById('listaEPIsModeloOS');
   const episArray = [];
   if (containerEPIs) {
@@ -17655,7 +17655,7 @@ async function salvarModeloOS(e) {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalModeloOS');
-      alert('Modelo de Ordem de Serviço salvo com sucesso!');
+      alert('Modelo de Ordem de ServiÃ§o salvo com sucesso!');
       await carregarModelosOSSST();
       atualizarSelectModelosOSColaborador('novo');
       atualizarSelectModelosOSColaborador('edicao');
@@ -17663,12 +17663,12 @@ async function salvarModeloOS(e) {
       alert('Erro: ' + (json.message || 'Falha ao salvar modelo.'));
     }
   } catch (err) {
-    alert('Erro de conexão: ' + err.message);
+    alert('Erro de conexÃ£o: ' + err.message);
   }
 }
 
 async function excluirModeloOS(id) {
-  if (!confirm('Deseja realmente inativar este modelo de Ordem de Serviço?')) return;
+  if (!confirm('Deseja realmente inativar este modelo de Ordem de ServiÃ§o?')) return;
   try {
     const res = await fetch(`/api/sst/modelos-os/${id}`, { method: 'DELETE' });
     const json = await res.json();
@@ -17681,7 +17681,7 @@ async function excluirModeloOS(id) {
       alert('Erro: ' + (json.message || 'Falha ao inativar modelo.'));
     }
   } catch (err) {
-    alert('Erro de conexão: ' + err.message);
+    alert('Erro de conexÃ£o: ' + err.message);
   }
 }
 
@@ -17698,7 +17698,7 @@ async function gerarNovoDocumentoSSTManual(colaboradorId) {
       alert('Documentos de SST gerados com sucesso para este colaborador!');
       await carregarPainelSST();
     } else {
-      alert('Erro: ' + (json.message || 'Não foi possível gerar os documentos.'));
+      alert('Erro: ' + (json.message || 'NÃ£o foi possÃ­vel gerar os documentos.'));
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -17706,7 +17706,7 @@ async function gerarNovoDocumentoSSTManual(colaboradorId) {
 }
 
 // =============================================================
-// CRONOGRAMA PADRÁO DE TREINAMENTO (SST / NR-01 & NR-06)
+// CRONOGRAMA PADRÃO DE TREINAMENTO (SST / NR-01 & NR-06)
 // =============================================================
 
 async function carregarCronogramaPadraoSST() {
@@ -17725,7 +17725,7 @@ async function carregarCronogramaPadraoSST() {
     const local = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
 
     container.innerHTML = `
-      <!-- CABEÇALHO DO CRONOGRAMA PADRÁO -->
+      <!-- CABEÃ‡ALHO DO CRONOGRAMA PADRÃO -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div class="flex items-center gap-4">
@@ -17735,11 +17735,11 @@ async function carregarCronogramaPadraoSST() {
             <div>
               <div class="flex items-center gap-2">
                 <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border border-amber-200">
-                  Padrão Oficial de Admissão
+                  PadrÃ£o Oficial de AdmissÃ£o
                 </span>
                 <span class="text-xs text-slate-400 font-mono">NR-01 & NR-06</span>
               </div>
-              <h2 class="text-base font-bold text-slate-900 mt-1">${escapeHtml(cronograma.titulo || 'Cronograma Padrão de Treinamento e Integração - NR-01 & NR-06')}</h2>
+              <h2 class="text-base font-bold text-slate-900 mt-1">${escapeHtml(cronograma.titulo || 'Cronograma PadrÃ£o de Treinamento e IntegraÃ§Ã£o - NR-01 & NR-06')}</h2>
               <p class="text-xs text-slate-500">Documento base emitido automaticamente para todos os novos colaboradores admitidos na Village.</p>
             </div>
           </div>
@@ -17748,21 +17748,21 @@ async function carregarCronogramaPadraoSST() {
               <i class="fa-solid fa-file-lines text-amber-600"></i> Visualizar Modelo Oficial
             </button>
             <button onclick="abrirModalEditarCronogramaPadrao()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
-              <i class="fa-solid fa-pen-to-square"></i> Editar Cronograma Padrão
+              <i class="fa-solid fa-pen-to-square"></i> Editar Cronograma PadrÃ£o
             </button>
           </div>
         </div>
 
-        <!-- CARDS DE INFORMAÇÕES CHAVE -->
+        <!-- CARDS DE INFORMAÃ‡Ã•ES CHAVE -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
-            <span class="text-slate-500 text-[11px] block">Carga Horária Total</span>
+            <span class="text-slate-500 text-[11px] block">Carga HorÃ¡ria Total</span>
             <span class="font-bold text-slate-900 text-sm flex items-center gap-1.5 mt-0.5">
               <i class="fa-solid fa-clock text-amber-600"></i> ${escapeHtml(cargaTotal)}
             </span>
           </div>
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
-            <span class="text-slate-500 text-[11px] block">Instrutor / Resp. Técnico</span>
+            <span class="text-slate-500 text-[11px] block">Instrutor / Resp. TÃ©cnico</span>
             <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5">
               <i class="fa-solid fa-user-tie text-blue-600"></i> ${escapeHtml(instrutorNome)}
             </span>
@@ -17774,7 +17774,7 @@ async function carregarCronogramaPadraoSST() {
             </span>
           </div>
           <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
-            <span class="text-slate-500 text-[11px] block">Local Padrão</span>
+            <span class="text-slate-500 text-[11px] block">Local PadrÃ£o</span>
             <span class="font-bold text-slate-900 text-xs flex items-center gap-1.5 mt-0.5 truncate" title="${escapeHtml(local)}">
               <i class="fa-solid fa-location-dot text-rose-500"></i> ${escapeHtml(local)}
             </span>
@@ -17791,14 +17791,14 @@ async function carregarCronogramaPadraoSST() {
         ` : ''}
       </div>
 
-      <!-- MÓDULOS CADASTRADOS -->
+      <!-- MÃ“DULOS CADASTRADOS -->
       <div class="space-y-3">
         <div class="flex items-center justify-between px-1">
           <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
             <i class="fa-solid fa-layer-group text-amber-600"></i>
-            Estrutura dos Módulos (${modulos.length})
+            Estrutura dos MÃ³dulos (${modulos.length})
           </h3>
-          <span class="text-xs text-slate-500">Transmitidos em treinamento presencial introdutório</span>
+          <span class="text-xs text-slate-500">Transmitidos em treinamento presencial introdutÃ³rio</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -17810,7 +17810,7 @@ async function carregarCronogramaPadraoSST() {
                     <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center">
                       ${idx + 1}
                     </span>
-                    <span class="font-bold text-xs text-slate-900">${escapeHtml(m.modulo || `Módulo ${idx + 1}`)}</span>
+                    <span class="font-bold text-xs text-slate-900">${escapeHtml(m.modulo || `MÃ³dulo ${idx + 1}`)}</span>
                   </div>
                   <span class="bg-blue-50 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-200">
                     <i class="fa-solid fa-stopwatch mr-1"></i>${escapeHtml(m.carga_horaria || '1h')}
@@ -17824,7 +17824,7 @@ async function carregarCronogramaPadraoSST() {
               <div class="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
                 <span class="flex items-center gap-1 font-medium">
                   <i class="fa-solid fa-chalkboard-user text-slate-400"></i>
-                  ${escapeHtml(m.modalidade || 'Presencial Teórico-Prático')}
+                  ${escapeHtml(m.modalidade || 'Presencial TeÃ³rico-PrÃ¡tico')}
                 </span>
                 <span class="text-slate-500 font-mono text-[10px]">
                   ${escapeHtml(m.instrutor || instrutorNome)}
@@ -17836,14 +17836,14 @@ async function carregarCronogramaPadraoSST() {
       </div>
     `;
   } catch (err) {
-    console.error('Erro ao carregar cronograma padrão de SST:', err);
-    container.innerHTML = `<div class="p-6 text-center text-rose-500">Falha ao carregar cronograma padrão: ${err.message}</div>`;
+    console.error('Erro ao carregar cronograma padrÃ£o de SST:', err);
+    container.innerHTML = `<div class="p-6 text-center text-rose-500">Falha ao carregar cronograma padrÃ£o: ${err.message}</div>`;
   }
 }
 
 function abrirModalEditarCronogramaPadrao() {
   const cronograma = state.sstCronogramaPadrao || {};
-  document.getElementById('padraoTitulo').value = cronograma.titulo || 'Cronograma Padrão de Treinamento e Integração - NR-01 & NR-06';
+  document.getElementById('padraoTitulo').value = cronograma.titulo || 'Cronograma PadrÃ£o de Treinamento e IntegraÃ§Ã£o - NR-01 & NR-06';
   document.getElementById('padraoCargaHoraria').value = cronograma.carga_horaria_total || '04 Horas';
   document.getElementById('padraoLocal').value = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
   document.getElementById('padraoInstrutorNome').value = cronograma.instrutor_nome || 'Cleverson Almeida';
@@ -17857,8 +17857,8 @@ function abrirModalEditarCronogramaPadrao() {
     if (modulos.length > 0) {
       modulos.forEach(m => adicionarLinhaModuloCronogramaPadrao(m));
     } else {
-      adicionarLinhaModuloCronogramaPadrao({ modulo: 'Módulo 1', carga_horaria: '45 min', tema: 'Apresentação da Empresa e Política de Segurança', modalidade: 'Presencial Teórico', descricao: 'Apresentação da Village, direitos e deveres do trabalhador conforme Art. 158 da CLT.' });
-      adicionarLinhaModuloCronogramaPadrao({ modulo: 'Módulo 2', carga_horaria: '45 min', tema: 'NR-01 - Gerenciamento de Riscos Ocupacionais', modalidade: 'Presencial Teórico', descricao: 'Identificação de perigos e controle dos riscos ocupacionais mapeados no PGR.' });
+      adicionarLinhaModuloCronogramaPadrao({ modulo: 'MÃ³dulo 1', carga_horaria: '45 min', tema: 'ApresentaÃ§Ã£o da Empresa e PolÃ­tica de SeguranÃ§a', modalidade: 'Presencial TeÃ³rico', descricao: 'ApresentaÃ§Ã£o da Village, direitos e deveres do trabalhador conforme Art. 158 da CLT.' });
+      adicionarLinhaModuloCronogramaPadrao({ modulo: 'MÃ³dulo 2', carga_horaria: '45 min', tema: 'NR-01 - Gerenciamento de Riscos Ocupacionais', modalidade: 'Presencial TeÃ³rico', descricao: 'IdentificaÃ§Ã£o de perigos e controle dos riscos ocupacionais mapeados no PGR.' });
     }
   }
 
@@ -17872,50 +17872,50 @@ function adicionarLinhaModuloCronogramaPadrao(m = null) {
   const item = document.createElement('div');
   item.className = 'item-modulo-cronograma bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2';
 
-  const modNome = m?.modulo || `Módulo ${container.children.length + 1}`;
+  const modNome = m?.modulo || `MÃ³dulo ${container.children.length + 1}`;
   const modCarga = m?.carga_horaria || '45 min';
   const modTema = m?.tema || '';
-  const modModalidade = m?.modalidade || 'Presencial Teórico-Prático';
+  const modModalidade = m?.modalidade || 'Presencial TeÃ³rico-PrÃ¡tico';
   const modDesc = m?.descricao || '';
   const modInstrutor = m?.instrutor || '';
 
   item.innerHTML = `
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <div>
-        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Identificação do Módulo</label>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">IdentificaÃ§Ã£o do MÃ³dulo</label>
         <input type="text" class="modulo-nome w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modNome)}">
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Carga Horária</label>
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Carga HorÃ¡ria</label>
         <input type="text" class="modulo-carga w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modCarga)}">
       </div>
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Modalidade</label>
         <select class="modulo-modalidade w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:outline-none">
-          <option value="Presencial Teórico-Prático" ${modModalidade === 'Presencial Teórico-Prático' ? 'selected' : ''}>Presencial Teórico-Prático</option>
-          <option value="Presencial Teórico" ${modModalidade === 'Presencial Teórico' ? 'selected' : ''}>Presencial Teórico</option>
-          <option value="Prático / No Posto" ${modModalidade === 'Prático / No Posto' ? 'selected' : ''}>Prático / No Posto</option>
-          <option value="EAD / Híbrido" ${modModalidade === 'EAD / Híbrido' ? 'selected' : ''}>EAD / Híbrido</option>
+          <option value="Presencial TeÃ³rico-PrÃ¡tico" ${modModalidade === 'Presencial TeÃ³rico-PrÃ¡tico' ? 'selected' : ''}>Presencial TeÃ³rico-PrÃ¡tico</option>
+          <option value="Presencial TeÃ³rico" ${modModalidade === 'Presencial TeÃ³rico' ? 'selected' : ''}>Presencial TeÃ³rico</option>
+          <option value="PrÃ¡tico / No Posto" ${modModalidade === 'PrÃ¡tico / No Posto' ? 'selected' : ''}>PrÃ¡tico / No Posto</option>
+          <option value="EAD / HÃ­brido" ${modModalidade === 'EAD / HÃ­brido' ? 'selected' : ''}>EAD / HÃ­brido</option>
         </select>
       </div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div>
         <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Tema / Assunto Principal *</label>
-        <input type="text" class="modulo-tema w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modTema)}" placeholder="Ex: NR-06 - Equipamentos de Proteção Individual (EPI)">
+        <input type="text" class="modulo-tema w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500" value="${escapeHtml(modTema)}" placeholder="Ex: NR-06 - Equipamentos de ProteÃ§Ã£o Individual (EPI)">
       </div>
       <div>
-        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Instrutor Específico (opcional)</label>
-        <input type="text" class="modulo-instrutor w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none" value="${escapeHtml(modInstrutor)}" placeholder="Deixar em branco para usar o instrutor padrão">
+        <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Instrutor EspecÃ­fico (opcional)</label>
+        <input type="text" class="modulo-instrutor w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none" value="${escapeHtml(modInstrutor)}" placeholder="Deixar em branco para usar o instrutor padrÃ£o">
       </div>
     </div>
     <div>
-      <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">Conteúdo Abordado / Descrição</label>
-      <textarea rows="2" class="modulo-desc w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Descrição detalhada do conteúdo do módulo...">${escapeHtml(modDesc)}</textarea>
+      <label class="block font-semibold text-slate-700 text-[10px] mb-0.5">ConteÃºdo Abordado / DescriÃ§Ã£o</label>
+      <textarea rows="2" class="modulo-desc w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="DescriÃ§Ã£o detalhada do conteÃºdo do mÃ³dulo...">${escapeHtml(modDesc)}</textarea>
     </div>
     <div class="flex justify-end">
       <button type="button" onclick="this.closest('.item-modulo-cronograma').remove()" class="text-rose-500 hover:text-rose-700 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer">
-        <i class="fa-solid fa-trash-can"></i> Remover Módulo
+        <i class="fa-solid fa-trash-can"></i> Remover MÃ³dulo
       </button>
     </div>
   `;
@@ -17946,9 +17946,9 @@ async function salvarCronogramaPadraoSST(e) {
 
       if (tema) {
         modulos.push({
-          modulo: nome || 'Módulo',
+          modulo: nome || 'MÃ³dulo',
           carga_horaria: carga || '1h',
-          modalidade: modalidade || 'Presencial Teórico-Prático',
+          modalidade: modalidade || 'Presencial TeÃ³rico-PrÃ¡tico',
           tema: tema,
           instrutor: instrutor || instrutorNome,
           descricao: desc || ''
@@ -17974,13 +17974,13 @@ async function salvarCronogramaPadraoSST(e) {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalEditarCronogramaPadrao');
-      alert('Cronograma padrão de treinamento atualizado com sucesso!');
+      alert('Cronograma padrÃ£o de treinamento atualizado com sucesso!');
       await carregarCronogramaPadraoSST();
     } else {
       alert('Erro: ' + (json.message || 'Falha ao salvar cronograma.'));
     }
   } catch (err) {
-    alert('Erro de comunicação: ' + err.message);
+    alert('Erro de comunicaÃ§Ã£o: ' + err.message);
   }
 }
 
@@ -17992,16 +17992,16 @@ function visualizarModeloCronogramaPadrao() {
   const cargaTotal = cronograma.carga_horaria_total || '04 Horas';
   const local = cronograma.local_treinamento || 'Sede Village / Posto de Trabalho';
 
-  const cronogramaLinhas = modulos.map(m => `• ${m.modulo || ''}: ${m.tema || ''} (${m.carga_horaria || ''} - ${m.instrutor || instrutorNome})\n  ${m.descricao || ''}`).join('\n\n');
+  const cronogramaLinhas = modulos.map(m => `â€¢ ${m.modulo || ''}: ${m.tema || ''} (${m.carga_horaria || ''} - ${m.instrutor || instrutorNome})\n  ${m.descricao || ''}`).join('\n\n');
 
   const docSimulado = {
     id: 0,
     tipo_documento: 'LISTA_TREINAMENTO',
-    titulo: cronograma.titulo || 'LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST',
-    colaborador_nome: '[NOME DO COLABORADOR - ADMISSÁO]',
+    titulo: cronograma.titulo || 'LISTA DE PRESENÃ‡A E COMPROVANTE DE TREINAMENTO INTRODUTÃ“RIO DE SST',
+    colaborador_nome: '[NOME DO COLABORADOR - ADMISSÃO]',
     colaborador_cpf: '000.000.000-00',
-    cargo_nome: '[CARGO / FUNÇÁO]',
-    cliente_nome: 'VILLAGE ADMINISTRAÇÁO E SERVIÇOS',
+    cargo_nome: '[CARGO / FUNÃ‡ÃO]',
+    cliente_nome: 'VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS',
     nome_posto: 'Posto Operacional Designado',
     data_geracao: new Date().toISOString(),
     status_assinatura: 'Pendente',
@@ -18020,7 +18020,7 @@ function visualizarModeloCronogramaPadrao() {
   const barraTit = document.getElementById('visualizarSSTTituloBarra');
   const barraSub = document.getElementById('visualizarSSTSubtituloBarra');
   if (barraTit) barraTit.textContent = 'Modelo Oficial: ' + docSimulado.titulo;
-  if (barraSub) barraSub.textContent = 'Demonstração de como o documento de treinamento será emitido para o colaborador';
+  if (barraSub) barraSub.textContent = 'DemonstraÃ§Ã£o de como o documento de treinamento serÃ¡ emitido para o colaborador';
 
   const btnEditar = document.getElementById('btnEditarDocSSTModal');
   if (btnEditar) btnEditar.onclick = () => {
@@ -18041,43 +18041,43 @@ function visualizarModeloCronogramaPadrao() {
               <img src="/img/logo_village.jpg" alt="Logo Village" class="max-h-full max-w-full object-contain">
             </div>
             <div>
-              <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</div>
-              <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÇA E SAÚDE DO TRABALHO - SESMT</div>
-              <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nº 4.219/2022)</div>
+              <div class="font-extrabold text-base tracking-wide uppercase text-slate-900">VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</div>
+              <div class="text-xs font-semibold text-slate-600">DEPARTAMENTO DE SEGURANÃ‡A E SAÃšDE DO TRABALHO - SESMT</div>
+              <div class="text-[10px] text-slate-500">Conformidade com a Norma Regulamentadora NR-01 (Portaria MTP nÂº 4.219/2022)</div>
             </div>
           </div>
           <div class="text-right text-[11px] font-mono text-slate-600">
             <div><b>MODELO OFICIAL</b></div>
             <div><b>SST / NR-01 & NR-06</b></div>
-            <div><b>STATUS:</b> <span class="text-amber-600 font-bold">PADRÁO ATIVO</span></div>
+            <div><b>STATUS:</b> <span class="text-amber-600 font-bold">PADRÃO ATIVO</span></div>
           </div>
         </div>
 
         <div class="text-center my-4 pb-2 border-b border-slate-300">
           <h1 class="text-base font-black uppercase tracking-wider text-slate-900">
-            LISTA DE PRESENÇA E COMPROVANTE DE TREINAMENTO INTRODUTÓRIO DE SST
+            LISTA DE PRESENÃ‡A E COMPROVANTE DE TREINAMENTO INTRODUTÃ“RIO DE SST
           </h1>
-          <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de Integração, Prevenção de Acidentes e Uso de EPIs</p>
+          <p class="text-xs text-slate-600 mt-0.5">Treinamento Inicial de IntegraÃ§Ã£o, PrevenÃ§Ã£o de Acidentes e Uso de EPIs</p>
         </div>
 
         <div class="mb-4 bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
           <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-id-card"></i> 1. Dados Cadastrais do Colaborador (Exemplo Preenchido na Admissão)
+            <i class="fa-solid fa-id-card"></i> 1. Dados Cadastrais do Colaborador (Exemplo Preenchido na AdmissÃ£o)
           </div>
           <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
             <div><span class="text-slate-500">Nome Completo:</span> <b class="text-slate-900">[NOME COMPLETO DO COLABORADOR]</b></div>
             <div><span class="text-slate-500">CPF:</span> <b class="font-mono text-slate-900">000.000.000-00</b></div>
-            <div><span class="text-slate-500">Função / Cargo:</span> <b class="text-slate-900">[FUNÇÁO CONFORME ADMISSÁO]</b></div>
-            <div><span class="text-slate-500">Data de Admissão:</span> <b class="text-slate-900">${new Date().toLocaleDateString('pt-BR')}</b></div>
-            <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">VILLAGE ADMINISTRAÇÁO E SERVIÇOS</b></div>
-            <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">[POSTO / EDIFÍCIO ALOCADO]</b></div>
+            <div><span class="text-slate-500">FunÃ§Ã£o / Cargo:</span> <b class="text-slate-900">[FUNÃ‡ÃO CONFORME ADMISSÃO]</b></div>
+            <div><span class="text-slate-500">Data de AdmissÃ£o:</span> <b class="text-slate-900">${new Date().toLocaleDateString('pt-BR')}</b></div>
+            <div><span class="text-slate-500">Tomador / Cliente:</span> <b class="text-slate-900">VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS</b></div>
+            <div><span class="text-slate-500">Posto de Trabalho:</span> <b class="text-slate-900">[POSTO / EDIFÃCIO ALOCADO]</b></div>
           </div>
         </div>
 
         <div class="mb-4 border border-slate-300 rounded-lg p-3 text-xs leading-relaxed">
           <div class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-200 pb-1 flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & Conteúdo Programático</span>
-            <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga Horária: ${escapeHtml(cargaTotal)}</span>
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-check"></i> 2. Cronograma de Treinamento & ConteÃºdo ProgramÃ¡tico</span>
+            <span class="font-mono font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Carga HorÃ¡ria: ${escapeHtml(cargaTotal)}</span>
           </div>
           <div class="grid grid-cols-2 gap-2 mb-2 text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-200">
             <div><b>Instrutor:</b> ${escapeHtml(instrutorNome)} (${escapeHtml(instrutorRegistro)})</div>
@@ -18089,7 +18089,7 @@ ${escapeHtml(cronogramaLinhas)}
         </div>
 
         <div class="mb-6 p-3 border border-slate-200 rounded-lg text-[11px] text-slate-600 leading-relaxed text-justify bg-slate-50/40">
-          <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento Introdutório de Segurança e Saúde no Trabalho acima especificado, compreendendo os riscos inerentes à minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteção e procedimentos estabelecidos.</p>
+          <p>Declaro para todos os efeitos legais que participei integralmente do Treinamento IntrodutÃ³rio de SeguranÃ§a e SaÃºde no Trabalho acima especificado, compreendendo os riscos inerentes Ã  minha atividade laboral e comprometendo-me a cumprir com zelo e fidelidade as normas de proteÃ§Ã£o e procedimentos estabelecidos.</p>
         </div>
 
         <div class="mt-12 pt-6 grid grid-cols-2 gap-8 text-center text-xs">
@@ -18106,7 +18106,7 @@ ${escapeHtml(cronogramaLinhas)}
               <span class="text-slate-400 text-[10px]">Carimbo e Assinatura</span>
             </div>
             <div class="font-bold text-slate-900 uppercase">${escapeHtml(instrutorNome)}</div>
-            <div class="text-[11px] text-slate-500">Responsável pela Aplicação do Treinamento</div>
+            <div class="text-[11px] text-slate-500">ResponsÃ¡vel pela AplicaÃ§Ã£o do Treinamento</div>
             <div class="text-[10px] text-slate-600 font-semibold">${escapeHtml(instrutorRegistro)}</div>
           </div>
         </div>
@@ -18118,7 +18118,7 @@ ${escapeHtml(cronogramaLinhas)}
 }
 
 // =============================================================
-// MÓDULO DO SETOR DE ARQUIVOS & PROTOCOLOS DE GUARDA FÍSICA
+// MÃ“DULO DO SETOR DE ARQUIVOS & PROTOCOLOS DE GUARDA FÃSICA
 // =============================================================
 
 async function carregarPainelArquivo() {
@@ -18185,7 +18185,7 @@ function renderizarTabelaArquivo(docs) {
       <tr>
         <td colspan="6" class="text-center py-10 text-slate-400">
           <i class="fa-solid fa-box-archive text-3xl mb-2 text-slate-300 block"></i>
-          Nenhum registro de arquivo físico encontrado para os filtros selecionados.
+          Nenhum registro de arquivo fÃ­sico encontrado para os filtros selecionados.
         </td>
       </tr>
     `;
@@ -18208,7 +18208,7 @@ function renderizarTabelaArquivo(docs) {
           <div class="font-bold text-slate-800 text-xs">${d.colaborador_nome}</div>
           <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
             <span class="font-mono bg-slate-100 px-1 rounded">${d.colaborador_cpf || 'Sem CPF'}</span>
-            <span>•</span>
+            <span>â€¢</span>
             <span>${d.cargo_nome || 'Operacional'}</span>
           </div>
           <div class="text-[10px] text-slate-400 mt-0.5">${d.cliente_nome || 'Base'}</div>
@@ -18221,12 +18221,12 @@ function renderizarTabelaArquivo(docs) {
         </td>
         <td class="py-3 px-4">
           <div class="text-xs font-semibold text-slate-700">${d.solicitante_nome || 'Sistema RH'}</div>
-          <div class="text-[10px] text-slate-400">${d.solicitante_setor || 'Operações'}</div>
+          <div class="text-[10px] text-slate-400">${d.solicitante_setor || 'OperaÃ§Ãµes'}</div>
         </td>
         <td class="py-3 px-4">
           ${isPendente ? `
             <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-              <i class="fa-solid fa-clock"></i> Aguardando Guarda Física
+              <i class="fa-solid fa-clock"></i> Aguardando Guarda FÃ­sica
             </span>
           ` : `
             <div class="space-y-0.5">
@@ -18285,7 +18285,7 @@ function aoSelecionarColaboradorArquivo(colabId) {
   const c = (state.colaboradores || []).find(x => x.id == colabId);
   const campoDesc = document.getElementById('arqDescricao');
   if (c && campoDesc && !campoDesc.value) {
-    campoDesc.value = `Documentação de admissão e SST do colaborador ${c.nome}`;
+    campoDesc.value = `DocumentaÃ§Ã£o de admissÃ£o e SST do colaborador ${c.nome}`;
   }
 }
 
@@ -18314,20 +18314,20 @@ async function salvarSolicitacaoArquivamento(e) {
     const json = await res.json();
     if (json.success) {
       fecharModal('modalSolicitarArquivamento');
-      alert('Solicitação de arquivamento enviada com sucesso!\n\nO Setor de Arquivo foi informado e uma notificação direcionada foi publicada no Mural de Avisos da empresa.');
+      alert('SolicitaÃ§Ã£o de arquivamento enviada com sucesso!\n\nO Setor de Arquivo foi informado e uma notificaÃ§Ã£o direcionada foi publicada no Mural de Avisos da empresa.');
       if (state.abaAtiva === 'sst') await carregarPainelSST();
       if (state.abaAtiva === 'arquivo') await carregarPainelArquivo();
     } else {
       alert('Erro: ' + (json.message || 'Falha ao solicitar arquivamento.'));
     }
   } catch (err) {
-    alert('Erro de conexão: ' + err.message);
+    alert('Erro de conexÃ£o: ' + err.message);
   }
 }
 
 function abrirModalConfirmarArquivamentoFisico(id, editando = false) {
   const doc = (state.arquivoDocumentos || []).find(d => d.id === id);
-  if (!doc) return alert('Registro não encontrado.');
+  if (!doc) return alert('Registro nÃ£o encontrado.');
 
   document.getElementById('confArqRegistroId').value = doc.id;
   document.getElementById('confArqNomeColaborador').textContent = `${doc.colaborador_nome} (CPF: ${doc.colaborador_cpf || '---'})`;
@@ -18335,8 +18335,8 @@ function abrirModalConfirmarArquivamentoFisico(id, editando = false) {
 
   const tit = document.getElementById('tituloModalConfirmarArq');
   const sub = document.getElementById('subtituloModalConfirmarArq');
-  if (tit) tit.textContent = editando ? 'Editar Localização Física do Arquivo' : 'Protocolar Arquivamento Físico';
-  if (sub) sub.textContent = editando ? 'Atualize as informações de caixa, pasta ou estante' : 'Informe onde o documento original foi fisicamente guardado';
+  if (tit) tit.textContent = editando ? 'Editar LocalizaÃ§Ã£o FÃ­sica do Arquivo' : 'Protocolar Arquivamento FÃ­sico';
+  if (sub) sub.textContent = editando ? 'Atualize as informaÃ§Ãµes de caixa, pasta ou estante' : 'Informe onde o documento original foi fisicamente guardado';
 
   document.getElementById('confArqCaixa').value = doc.caixa_arquivo || doc.localizacao_caixa || '';
   document.getElementById('confArqPasta').value = doc.pasta_arquivo || doc.localizacao_pasta || '';
@@ -18354,7 +18354,7 @@ async function salvarConfirmacaoArquivamentoFisico(e) {
   const estante = document.getElementById('confArqEstante').value.trim();
   const observacoes = document.getElementById('confArqObservacoes').value.trim();
 
-  if (!caixa) return alert('Por favor, informe a identificação da Caixa de Arquivo.');
+  if (!caixa) return alert('Por favor, informe a identificaÃ§Ã£o da Caixa de Arquivo.');
 
   const payload = {
     caixa: caixa,
@@ -18386,7 +18386,7 @@ async function salvarConfirmacaoArquivamentoFisico(e) {
       alert('Erro: ' + (json.message || 'Falha ao protocolar arquivamento.'));
     }
   } catch (err) {
-    alert('Erro de conexão: ' + err.message);
+    alert('Erro de conexÃ£o: ' + err.message);
   }
 }
 
@@ -18400,7 +18400,7 @@ async function excluirProtocoloArquivo(id) {
       await carregarPainelArquivo();
       if (state.abaAtiva === 'sst') await carregarPainelSST();
     } else {
-      alert('Erro: ' + (json.message || 'Não foi possível remover.'));
+      alert('Erro: ' + (json.message || 'NÃ£o foi possÃ­vel remover.'));
     }
   } catch (err) {
     alert('Erro: ' + err.message);
@@ -18414,7 +18414,7 @@ function solicitarArquivamentoDireto(sstDocId) {
 }
 
 // =============================================================
-// BINDINGS GLOBAIS EXPLÍCITOS EM WINDOW (Evita ReferenceError)
+// BINDINGS GLOBAIS EXPLÃCITOS EM WINDOW (Evita ReferenceError)
 // =============================================================
 window.abrirModal = abrirModal;
 window.fecharModal = fecharModal;
@@ -18449,7 +18449,7 @@ window.removerLinhaProdutoLote = removerLinhaProdutoLote;
 window.limparLinhasProdutoLote = limparLinhasProdutoLote;
 window.salvarProdutosLote = salvarProdutosLote;
 
-// SST (Segurança do Trabalho)
+// SST (SeguranÃ§a do Trabalho)
 window.carregarPainelSST = carregarPainelSST;
 window.trocarSubAbaSST = trocarSubAbaSST;
 window.filtrarDocumentosSST = filtrarDocumentosSST;
@@ -18515,8 +18515,8 @@ window.excluirProdutosSelecionados = async function() {
       falhas++;
     }
   }
-  if (falhas > 0) alert(`Atenção: ${falhas} produto(s) não puderam ser excluídos.`);
-  else alert(`Produtos excluídos com sucesso!`);
+  if (falhas > 0) alert(`AtenÃ§Ã£o: ${falhas} produto(s) nÃ£o puderam ser excluÃ­dos.`);
+  else alert(`Produtos excluÃ­dos com sucesso!`);
   
   const chkAll = document.getElementById('chkAllProdutos');
   if (chkAll) chkAll.checked = false;
@@ -18545,7 +18545,7 @@ window.atualizarBtnExcluirPrediosLote = function() {
 window.excluirPrediosSelecionados = async function() {
   const checked = document.querySelectorAll('.chk-predio-row:checked');
   if (checked.length === 0) return;
-  if (!confirm(`Tem certeza que deseja excluir ${checked.length} prédio(s)? Isso removerá o acesso ao pedido desses locais.`)) return;
+  if (!confirm(`Tem certeza que deseja excluir ${checked.length} prÃ©dio(s)? Isso removerÃ¡ o acesso ao pedido desses locais.`)) return;
   
   let falhas = 0;
   for (const c of checked) {
@@ -18556,8 +18556,8 @@ window.excluirPrediosSelecionados = async function() {
       falhas++;
     }
   }
-  if (falhas > 0) alert(`Atenção: ${falhas} prédio(s) não puderam ser excluídos.`);
-  else alert(`Prédios excluídos com sucesso!`);
+  if (falhas > 0) alert(`AtenÃ§Ã£o: ${falhas} prÃ©dio(s) nÃ£o puderam ser excluÃ­dos.`);
+  else alert(`PrÃ©dios excluÃ­dos com sucesso!`);
   
   const chkAll = document.getElementById('chkAllPredios');
   if (chkAll) chkAll.checked = false;
@@ -18577,7 +18577,7 @@ function formatarDataHora(dt) {
 }
 
 // =========================================================================
-// GESTÁO DE AFASTAMENTOS DE COLABORADORES & POSTO AFASTADOS
+// GESTÃO DE AFASTAMENTOS DE COLABORADORES & POSTO AFASTADOS
 // =========================================================================
 
 window.abrirModalAfastarColaborador = function(id, nome, origem) {
@@ -18592,7 +18592,7 @@ window.abrirModalAfastarColaborador = function(id, nome, origem) {
   document.getElementById('afastarDataInicio').value = hoje;
   document.getElementById('afastarDataPrevisao').value = '';
   document.getElementById('afastarCid').value = '';
-  document.getElementById('afastarMotivo').value = 'INSS / Auxílio Doença';
+  document.getElementById('afastarMotivo').value = 'INSS / AuxÃ­lio DoenÃ§a';
   const obs = document.getElementById('afastarObservacoes');
   if (obs) obs.value = '';
 
@@ -18624,9 +18624,9 @@ window.salvarAfastamentoColaborador = async function(e) {
       })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erro ao lançar afastamento');
+    if (!res.ok) throw new Error(data.error || 'Erro ao lanÃ§ar afastamento');
 
-    alert(data.message || 'Afastamento lançado com sucesso! Colaborador transferido para o posto AFASTADOS.');
+    alert(data.message || 'Afastamento lanÃ§ado com sucesso! Colaborador transferido para o posto AFASTADOS.');
     fecharModal('modalLancarAfastamento');
 
     await carregarColaboradores();
@@ -18696,7 +18696,7 @@ window.atualizarPostosRetornoModal = function() {
 
   const postos = (state.postos || []).filter(p => p.cliente_id == clienteId && !p.nome_posto.toUpperCase().includes('AFASTADO'));
   if (postos.length === 0) {
-    selPosto.innerHTML += '<option value="" disabled>(Nenhum posto ativo disponível neste cliente)</option>';
+    selPosto.innerHTML += '<option value="" disabled>(Nenhum posto ativo disponÃ­vel neste cliente)</option>';
   } else {
     postos.forEach(p => {
       selPosto.innerHTML += `<option value="${p.id}">${p.nome_posto} (Limite: ${p.quantidade_vagas_limite || 1})</option>`;
@@ -18737,7 +18737,7 @@ window.salvarRetornoAfastamento = async function(e) {
         observacoes_retorno
       };
     } else {
-      // Se não tinha registro formal de afastamento, atualiza colaborador diretamente
+      // Se nÃ£o tinha registro formal de afastamento, atualiza colaborador diretamente
       url = `/api/colaboradores/${colaboradorId}`;
       body = { cliente_id: cliente_destino_id, posto_trabalho_id: posto_destino_id, afastado: 0 };
     }
@@ -18750,7 +18750,7 @@ window.salvarRetornoAfastamento = async function(e) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao registrar retorno do colaborador');
 
-    alert(data.message || 'Retorno concluído com sucesso! Colaborador realocado no posto de trabalho.');
+    alert(data.message || 'Retorno concluÃ­do com sucesso! Colaborador realocado no posto de trabalho.');
     fecharModal('modalRetornoAfastamento');
 
     await carregarColaboradores();
@@ -18822,7 +18822,7 @@ window.carregarTabelaAfastadosModal = async function() {
         `;
       }
 
-      const clienteOrigem = d.cliente_origem_nome || d.cliente_nome || 'Reserva Técnica';
+      const clienteOrigem = d.cliente_origem_nome || d.cliente_nome || 'Reserva TÃ©cnica';
       const postoOrigem = d.posto_origem_nome || 'Sem posto fixo';
 
       tbody.innerHTML += `
@@ -18864,7 +18864,7 @@ window.excluirAfastamento = async function(id) {
     const res = await fetch(`/api/afastamentos/${id}`, { method: 'DELETE' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erro ao excluir');
-    alert(data.message || 'Registro excluído!');
+    alert(data.message || 'Registro excluÃ­do!');
     carregarTabelaAfastadosModal();
     carregarColaboradores();
   } catch(err) {
@@ -18874,7 +18874,7 @@ window.excluirAfastamento = async function(id) {
 
 
 // =========================================================================
-// GESTÁO DO CANAL DE DENÚNCIAS & COMPLIANCE (COORDENAÇÁO OPERACIONAL)
+// GESTÃO DO CANAL DE DENÃšNCIAS & COMPLIANCE (COORDENAÃ‡ÃO OPERACIONAL)
 // =========================================================================
 
 state.denuncias = [];
@@ -18883,7 +18883,7 @@ state.denunciaAtual = null;
 window.carregarPainelDenuncias = async function() {
   const tbody = document.getElementById('tabelaDenunciasBody');
   if (tbody) {
-    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando manifestações registradas...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Carregando manifestaÃ§Ãµes registradas...</td></tr>';
   }
 
   const status = document.getElementById('filtroDenStatus')?.value || 'todos';
@@ -18903,8 +18903,8 @@ window.carregarPainelDenuncias = async function() {
     // Atualizar KPIs
     const total = state.denuncias.length;
     const novas = state.denuncias.filter(d => d.status === 'Nova').length;
-    const emAveriguacao = state.denuncias.filter(d => d.status === 'Em Análise' || d.status === 'Em Averiguação').length;
-    const concluidas = state.denuncias.filter(d => (d.status || '').startsWith('Concluída') || d.status === 'Arquivada').length;
+    const emAveriguacao = state.denuncias.filter(d => d.status === 'Em AnÃ¡lise' || d.status === 'Em AveriguaÃ§Ã£o').length;
+    const concluidas = state.denuncias.filter(d => (d.status || '').startsWith('ConcluÃ­da') || d.status === 'Arquivada').length;
 
     const elTotal = document.getElementById('kpiDenTotal');
     const elNovas = document.getElementById('kpiDenNovas');
@@ -18918,9 +18918,9 @@ window.carregarPainelDenuncias = async function() {
 
     filtrarDenunciasTabela();
   } catch(err) {
-    console.error('Erro ao carregar denúncias:', err);
+    console.error('Erro ao carregar denÃºncias:', err);
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro ao carregar canal de denúncias: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-red-500 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Erro ao carregar canal de denÃºncias: ${err.message}</td></tr>`;
     }
   }
 };
@@ -18945,7 +18945,7 @@ window.filtrarDenunciasTabela = function() {
   }
 
   if (filtrados.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 font-medium">Nenhuma manifestação encontrada com os filtros selecionados.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400 font-medium">Nenhuma manifestaÃ§Ã£o encontrada com os filtros selecionados.</td></tr>';
     return;
   }
 
@@ -18953,10 +18953,10 @@ window.filtrarDenunciasTabela = function() {
   filtrados.forEach(d => {
     // Gravidade badge
     let gravBadge = '';
-    const grav = d.gravidade || 'Média';
-    if (grav === 'Crítica') gravBadge = '<span class="bg-red-100 text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded text-[10px]">Crítica</span>';
+    const grav = d.gravidade || 'MÃ©dia';
+    if (grav === 'CrÃ­tica') gravBadge = '<span class="bg-red-100 text-red-800 border border-red-300 font-bold px-2 py-0.5 rounded text-[10px]">CrÃ­tica</span>';
     else if (grav === 'Alta') gravBadge = '<span class="bg-orange-100 text-orange-800 border border-orange-300 font-bold px-2 py-0.5 rounded text-[10px]">Alta</span>';
-    else if (grav === 'Média') gravBadge = '<span class="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded text-[10px]">Média</span>';
+    else if (grav === 'MÃ©dia') gravBadge = '<span class="bg-amber-100 text-amber-800 border border-amber-300 font-bold px-2 py-0.5 rounded text-[10px]">MÃ©dia</span>';
     else gravBadge = '<span class="bg-slate-100 text-slate-700 border border-slate-300 font-bold px-2 py-0.5 rounded text-[10px]">Baixa</span>';
 
     // Status badge
@@ -18964,9 +18964,9 @@ window.filtrarDenunciasTabela = function() {
     const st = d.status || 'Nova';
     if (st === 'Nova') {
       statusBadge = '<span class="bg-amber-500 text-white font-black px-2.5 py-0.5 rounded-full text-[10px] animate-pulse">Nova</span>';
-    } else if (st === 'Em Análise' || st === 'Em Averiguação') {
+    } else if (st === 'Em AnÃ¡lise' || st === 'Em AveriguaÃ§Ã£o') {
       statusBadge = `<span class="bg-blue-100 text-blue-800 border border-blue-300 font-bold px-2 py-0.5 rounded text-[10px]">${st}</span>`;
-    } else if (st.startsWith('Concluída')) {
+    } else if (st.startsWith('ConcluÃ­da')) {
       statusBadge = `<span class="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded text-[10px]">${st}</span>`;
     } else {
       statusBadge = `<span class="bg-slate-100 text-slate-600 border border-slate-300 font-bold px-2 py-0.5 rounded text-[10px]">${st}</span>`;
@@ -18975,11 +18975,11 @@ window.filtrarDenunciasTabela = function() {
     const isIdent = (d.tipo === 'Identificada' || d.tipo_denunciante === 'identificado' || d.nome_denunciante);
     const denuncianteTexto = isIdent
       ? `<div class="font-bold text-slate-900">${d.nome_denunciante || d.denunciante_nome || 'Identificado'}</div><div class="text-[10px] text-slate-500">${d.telefone_denunciante || d.email_denunciante || d.denunciante_contato || 'Sem contato'}</div>`
-      : '<div class="font-bold text-slate-600 italic"><i class="fa-solid fa-user-secret mr-1"></i>Anônimo</div>';
+      : '<div class="font-bold text-slate-600 italic"><i class="fa-solid fa-user-secret mr-1"></i>AnÃ´nimo</div>';
 
     const dataReg = (d.created_at || d.data_criacao) ? formatarDataHora(d.created_at || d.data_criacao) : 'N/A';
-    const relato = d.descricao_detalhada || d.descricao_fatos || 'Sem descrição';
-    const local = d.unidade_ou_local || d.local_ocorrencia || 'Não informado';
+    const relato = d.descricao_detalhada || d.descricao_fatos || 'Sem descriÃ§Ã£o';
+    const local = d.unidade_ou_local || d.local_ocorrencia || 'NÃ£o informado';
 
     tbody.innerHTML += `
       <tr class="hover:bg-slate-50/80 transition">
@@ -19002,11 +19002,11 @@ window.filtrarDenunciasTabela = function() {
         <td class="p-3 text-center">${statusBadge}</td>
         <td class="p-3 text-right whitespace-nowrap">
           <div class="flex items-center justify-end gap-1.5">
-            <button onclick="abrirModalTratativasDenuncia(${d.id})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-xs transition" title="Abrir Análise e Registrar Tratativas Operacionais">
+            <button onclick="abrirModalTratativasDenuncia(${d.id})" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-xs transition" title="Abrir AnÃ¡lise e Registrar Tratativas Operacionais">
               <i class="fa-solid fa-clipboard-check"></i> Tratar
             </button>
-            <button onclick="abrirDossieImpressao(${d.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 border border-slate-300 transition" title="Gerar Dossiê Oficial para Diretoria e Arquivo">
-              <i class="fa-solid fa-print"></i> Dossiê
+            <button onclick="abrirDossieImpressao(${d.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 border border-slate-300 transition" title="Gerar DossiÃª Oficial para Diretoria e Arquivo">
+              <i class="fa-solid fa-print"></i> DossiÃª
             </button>
           </div>
         </td>
@@ -19019,7 +19019,7 @@ window.abrirModalTratativasDenuncia = async function(id) {
   try {
     const res = await fetch(`/api/denuncias/${id}`);
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'Erro ao carregar detalhes da denúncia');
+    if (!res.ok) throw new Error(d.error || 'Erro ao carregar detalhes da denÃºncia');
 
     state.denunciaAtual = d;
 
@@ -19027,13 +19027,13 @@ window.abrirModalTratativasDenuncia = async function(id) {
     const contato = d.telefone_denunciante || d.email_denunciante || d.denunciante_contato || '';
 
     document.getElementById('tratativaModalProtocolo').textContent = d.protocolo;
-    document.getElementById('detDenTipoDenunciante').textContent = isIdent ? `${d.nome_denunciante || d.denunciante_nome || 'Identificado'} ${contato ? '(' + contato + ')' : ''}` : 'Anônimo (Sigilo Protegido)';
+    document.getElementById('detDenTipoDenunciante').textContent = isIdent ? `${d.nome_denunciante || d.denunciante_nome || 'Identificado'} ${contato ? '(' + contato + ')' : ''}` : 'AnÃ´nimo (Sigilo Protegido)';
     document.getElementById('detDenCategoria').textContent = d.categoria || 'Geral';
-    document.getElementById('detDenDataOcorrencia').textContent = d.data_ocorrencia ? formatarData(d.data_ocorrencia) : 'Não informada';
-    document.getElementById('detDenLocal').textContent = d.unidade_ou_local || d.local_ocorrencia || 'Não informado';
+    document.getElementById('detDenDataOcorrencia').textContent = d.data_ocorrencia ? formatarData(d.data_ocorrencia) : 'NÃ£o informada';
+    document.getElementById('detDenLocal').textContent = d.unidade_ou_local || d.local_ocorrencia || 'NÃ£o informado';
     document.getElementById('detDenEnvolvidos').textContent = d.pessoas_envolvidas || 'Nenhum citado';
     document.getElementById('detDenTestemunhas').textContent = d.testemunhas || 'Nenhuma citada';
-    document.getElementById('detDenDescricao').textContent = d.descricao_detalhada || d.descricao_fatos || 'Sem descrição informada.';
+    document.getElementById('detDenDescricao').textContent = d.descricao_detalhada || d.descricao_fatos || 'Sem descriÃ§Ã£o informada.';
 
     const evBox = document.getElementById('detDenEvidenciasBox');
     const evText = document.getElementById('detDenEvidencias');
@@ -19054,21 +19054,21 @@ window.abrirModalTratativasDenuncia = async function(id) {
     const histBox = document.getElementById('detDenHistoricoTratativas');
     const histTratativas = d.tratativas || d.tratativas_historico || '';
     if (histBox) {
-      histBox.textContent = histTratativas && histTratativas.trim() ? histTratativas : 'Nenhuma averiguação ou tratativa registrada até o momento.';
+      histBox.textContent = histTratativas && histTratativas.trim() ? histTratativas : 'Nenhuma averiguaÃ§Ã£o ou tratativa registrada atÃ© o momento.';
     }
 
-    // Preencher formulário
+    // Preencher formulÃ¡rio
     document.getElementById('tratativaDenId').value = d.id;
     document.getElementById('tratativaStatus').value = d.status || 'Nova';
-    document.getElementById('tratativaGravidade').value = d.gravidade || 'Média';
-    document.getElementById('tratativaSetor').value = d.responsavel_setor || d.setor_responsavel || 'Coordenação Operacional';
+    document.getElementById('tratativaGravidade').value = d.gravidade || 'MÃ©dia';
+    document.getElementById('tratativaSetor').value = d.responsavel_setor || d.setor_responsavel || 'CoordenaÃ§Ã£o Operacional';
     document.getElementById('tratativaTexto').value = '';
     document.getElementById('tratativaParecer').value = d.parecer_final || d.parecer_conclusivo || '';
-    document.getElementById('tratativaEncerrar').checked = (d.status || '').startsWith('Concluída') || d.status === 'Arquivada';
+    document.getElementById('tratativaEncerrar').checked = (d.status || '').startsWith('ConcluÃ­da') || d.status === 'Arquivada';
 
     document.getElementById('modalTratativasDenuncia')?.classList.remove('hidden');
   } catch(err) {
-    alert('Erro ao abrir denúncia: ' + err.message);
+    alert('Erro ao abrir denÃºncia: ' + err.message);
   }
 };
 
@@ -19119,7 +19119,7 @@ window.abrirDossieImpressao = async function(id) {
   try {
     const res = await fetch(`/api/denuncias/${id}`);
     const d = await res.json();
-    if (!res.ok) throw new Error(d.error || 'Erro ao carregar denúncia');
+    if (!res.ok) throw new Error(d.error || 'Erro ao carregar denÃºncia');
     state.denunciaAtual = d;
     imprimirDossieDenuncia();
   } catch(err) {
@@ -19130,7 +19130,7 @@ window.abrirDossieImpressao = async function(id) {
 window.imprimirDossieDenuncia = function() {
   const d = state.denunciaAtual;
   if (!d) {
-    alert('Nenhuma denúncia selecionada.');
+    alert('Nenhuma denÃºncia selecionada.');
     return;
   }
 
@@ -19146,16 +19146,16 @@ window.imprimirDossieDenuncia = function() {
   document.getElementById('printDossieProtocolo').textContent = d.protocolo;
   document.getElementById('printDossieNumProto').textContent = d.protocolo;
   document.getElementById('printDossieDataReg').textContent = dataCriacao ? formatarDataHora(dataCriacao) : 'N/A';
-  document.getElementById('printDossieTipo').textContent = isIdent ? `Identificado (${d.nome_denunciante || d.denunciante_nome || ''})` : 'Anônimo (Sigilo Protegido Lei 14.457/22)';
-  document.getElementById('printDossieGravidade').textContent = `${d.gravidade || 'Média'} (Status: ${d.status})`;
+  document.getElementById('printDossieTipo').textContent = isIdent ? `Identificado (${d.nome_denunciante || d.denunciante_nome || ''})` : 'AnÃ´nimo (Sigilo Protegido Lei 14.457/22)';
+  document.getElementById('printDossieGravidade').textContent = `${d.gravidade || 'MÃ©dia'} (Status: ${d.status})`;
   document.getElementById('printDossieCategoria').textContent = d.categoria || 'Geral';
-  document.getElementById('printDossieLocal').textContent = d.unidade_ou_local || d.local_ocorrencia || 'Não informado';
-  document.getElementById('printDossieEnvolvidos').textContent = d.pessoas_envolvidas || 'Não informado';
+  document.getElementById('printDossieLocal').textContent = d.unidade_ou_local || d.local_ocorrencia || 'NÃ£o informado';
+  document.getElementById('printDossieEnvolvidos').textContent = d.pessoas_envolvidas || 'NÃ£o informado';
   document.getElementById('printDossieTestemunhas').textContent = d.testemunhas || 'Nenhuma testemunha informada';
 
   document.getElementById('printDossieRelato').textContent = relato;
-  document.getElementById('printDossieTratativas').textContent = tratativas && tratativas.trim() ? tratativas : 'Nenhuma tratativa intermediária registrada.';
-  document.getElementById('printDossieParecer').textContent = parecer && parecer.trim() ? parecer : 'Parecer conclusivo pendente de homologação pela Coordenação Operacional.';
+  document.getElementById('printDossieTratativas').textContent = tratativas && tratativas.trim() ? tratativas : 'Nenhuma tratativa intermediÃ¡ria registrada.';
+  document.getElementById('printDossieParecer').textContent = parecer && parecer.trim() ? parecer : 'Parecer conclusivo pendente de homologaÃ§Ã£o pela CoordenaÃ§Ã£o Operacional.';
 
   modal.classList.remove('hidden');
 };
@@ -19172,7 +19172,7 @@ window.imprimirDossieDenunciaAtual = function() {
 };
 
 // =========================================================================
-// MÓDULO: ESCALAS, TURNOS & GERENCIAMENTO DE CARGA HORÁRIA
+// MÃ“DULO: ESCALAS, TURNOS & GERENCIAMENTO DE CARGA HORÃRIA
 // =========================================================================
 
 async function carregarEscalas() {
@@ -19375,7 +19375,7 @@ async function salvarNovaEscalaTrabalho(e) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || 'Erro ao salvar escala');
 
-    alert(`🎉 Escala "${nome}" salva com sucesso!`);
+    alert(`ðŸŽ‰ Escala "${nome}" salva com sucesso!`);
     limparFormularioEscala();
     await carregarEscalas();
   } catch (err) {
@@ -19427,7 +19427,7 @@ function renderizarGridEscalasCadastradas() {
   };
 
   const diasSemanaOrdem = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-  const diasLabel = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+  const diasLabel = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'SÃ¡b', dom: 'Dom' };
 
   container.innerHTML = escalas.map(esc => {
     const corTema = mapaCores[esc.cor] || mapaCores.blue;
@@ -19538,7 +19538,7 @@ async function excluirEscala(id, nome) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || 'Erro ao excluir escala');
 
-    alert(`Escala "${nome}" excluída com sucesso!`);
+    alert(`Escala "${nome}" excluÃ­da com sucesso!`);
     await carregarEscalas();
   } catch (err) {
     console.error('Erro ao excluir escala:', err);
@@ -19547,7 +19547,7 @@ async function excluirEscala(id, nome) {
 }
 
 // =========================================================================
-// MÓDULO: AGRUPAMENTO MULTI-CLIENTE (ATÉ 5 CLIENTES)
+// MÃ“DULO: AGRUPAMENTO MULTI-CLIENTE (ATÃ‰ 5 CLIENTES)
 // =========================================================================
 
 function abrirModalMultiCliente(preSelectedClienteId = null) {
@@ -19568,10 +19568,10 @@ function abrirModalMultiCliente(preSelectedClienteId = null) {
   // Popular Select de Escala Geral
   popularSelectsEscalas();
 
-  // Limpar lista temporária
+  // Limpar lista temporÃ¡ria
   state.multiClienteClientes = [];
 
-  // Se veio cliente pré-selecionado, adiciona
+  // Se veio cliente prÃ©-selecionado, adiciona
   if (preSelectedClienteId) {
     const c = (state.clientesComPostos || state.clientes || []).find(item => item.id == preSelectedClienteId);
     if (c) {
@@ -19610,10 +19610,10 @@ function filtrarColaboradoresMultiModal(termo = '') {
   });
 
   selColab.innerHTML = `
-    <option value="">${filtrados.length === 0 ? 'Nenhum funcionário encontrado...' : 'Selecione o colaborador...'}</option>
+    <option value="">${filtrados.length === 0 ? 'Nenhum funcionÃ¡rio encontrado...' : 'Selecione o colaborador...'}</option>
     ${filtrados.map(c => {
-      const postoInfo = c.nome_posto ? ` [Posto: ${c.nome_posto} - ${c.nome_fantasia || c.nome_razao_social || 'Cliente'}]` : ' [Reserva Técnica - Disponível]';
-      const multiInfo = c.is_multi_cliente ? ' (Já em Multi-Cliente)' : '';
+      const postoInfo = c.nome_posto ? ` [Posto: ${c.nome_posto} - ${c.nome_fantasia || c.nome_razao_social || 'Cliente'}]` : ' [Reserva TÃ©cnica - DisponÃ­vel]';
+      const multiInfo = c.is_multi_cliente ? ' (JÃ¡ em Multi-Cliente)' : '';
       return `<option value="${c.id}">${escapeHtml(c.nome)} - ${escapeHtml(c.nome_cargo || 'Geral')}${postoInfo}${multiInfo}</option>`;
     }).join('')}
   `;
@@ -19655,13 +19655,13 @@ function filtrarClientesMultiModal(termo = '') {
 
 function abrirModalMultiClienteComSelecionados() {
   if (!state.clientesSelecionados || state.clientesSelecionados.size === 0) {
-    alert('Nenhum cliente selecionado!\nMarque as caixas de seleção dos clientes (até 5) que deseja juntar para o colaborador atender.');
+    alert('Nenhum cliente selecionado!\nMarque as caixas de seleÃ§Ã£o dos clientes (atÃ© 5) que deseja juntar para o colaborador atender.');
     return;
   }
 
   const ids = Array.from(state.clientesSelecionados);
   if (ids.length > 5) {
-    alert('Atenção: Você selecionou mais de 5 clientes. Serão agrupados os primeiros 5 clientes selecionados.');
+    alert('AtenÃ§Ã£o: VocÃª selecionou mais de 5 clientes. SerÃ£o agrupados os primeiros 5 clientes selecionados.');
   }
 
   const selecionados = ids.slice(0, 5);
@@ -19705,12 +19705,12 @@ function aoSelecionarColaboradorMultiCliente(colaboradorId) {
   box.classList.remove('hidden');
   const statusAloc = col.nome_posto 
     ? `<span class="text-amber-700 font-semibold"><i class="fa-solid fa-building-user mr-1"></i>Atualmente alocado em: ${escapeHtml(col.nome_posto)} (${escapeHtml(col.nome_fantasia || col.nome_razao_social || 'Cliente')})</span>` 
-    : `<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Disponível na Reserva Técnica</span>`;
+    : `<span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>DisponÃ­vel na Reserva TÃ©cnica</span>`;
 
   box.innerHTML = `
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
-        <b>${escapeHtml(col.nome)}</b> | Função: <span class="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded text-indigo-900 font-bold">${escapeHtml(col.nome_cargo || 'Geral')}</span>
+        <b>${escapeHtml(col.nome)}</b> | FunÃ§Ã£o: <span class="bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded text-indigo-900 font-bold">${escapeHtml(col.nome_cargo || 'Geral')}</span>
       </div>
       <div>
         ${statusAloc}
@@ -19734,18 +19734,18 @@ function adicionarClienteAoAgrupamentoMulti() {
   const clienteId = parseInt(sel.value, 10);
 
   if (state.multiClienteClientes.length >= 5) {
-    alert('Limite atingido! Você pode agrupar no máximo 5 clientes para 1 colaborador.');
+    alert('Limite atingido! VocÃª pode agrupar no mÃ¡ximo 5 clientes para 1 colaborador.');
     return;
   }
 
   if (state.multiClienteClientes.some(item => item.cliente_id === clienteId)) {
-    alert('Este cliente já está incluído no agrupamento atual.');
+    alert('Este cliente jÃ¡ estÃ¡ incluÃ­do no agrupamento atual.');
     return;
   }
 
   const c = (state.clientesComPostos || state.clientes || []).find(item => item.id === clienteId);
   if (!c) {
-    alert('Cliente não encontrado.');
+    alert('Cliente nÃ£o encontrado.');
     return;
   }
 
@@ -19793,14 +19793,14 @@ function renderizarClientesAgrupadosMulti() {
       <div class="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
         <i class="fa-solid fa-people-arrows text-slate-300 text-3xl mb-1.5 block"></i>
         Nenhum cliente adicionado ao agrupamento ainda.
-        <div class="text-[11px] text-slate-500 mt-1">Selecione um cliente acima ou marque as caixas de seleção na tabela e clique em <b>"Juntar até 5 Clientes"</b>.</div>
+        <div class="text-[11px] text-slate-500 mt-1">Selecione um cliente acima ou marque as caixas de seleÃ§Ã£o na tabela e clique em <b>"Juntar atÃ© 5 Clientes"</b>.</div>
       </div>
     `;
     return;
   }
 
   const diasSemana = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-  const diasLabel = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb', dom: 'Dom' };
+  const diasLabel = { seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'SÃ¡b', dom: 'Dom' };
 
   container.innerHTML = state.multiClienteClientes.map((item, idx) => {
     const postosDisponiveis = item.postos || [];
@@ -19811,7 +19811,7 @@ function renderizarClientesAgrupadosMulti() {
         <option value="${p.id}" ${item.posto_id == p.id ? 'selected' : ''}>${escapeHtml(p.nome_posto)} (${p.nome_cargo || 'Geral'})</option>
       `).join('');
     } else {
-      optionsPosto = `<option value="">Posto Geral / Automático (Será criado com vaga 1/1)</option>`;
+      optionsPosto = `<option value="">Posto Geral / AutomÃ¡tico (SerÃ¡ criado com vaga 1/1)</option>`;
     }
 
     const pillsDias = diasSemana.map(d => {
@@ -19854,7 +19854,7 @@ function renderizarClientesAgrupadosMulti() {
           </div>
 
           <div class="sm:col-span-3">
-            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Carga Horária Semanal</label>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1">Carga HorÃ¡ria Semanal</label>
             <div class="flex items-center gap-1.5">
               <input type="number" min="1" max="44" step="0.5" value="${item.carga_horaria || 10}" onchange="aoAlterarCargaHorariaClienteMulti(${idx}, this.value)" class="w-20 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-indigo-700 text-center focus:outline-none">
               <span class="text-xs font-semibold text-slate-600">horas/sem</span>
@@ -19935,7 +19935,7 @@ function recalcularTotalHorasMultiCliente() {
       elBadgeStatus.textContent = `Faltam ${saldo.toFixed(1)}h para atingir ${alvoValor}h`;
       elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
     } else {
-      elBadgeStatus.textContent = `Atenção: Excede limite semanal em ${Math.abs(saldo).toFixed(1)}h`;
+      elBadgeStatus.textContent = `AtenÃ§Ã£o: Excede limite semanal em ${Math.abs(saldo).toFixed(1)}h`;
       elBadgeStatus.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 animate-pulse';
     }
   }
@@ -19944,12 +19944,12 @@ function recalcularTotalHorasMultiCliente() {
 async function salvarAgrupamentoMultiCliente() {
   const colabId = document.getElementById('multiColaboradorSelect')?.value;
   if (!colabId) {
-    alert('Por favor, selecione o colaborador que atenderá os clientes agrupados.');
+    alert('Por favor, selecione o colaborador que atenderÃ¡ os clientes agrupados.');
     return;
   }
 
   if (!state.multiClienteClientes || state.multiClienteClientes.length < 2) {
-    alert('Para criar um agrupamento Multi-Cliente, adicione no mínimo 2 clientes (até o limite de 5 clientes).');
+    alert('Para criar um agrupamento Multi-Cliente, adicione no mÃ­nimo 2 clientes (atÃ© o limite de 5 clientes).');
     return;
   }
 
@@ -19971,7 +19971,7 @@ async function salvarAgrupamentoMultiCliente() {
     colaborador_id: parseInt(colabId, 10),
     escala_nome: escalaNome,
     carga_total_semanal: totalHoras,
-    observacoes: `Atendimento compartilhado em ${state.multiClienteClientes.length} clientes. Lotação 1 pessoa em cada posto.`,
+    observacoes: `Atendimento compartilhado em ${state.multiClienteClientes.length} clientes. LotaÃ§Ã£o 1 pessoa em cada posto.`,
     clientes: state.multiClienteClientes.map(c => ({
       cliente_id: c.cliente_id,
       posto_trabalho_id: c.posto_id || null,
@@ -19995,7 +19995,7 @@ async function salvarAgrupamentoMultiCliente() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || data.error || 'Erro ao salvar agrupamento');
 
-    alert(`🎉 Sucesso!\n\nAgrupamento Multi-Cliente criado com sucesso para ${colabNome}!\n\nO colaborador cobrirá os ${state.multiClienteClientes.length} clientes selecionados. Os postos correspondentes foram preenchidos (Lotação Máxima 1/1), eliminando falsos alertas de vagas em aberto.`);
+    alert(`ðŸŽ‰ Sucesso!\n\nAgrupamento Multi-Cliente criado com sucesso para ${colabNome}!\n\nO colaborador cobrirÃ¡ os ${state.multiClienteClientes.length} clientes selecionados. Os postos correspondentes foram preenchidos (LotaÃ§Ã£o MÃ¡xima 1/1), eliminando falsos alertas de vagas em aberto.`);
 
     fecharModal('modalMultiCliente');
     await carregarDadosBase();
@@ -20066,7 +20066,7 @@ async function carregarRoteirosMultiCliente() {
 }
 
 async function desvincularRoteiroMulti(roteiroId, colabNome) {
-  if (!confirm(`Deseja realmente desvincular o Roteiro Multi-Cliente #${roteiroId} de ${colabNome || 'colaborador'}?\nOs postos vinculados voltarão ao quadro padrão.`)) {
+  if (!confirm(`Deseja realmente desvincular o Roteiro Multi-Cliente #${roteiroId} de ${colabNome || 'colaborador'}?\nOs postos vinculados voltarÃ£o ao quadro padrÃ£o.`)) {
     return;
   }
 
@@ -20086,7 +20086,7 @@ async function desvincularRoteiroMulti(roteiroId, colabNome) {
 }
 
 // =========================================================================
-// MÓDULO: CALENDÁRIO SEMANAL DE COBERTURA DOS POSTOS & MULTI-CLIENTES
+// MÃ“DULO: CALENDÃRIO SEMANAL DE COBERTURA DOS POSTOS & MULTI-CLIENTES
 // =========================================================================
 
 function alternarVisaoCalendarioPostos() {
@@ -20108,9 +20108,9 @@ function alternarVisaoCalendarioPostos() {
   } else {
     if (containerLista) containerLista.classList.remove('hidden');
     if (containerCalendario) containerCalendario.classList.add('hidden');
-    if (txt) txt.textContent = 'Ver Calendário Semanal';
+    if (txt) txt.textContent = 'Ver CalendÃ¡rio Semanal';
     if (btn) {
-      btn.innerHTML = `<i class="fa-solid fa-calendar-week mr-1"></i> <span id="txtBtnVisaoPostos">Ver Calendário Semanal</span>`;
+      btn.innerHTML = `<i class="fa-solid fa-calendar-week mr-1"></i> <span id="txtBtnVisaoPostos">Ver CalendÃ¡rio Semanal</span>`;
     }
     renderizarCardsClientesPostos();
   }
@@ -20128,16 +20128,16 @@ async function carregarCalendarioSemanalPostos() {
 
   try {
     const res = await fetch('/api/multi-cliente/calendario');
-    if (!res.ok) throw new Error('Falha ao carregar dados do calendário');
+    if (!res.ok) throw new Error('Falha ao carregar dados do calendÃ¡rio');
     const data = await res.json();
     const dias = data.dias || { seg: [], ter: [], qua: [], qui: [], sex: [], sab: [], dom: [] };
 
     renderizarCalendarioSemanalPostos(dias);
   } catch (err) {
-    console.error('Erro ao carregar calendário semanal:', err);
+    console.error('Erro ao carregar calendÃ¡rio semanal:', err);
     container.innerHTML = `
       <div class="bg-red-50 text-red-700 p-6 rounded-2xl border border-red-200 text-center font-semibold">
-        Erro ao carregar calendário semanal: ${err.message}
+        Erro ao carregar calendÃ¡rio semanal: ${err.message}
       </div>
     `;
   }
@@ -20149,11 +20149,11 @@ function renderizarCalendarioSemanalPostos(dias) {
 
   const colunas = [
     { key: 'seg', label: 'Segunda-Feira', badge: 'bg-indigo-600' },
-    { key: 'ter', label: 'Terça-Feira', badge: 'bg-indigo-600' },
+    { key: 'ter', label: 'TerÃ§a-Feira', badge: 'bg-indigo-600' },
     { key: 'qua', label: 'Quarta-Feira', badge: 'bg-indigo-600' },
     { key: 'qui', label: 'Quinta-Feira', badge: 'bg-indigo-600' },
     { key: 'sex', label: 'Sexta-Feira', badge: 'bg-indigo-600' },
-    { key: 'sab', label: 'Sábado', badge: 'bg-slate-700' },
+    { key: 'sab', label: 'SÃ¡bado', badge: 'bg-slate-700' },
     { key: 'dom', label: 'Domingo', badge: 'bg-slate-700' }
   ];
 
@@ -20229,19 +20229,19 @@ function renderizarCalendarioSemanalPostos(dias) {
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
           <span class="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1.5">
-            <i class="fa-solid fa-calendar-week"></i> Programação Semanal Operacional
+            <i class="fa-solid fa-calendar-week"></i> ProgramaÃ§Ã£o Semanal Operacional
           </span>
           <h3 class="font-black text-slate-900 text-base">
-            Calendário de Cobertura de Postos & Multi-Clientes
+            CalendÃ¡rio de Cobertura de Postos & Multi-Clientes
           </h3>
           <p class="text-xs text-slate-500 mt-0.5">
-            Total de <b>${totalAtendimentosSemana} escalas/atendimentos programados</b> distribuídos ao longo da semana de Segunda a Domingo.
+            Total de <b>${totalAtendimentosSemana} escalas/atendimentos programados</b> distribuÃ­dos ao longo da semana de Segunda a Domingo.
           </p>
         </div>
 
         <div class="flex items-center gap-2">
           <button onclick="abrirModalMultiCliente()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
-            <i class="fa-solid fa-people-arrows"></i> Agrupar Multi-Cliente (Até 5)
+            <i class="fa-solid fa-people-arrows"></i> Agrupar Multi-Cliente (AtÃ© 5)
           </button>
           <button onclick="abrirModalGerenciarEscalas()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer">
             <i class="fa-solid fa-plus-circle text-amber-400"></i> Nova Escala
@@ -20257,7 +20257,7 @@ function renderizarCalendarioSemanalPostos(dias) {
   `;
 }
 
-// Exportações Globais para o Escopo da Janela
+// ExportaÃ§Ãµes Globais para o Escopo da Janela
 window.carregarEscalas = carregarEscalas;
 window.popularSelectsEscalas = popularSelectsEscalas;
 window.abrirModalGerenciarEscalas = abrirModalGerenciarEscalas;
@@ -20289,7 +20289,7 @@ window.renderizarCalendarioSemanalPostos = renderizarCalendarioSemanalPostos;
 
 
 // =============================================================
-// MÓDULO: ALERTA SONORO & POLLING DE COMUNICADOS
+// MÃ“DULO: ALERTA SONORO & POLLING DE COMUNICADOS
 // =============================================================
 
 var _pollingComunicadosInterval = null;
@@ -20314,7 +20314,7 @@ function tocarAlertaNovoComunicado(titulo) {
       osc.stop(t0 + 0.3);
     });
   } catch (e) {
-    console.warn('[Som] Web Audio API indisponível:', e.message);
+    console.warn('[Som] Web Audio API indisponÃ­vel:', e.message);
   }
   mostrarToastNovoComunicado(titulo);
 }
@@ -20361,7 +20361,7 @@ window.iniciarPollingComunicados = iniciarPollingComunicados;
 
 
 // =============================================================
-// MÓDULO: EDITAR COMUNICADO (ADMIN MASTER)
+// MÃ“DULO: EDITAR COMUNICADO (ADMIN MASTER)
 // =============================================================
 
 function abrirModalEditarComunicado(id, titulo, mensagem, categoria, prioridade) {
@@ -20384,7 +20384,7 @@ async function salvarEdicaoComunicado() {
   var mensagem = document.getElementById('editComunicadoMensagem').value.trim();
   var categoria = (document.getElementById('editComunicadoCategoria') || {}).value || 'geral';
   var prioridade = (document.getElementById('editComunicadoPrioridade') || {}).value || 'normal';
-  if (!titulo || !mensagem) { alert('Preencha título e mensagem.'); return; }
+  if (!titulo || !mensagem) { alert('Preencha tÃ­tulo e mensagem.'); return; }
   try {
     var r = await fetch('/api/comunicados/' + id, {
       method: 'PUT',
@@ -20395,9 +20395,9 @@ async function salvarEdicaoComunicado() {
     if (data.success) {
       fecharModal('modalEditarComunicado');
       if (typeof carregarComunicados === 'function') await carregarComunicados();
-      mostrarNotificacaoSucesso('Comunicado editado com sucesso! âœ…');
+      mostrarNotificacaoSucesso('Comunicado editado com sucesso! Ã¢Å“â€¦');
     } else { alert(data.message || 'Erro ao editar comunicado.'); }
-  } catch (e) { alert('Erro de conexão.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
 }
 
 window.abrirModalEditarComunicado = abrirModalEditarComunicado;
@@ -20405,13 +20405,13 @@ window.salvarEdicaoComunicado = salvarEdicaoComunicado;
 
 
 // =============================================================
-// MÓDULO: FLUXO DE IMPLANTAÇÁO (VISÍVEL A TODOS OS USUÁRIOS)
+// MÃ“DULO: FLUXO DE IMPLANTAÃ‡ÃO (VISÃVEL A TODOS OS USUÃRIOS)
 // =============================================================
 
 async function carregarFluxoImplantacao() {
   var container = document.getElementById('containerFluxoImplantacao');
   if (!container) return;
-  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-400"></i>Carregando ordens de implantação...</div>';
+  container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3 block text-orange-400"></i>Carregando ordens de implantaÃ§Ã£o...</div>';
   try {
     var r = await fetch('/api/comercial/implantacoes');
     if (!r.ok) throw new Error('Servidor retornou erro ' + r.status);
@@ -20419,7 +20419,7 @@ async function carregarFluxoImplantacao() {
     var ordens = data.ordens || data || [];
     renderizarFluxoImplantacao(Array.isArray(ordens) ? ordens : []);
   } catch (e) {
-    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3 block"></i><p class="font-bold">Erro ao carregar implantações</p><p class="text-xs mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
+    container.innerHTML = '<div class="bg-white p-10 text-center rounded-2xl border border-red-200 text-red-500"><i class="fa-solid fa-triangle-exclamation text-3xl mb-3 block"></i><p class="font-bold">Erro ao carregar implantaÃ§Ãµes</p><p class="text-xs mt-1 text-slate-500">' + e.message + '</p><button onclick="carregarFluxoImplantacao()" class="mt-4 bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl">Tentar novamente</button></div>';
   }
 }
 
@@ -20427,10 +20427,10 @@ function renderizarFluxoImplantacao(ordens) {
   var container = document.getElementById('containerFluxoImplantacao');
   var ehAdmin = isUsuarioAdminMaster();
   var setorUsuario = ((state.usuarioLogado && state.usuarioLogado.setor) ? state.usuarioLogado.setor : '').toLowerCase();
-  var setorLabels = { rh: 'RH / Recrutamento', beneficios: 'Benefícios (VT/VA)', compras: 'Compras / Uniformes', operacional: 'Operacional', faturamento: 'Faturamento', diretoria: 'Diretoria', comercial: 'Comercial', outros: 'Outros' };
+  var setorLabels = { rh: 'RH / Recrutamento', beneficios: 'BenefÃ­cios (VT/VA)', compras: 'Compras / Uniformes', operacional: 'Operacional', faturamento: 'Faturamento', diretoria: 'Diretoria', comercial: 'Comercial', outros: 'Outros' };
 
   if (!ordens || ordens.length === 0) {
-    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-3 block text-orange-300"></i><p class="font-bold text-slate-600 text-base">Nenhuma implantação ativa no momento</p><p class="text-xs mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantação aparecerá aqui automaticamente.</p></div>';
+    container.innerHTML = '<div class="bg-white p-12 text-center rounded-2xl border border-slate-200 text-slate-400"><i class="fa-solid fa-rocket text-4xl mb-3 block text-orange-300"></i><p class="font-bold text-slate-600 text-base">Nenhuma implantaÃ§Ã£o ativa no momento</p><p class="text-xs mt-1">Quando o setor Comercial efetivar um contrato, o fluxo de implantaÃ§Ã£o aparecerÃ¡ aqui automaticamente.</p></div>';
     ['kpiImplantacoesAtivas','kpiTarefasPendentes','kpiTarefasConcluidas','kpiImplantacoesCompletas'].forEach(function(id) {
       var el = document.getElementById(id); if (el) el.textContent = '0';
     });
@@ -20440,7 +20440,7 @@ function renderizarFluxoImplantacao(ordens) {
   var totalAtivas = 0, totalPendentes = 0, totalConcluidas = 0, totalCompletas = 0;
   ordens.forEach(function(o) {
     var tarefas = o.tarefas || [];
-    var conc = tarefas.filter(function(t) { return t.status === 'Concluída'; }).length;
+    var conc = tarefas.filter(function(t) { return t.status === 'ConcluÃ­da'; }).length;
     totalConcluidas += conc;
     totalPendentes += tarefas.length - conc;
     if (tarefas.length > 0 && conc === tarefas.length) totalCompletas++;
@@ -20452,33 +20452,33 @@ function renderizarFluxoImplantacao(ordens) {
   var html = ordens.map(function(ordem) {
     var tarefas = ordem.tarefas || [];
     var total = tarefas.length;
-    var concluidas = tarefas.filter(function(t) { return t.status === 'Concluída'; }).length;
+    var concluidas = tarefas.filter(function(t) { return t.status === 'ConcluÃ­da'; }).length;
     var pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
     var completa = total > 0 && concluidas === total;
     var corPct = pct < 30 ? 'bg-red-500' : pct < 70 ? 'bg-amber-500' : pct < 100 ? 'bg-blue-500' : 'bg-emerald-500';
 
     var tarefasHtml = tarefas.map(function(t) {
       var podeMudarStatus = ehAdmin || setorUsuario.indexOf((t.setor_responsavel || '').toLowerCase().substring(0,4)) !== -1;
-      var sc = t.status === 'Concluída' ? 'bg-emerald-100 text-emerald-800' : t.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
-      var prazoFmt = t.prazo_limite ? new Date(t.prazo_limite + 'T00:00:00').toLocaleDateString('pt-BR') : '””';
+      var sc = t.status === 'ConcluÃ­da' ? 'bg-emerald-100 text-emerald-800' : t.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+      var prazoFmt = t.prazo_limite ? new Date(t.prazo_limite + 'T00:00:00').toLocaleDateString('pt-BR') : 'â€â€';
       var tarefaEscapada = JSON.stringify(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return '<div class="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0 group">'
-        + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'Concluída' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
+        + '<div class="flex-shrink-0 mt-0.5 text-lg">' + (t.status === 'ConcluÃ­da' ? '<i class="fa-solid fa-circle-check text-emerald-500"></i>' : '<i class="fa-regular fa-circle text-slate-300"></i>') + '</div>'
         + '<div class="flex-1 min-w-0">'
           + '<div class="flex items-start justify-between gap-2 flex-wrap">'
-            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'Concluída' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || '””') + '</span>'
+            + '<span class="font-bold text-slate-800 text-xs ' + (t.status === 'ConcluÃ­da' ? 'line-through text-slate-400' : '') + '">' + (t.titulo || 'â€â€') + '</span>'
             + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ' + sc + ' shrink-0">' + t.status + '</span>'
           + '</div>'
           + (t.descricao ? '<p class="text-[11px] text-slate-500 mt-0.5">' + t.descricao + '</p>' : '')
           + '<div class="flex items-center gap-3 mt-1 flex-wrap">'
-            + '<span class="text-[10px] text-slate-500"><i class="fa-solid fa-building text-slate-400 mr-1"></i>' + (setorLabels[t.setor_responsavel] || t.setor_responsavel || '””') + '</span>'
+            + '<span class="text-[10px] text-slate-500"><i class="fa-solid fa-building text-slate-400 mr-1"></i>' + (setorLabels[t.setor_responsavel] || t.setor_responsavel || 'â€â€') + '</span>'
             + (t.responsavel_nome ? '<span class="text-[10px] text-slate-600 font-semibold"><i class="fa-solid fa-user text-slate-400 mr-1"></i>' + t.responsavel_nome + '</span>' : '')
             + (t.prazo_limite ? '<span class="text-[10px] text-slate-500"><i class="fa-regular fa-calendar text-slate-400 mr-1"></i>' + prazoFmt + '</span>' : '')
           + '</div>'
-          + (t.observacoes_conclusao ? '<p class="text-[10px] text-emerald-700 bg-emerald-50 rounded px-2 py-1 mt-1.5 italic">âœ… ' + t.observacoes_conclusao + '</p>' : '')
+          + (t.observacoes_conclusao ? '<p class="text-[10px] text-emerald-700 bg-emerald-50 rounded px-2 py-1 mt-1.5 italic">Ã¢Å“â€¦ ' + t.observacoes_conclusao + '</p>' : '')
         + '</div>'
         + '<div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">'
-          + (podeMudarStatus && t.status !== 'Concluída' ? '<button onclick="marcarTarefaImplantacaoConcluida(' + t.id + ',' + ordem.id + ')" title="Marcar concluída" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-check"></i></button>' : '')
+          + (podeMudarStatus && t.status !== 'ConcluÃ­da' ? '<button onclick="marcarTarefaImplantacaoConcluida(' + t.id + ',' + ordem.id + ')" title="Marcar concluÃ­da" class="text-emerald-600 hover:bg-emerald-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-check"></i></button>' : '')
           + (ehAdmin ? '<button onclick="abrirEditarTarefaImplantacao(' + t.id + ',' + ordem.id + ',\'' + tarefaEscapada + '\')" title="Editar" class="text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-pen-to-square"></i></button>'
             + '<button onclick="excluirTarefaImplantacao(' + t.id + ',' + ordem.id + ')" title="Excluir" class="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition text-sm"><i class="fa-solid fa-trash"></i></button>' : '')
         + '</div>'
@@ -20494,11 +20494,11 @@ function renderizarFluxoImplantacao(ordens) {
             + (completa ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-rocket"></i>')
           + '</div>'
           + '<div>'
-            + '<h3 class="font-black text-sm text-slate-900">' + (ordem.nome_cliente || ordem.cliente_nome || 'Implantação #' + ordem.id) + '</h3>'
+            + '<h3 class="font-black text-sm text-slate-900">' + (ordem.nome_cliente || ordem.cliente_nome || 'ImplantaÃ§Ã£o #' + ordem.id) + '</h3>'
             + '<div class="flex items-center gap-2 mt-0.5 flex-wrap">'
               + (ordem.contrato_numero ? '<span class="text-[10px] text-slate-500">Contrato: <b>' + ordem.contrato_numero + '</b></span>' : '')
-              + (dataInicioFmt ? '<span class="text-[10px] text-slate-500">Início: <b>' + dataInicioFmt + '</b></span>' : '')
-              + (completa ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">âœ… CONCLUÍDA</span>' : '')
+              + (dataInicioFmt ? '<span class="text-[10px] text-slate-500">InÃ­cio: <b>' + dataInicioFmt + '</b></span>' : '')
+              + (completa ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full">Ã¢Å“â€¦ CONCLUÃDA</span>' : '')
             + '</div>'
           + '</div>'
         + '</div>'
@@ -20506,8 +20506,8 @@ function renderizarFluxoImplantacao(ordens) {
       + '</div>'
       + '<div class="px-5 py-3 border-b border-slate-100">'
         + '<div class="flex items-center justify-between mb-1.5">'
-          + '<span class="text-[11px] font-bold text-slate-600">Progresso da Implantação</span>'
-          + '<span class="text-[11px] font-black ' + (pct === 100 ? 'text-emerald-600' : 'text-slate-700') + '">' + concluidas + '/' + total + ' tarefas ”” ' + pct + '%</span>'
+          + '<span class="text-[11px] font-bold text-slate-600">Progresso da ImplantaÃ§Ã£o</span>'
+          + '<span class="text-[11px] font-black ' + (pct === 100 ? 'text-emerald-600' : 'text-slate-700') + '">' + concluidas + '/' + total + ' tarefas â€â€ ' + pct + '%</span>'
         + '</div>'
         + '<div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="' + corPct + ' h-full rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div>'
       + '</div>'
@@ -20521,19 +20521,19 @@ function renderizarFluxoImplantacao(ordens) {
 }
 
 async function marcarTarefaImplantacaoConcluida(tarefaId, ordemId) {
-  if (!confirm('Marcar esta tarefa como Concluída?')) return;
+  if (!confirm('Marcar esta tarefa como ConcluÃ­da?')) return;
   try {
     var r = await fetch('/api/comercial/implantacoes/tarefas/' + tarefaId, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'Concluída', concluido_por: (state.usuarioLogado && state.usuarioLogado.nome) ? state.usuarioLogado.nome : 'Usuário' })
+      body: JSON.stringify({ status: 'ConcluÃ­da', concluido_por: (state.usuarioLogado && state.usuarioLogado.nome) ? state.usuarioLogado.nome : 'UsuÃ¡rio' })
     });
     var data = await r.json();
     if (data.success) {
-      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ Implantação 100% concluída! Comunicado enviado ao mural!' : 'Tarefa concluída! âœ…');
+      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'Ã°Å¸Å½â€° ImplantaÃ§Ã£o 100% concluÃ­da! Comunicado enviado ao mural!' : 'Tarefa concluÃ­da! Ã¢Å“â€¦');
       await carregarFluxoImplantacao();
     } else { alert(data.message || 'Erro ao atualizar.'); }
-  } catch (e) { alert('Erro de conexão.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
 }
 
 function abrirEditarTarefaImplantacao(tarefaId, ordemId, tarefaJson) {
@@ -20563,20 +20563,20 @@ async function salvarEdicaoTarefaImplantacao() {
   var status = document.getElementById('editTarefaStatus').value;
   var descricao = document.getElementById('editTarefaDescricao').value.trim();
   var obs = document.getElementById('editTarefaObsConclusao').value.trim();
-  if (!titulo) { alert('Informe o título da tarefa.'); return; }
+  if (!titulo) { alert('Informe o tÃ­tulo da tarefa.'); return; }
   try {
     var r = await fetch('/api/comercial/implantacoes/tarefas/' + id, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: titulo, setor_responsavel: setor, responsavel_nome: responsavel, prazo_limite: prazo || null, status: status, descricao: descricao, observacoes_conclusao: obs, concluido_por: status === 'Concluída' ? ((state.usuarioLogado && state.usuarioLogado.nome) || 'Admin') : null })
+      body: JSON.stringify({ titulo: titulo, setor_responsavel: setor, responsavel_nome: responsavel, prazo_limite: prazo || null, status: status, descricao: descricao, observacoes_conclusao: obs, concluido_por: status === 'ConcluÃ­da' ? ((state.usuarioLogado && state.usuarioLogado.nome) || 'Admin') : null })
     });
     var data = await r.json();
     if (data.success) {
       fecharModal('modalEditarTarefaImplantacao');
-      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'ðŸŽ‰ Implantação 100% concluída! Comunicado gerado!' : 'Tarefa salva! âœ…');
+      mostrarNotificacaoSucesso(data.implantacao_concluida ? 'Ã°Å¸Å½â€° ImplantaÃ§Ã£o 100% concluÃ­da! Comunicado gerado!' : 'Tarefa salva! Ã¢Å“â€¦');
       await carregarFluxoImplantacao();
     } else { alert(data.message || 'Erro ao salvar.'); }
-  } catch (e) { alert('Erro de conexão.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
 }
 
 async function excluirTarefaImplantacao(tarefaId, ordemId) {
@@ -20584,9 +20584,9 @@ async function excluirTarefaImplantacao(tarefaId, ordemId) {
   try {
     var r = await fetch('/api/comercial/implantacoes/tarefas/' + tarefaId, { method: 'DELETE' });
     var data = await r.json();
-    if (data.success) { mostrarNotificacaoSucesso('Tarefa excluída.'); await carregarFluxoImplantacao(); }
+    if (data.success) { mostrarNotificacaoSucesso('Tarefa excluÃ­da.'); await carregarFluxoImplantacao(); }
     else { alert(data.message || 'Erro ao excluir.'); }
-  } catch (e) { alert('Erro de conexão.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
 }
 
 function abrirAdicionarTarefaImplantacao(ordemId) {
@@ -20605,7 +20605,7 @@ async function salvarNovaTarefaImplantacao() {
   var responsavel = document.getElementById('novaTarefaResponsavel').value.trim();
   var prazo = document.getElementById('novaTarefaPrazo').value;
   var descricao = document.getElementById('novaTarefaDescricao').value.trim();
-  if (!titulo) { alert('Informe o título da tarefa.'); return; }
+  if (!titulo) { alert('Informe o tÃ­tulo da tarefa.'); return; }
   try {
     var r = await fetch('/api/comercial/implantacoes/' + ordemId + '/tarefas', {
       method: 'POST',
@@ -20615,10 +20615,10 @@ async function salvarNovaTarefaImplantacao() {
     var data = await r.json();
     if (data.success) {
       fecharModal('modalNovaTarefaImplantacao');
-      mostrarNotificacaoSucesso('Tarefa adicionada com sucesso! âœ…');
+      mostrarNotificacaoSucesso('Tarefa adicionada com sucesso! Ã¢Å“â€¦');
       await carregarFluxoImplantacao();
     } else { alert(data.message || 'Erro ao adicionar tarefa.'); }
-  } catch (e) { alert('Erro de conexão.'); }
+  } catch (e) { alert('Erro de conexÃ£o.'); }
 }
 
 function mostrarNotificacaoSucesso(msg) {
@@ -20663,10 +20663,10 @@ function filtrarFreelancersLocalmente() {
     html += '<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">';
     html += '<div class="flex items-center gap-3"><input type="checkbox" class="chk-free h-4 w-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer" value="' + f.freelancer_id + '" onchange="aoAlternarChkFree(this)">';
     html += '<div><div class="flex items-center gap-2"><h3 class="font-bold text-slate-900">' + f.nome + '</h3>';
-    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plantões</span>';
-    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">Diária: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
+    html += '<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">' + f.total_diarias_mes + ' plantÃµes</span>';
+    html += '<span class="text-[11px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">DiÃ¡ria: ' + formatarMoeda(f.valor_diaria_padrao || 140) + '</span></div>';
     html += '<div class="text-xs text-slate-500 mt-1 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">';
-    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'Não cadastrado') + '</span>';
+    html += '<span><i class="fa-brands fa-pix text-emerald-600 mr-1"></i><b>PIX (' + (f.tipo_chave_pix || 'Chave') + '):</b> ' + (f.chave_pix || 'NÃ£o cadastrado') + '</span>';
     if(f.telefone) html += '<span class="text-slate-600 font-sans"><i class="fa-solid fa-phone mr-1 text-slate-400"></i>' + f.telefone + '</span>';
     html += '</div></div></div>';
     html += '<div class="flex flex-wrap items-center justify-end gap-3">';
@@ -20756,7 +20756,7 @@ function mudarAbaDashboard(painel) {
 }
 
 async function carregarDashboardSetorial(setor) {
-  // Placeholder para buscar métricas por setor
+  // Placeholder para buscar mÃ©tricas por setor
   const mesInput = document.getElementById('dashboardMes');
   const mes = mesInput?.value || state.mesAtual;
   
@@ -20782,7 +20782,7 @@ window.mudarAbaDashboard = mudarAbaDashboard;
 
 function imprimirDossieComercial() {
   const lead = state.comercial.leadAtual;
-  if (!lead) return alert('Nenhum lead selecionado para impressão.');
+  if (!lead) return alert('Nenhum lead selecionado para impressÃ£o.');
 
   const printWindow = window.open('', '_blank');
   
@@ -20800,7 +20800,7 @@ function imprimirDossieComercial() {
       `;
     }).join('');
   } else {
-    htmlInteracoes = '<p style="color: #666;">Nenhuma interação registrada.</p>';
+    htmlInteracoes = '<p style="color: #666;">Nenhuma interaÃ§Ã£o registrada.</p>';
   }
 
   const dataCriacao = new Date(lead.created_at).toLocaleDateString('pt-BR');
@@ -20809,7 +20809,7 @@ function imprimirDossieComercial() {
   printWindow.document.write(`
     <html>
       <head>
-        <title>Dossiê Comercial - ${lead.razao_social}</title>
+        <title>DossiÃª Comercial - ${lead.razao_social}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #222; }
           .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
@@ -20826,21 +20826,21 @@ function imprimirDossieComercial() {
       </head>
       <body>
         <div class="header">
-          <h1>DOSSIÊ COMERCIAL - RELATÓRIO DE PROSPECÇÃO</h1>
+          <h1>DOSSIÃŠ COMERCIAL - RELATÃ“RIO DE PROSPECÃ‡ÃƒO</h1>
           <p>Documento gerado em: ${new Date().toLocaleString('pt-BR')} pelo Sistema Integrado</p>
         </div>
         
         <div class="section">
           <h2>1. DADOS DO CLIENTE / PROSPECT</h2>
           <table>
-            <tr><th>Razão Social</th><td>${lead.razao_social || '-'}</td></tr>
+            <tr><th>RazÃ£o Social</th><td>${lead.razao_social || '-'}</td></tr>
             <tr><th>Nome Fantasia</th><td>${lead.nome_fantasia || '-'}</td></tr>
-            <tr><th>CNPJ</th><td>${lead.cnpj || 'Não informado'}</td></tr>
+            <tr><th>CNPJ</th><td>${lead.cnpj || 'NÃ£o informado'}</td></tr>
             <tr><th>Segmento</th><td>${lead.segmento || 'Geral'}</td></tr>
-            <tr><th>Data de Início da Prospecção</th><td>${dataCriacao}</td></tr>
+            <tr><th>Data de InÃ­cio da ProspecÃ§Ã£o</th><td>${dataCriacao}</td></tr>
             <tr><th>Status Atual (Etapa)</th><td><b>${lead.etapa.toUpperCase()}</b> ${lead.cliente_id_convertido ? '(CONVERTIDO EM CLIENTE)' : ''}</td></tr>
-            <tr><th>Origem</th><td>${lead.origem || 'Não informada'}</td></tr>
-            <tr><th>Endereço</th><td>${lead.endereco || 'Não informado'}</td></tr>
+            <tr><th>Origem</th><td>${lead.origem || 'NÃ£o informada'}</td></tr>
+            <tr><th>EndereÃ§o</th><td>${lead.endereco || 'NÃ£o informado'}</td></tr>
           </table>
         </div>
 
@@ -20848,7 +20848,7 @@ function imprimirDossieComercial() {
           <h2>2. CONTATO PRINCIPAL</h2>
           <table>
             <tr><th>Nome do Contato</th><td>${lead.contato_nome || '-'}</td></tr>
-            <tr><th>Cargo / Função</th><td>${lead.contato_cargo || '-'}</td></tr>
+            <tr><th>Cargo / FunÃ§Ã£o</th><td>${lead.contato_cargo || '-'}</td></tr>
             <tr><th>Telefone</th><td>${lead.contato_telefone || '-'}</td></tr>
             <tr><th>E-mail</th><td>${lead.contato_email || '-'}</td></tr>
           </table>
@@ -20859,18 +20859,18 @@ function imprimirDossieComercial() {
           <table>
             <tr><th>Quantidade de Postos / Vagas</th><td>${lead.vagas_estimadas || '0'}</td></tr>
             <tr><th>Valor Mensal Estimado / Fechado</th><td>${valorFmt}</td></tr>
-            <tr><th>Observações Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
+            <tr><th>ObservaÃ§Ãµes Iniciais</th><td>${lead.observacoes || '-'}</td></tr>
           </table>
         </div>
 
         <div class="section" style="page-break-inside: avoid;">
-          <h2>4. HISTÓRICO DE INTERAÇÕES E NEGOCIAÇÃO</h2>
+          <h2>4. HISTÃ“RICO DE INTERAÃ‡Ã•ES E NEGOCIAÃ‡ÃƒO</h2>
           <div style="background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
             ${htmlInteracoes}
           </div>
         </div>
 
-        <button class="print-btn" onclick="window.print()">IMPRIMIR DOSSIÊ</button>
+        <button class="print-btn" onclick="window.print()">IMPRIMIR DOSSIÃŠ</button>
       </body>
     </html>
   `);
@@ -20886,7 +20886,7 @@ function filtrarSelectLista(inputId, selectId) {
   const select = document.getElementById(selectId);
   const options = select.options;
   
-  // Guardar options originais em um atributo se não existir
+  // Guardar options originais em um atributo se nÃ£o existir
   if (!select.hasAttribute('data-original-options')) {
     const originalHtml = select.innerHTML;
     select.setAttribute('data-original-options', originalHtml);
@@ -20911,7 +20911,7 @@ window.filtrarSelectLista = filtrarSelectLista;
 
 function abrirModalServicoExtra() {
   document.getElementById('extraData').value = new Date().toISOString().split('T')[0];
-  document.getElementById('extraMotivo').value = 'Serviço Extra / Avulso';
+  document.getElementById('extraMotivo').value = 'ServiÃ§o Extra / Avulso';
   
   const selCliente = document.getElementById('extraClienteId');
   selCliente.innerHTML = '<option value="">Selecione o Cliente / Base...</option>' + state.clientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome_razao_social}</option>`).join('');
@@ -20929,7 +20929,7 @@ function abrirModalServicoExtra() {
   
   selFree.innerHTML = html;
   
-  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> Lançar Pagamento Avulso / Dobra Extra';
+  document.getElementById('modalServicoExtraTitulo').innerHTML = '<i class="fa-solid fa-hand-holding-dollar text-emerald-300"></i> LanÃ§ar Pagamento Avulso / Dobra Extra';
   document.getElementById('modalServicoExtra').classList.remove('hidden');
 }
 
@@ -20946,7 +20946,7 @@ async function salvarServicoExtra(e) {
     data_falta: document.getElementById('extraData').value,
     cliente_id: parseInt(document.getElementById('extraClienteId').value, 10),
     unidade_id: null,
-    colaborador_id: 180, // [SISTEMA] SERVIÇO EXTRA
+    colaborador_id: 180, // [SISTEMA] SERVIÃ‡O EXTRA
     motivo_falta: document.getElementById('extraMotivo').value,
     dias_afastamento: 1,
     houve_cobertura: 1,
@@ -20954,7 +20954,7 @@ async function salvarServicoExtra(e) {
     freelancer_id: isFree ? profId : null,
     cobertor_colaborador_id: !isFree ? profId : null,
     valor_pago_freelance: parseFloat(document.getElementById('extraValor').value) || 0,
-    observacoes_operacao: 'Lançamento de Pagamento Avulso / Dobra'
+    observacoes_operacao: 'LanÃ§amento de Pagamento Avulso / Dobra'
   };
 
   try {
@@ -20973,7 +20973,7 @@ async function salvarServicoExtra(e) {
       alert(result.message || 'Erro ao registrar.');
     }
   } catch (err) {
-    alert('Erro de conexão.');
+    alert('Erro de conexÃ£o.');
   }
 }
 window.abrirModalServicoExtra = abrirModalServicoExtra;
@@ -20985,7 +20985,7 @@ window.salvarServicoExtra = salvarServicoExtra;
 
 
 // =====================================
-// INTELIGÊNCIA DE UNIFORMES
+// INTELIGÃŠNCIA DE UNIFORMES
 // =====================================
 
 let colabsUniformesCache = [];
@@ -21076,7 +21076,7 @@ async function salvarMedidasColab(id) {
       alert('Erro ao salvar.');
     }
   } catch (err) {
-    alert('Erro de conexão.');
+    alert('Erro de conexÃ£o.');
   }
 }
 
@@ -21117,7 +21117,7 @@ async function gerarNecessidadesUniformes() {
 function renderTabelaNecessidades() {
   const tbody = document.getElementById('tabelaNecessidadesUniformes');
   if (necessidadesGeradas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhum item necessário no momento.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhum item necessÃ¡rio no momento.</td></tr>';
     return;
   }
   
@@ -21144,7 +21144,7 @@ function renderTabelaNecessidades() {
   // Linha de TOTAL GERAL
   tbody.innerHTML += `
     <tr class="bg-slate-100 border-t border-slate-300">
-      <td colspan="5" class="px-4 py-4 text-right font-bold text-slate-700 uppercase">Total do Orçamento:</td>
+      <td colspan="5" class="px-4 py-4 text-right font-bold text-slate-700 uppercase">Total do OrÃ§amento:</td>
       <td class="px-4 py-4 font-black text-emerald-700 text-lg" id="total-geral-unif">R$ 0,00</td>
     </tr>
   `;
@@ -21168,7 +21168,7 @@ function calcTotalUnif(index) {
 }
 
 function salvarOrcamentoUniforme() {
-  alert('Funcionalidade de salvar PDF / Aprovação de Uniformes em desenvolvimento! Por enquanto, você pode imprimir esta tela.');
+  alert('Funcionalidade de salvar PDF / AprovaÃ§Ã£o de Uniformes em desenvolvimento! Por enquanto, vocÃª pode imprimir esta tela.');
   window.print();
 }
 
@@ -21189,10 +21189,10 @@ async function importarCsvMedidas() {
   const file = fileInput.files[0];
   
   if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
-    return alert('ATENÇÃO: Este botão é exclusivo para importar o CSV com as MEDIDAS de roupas dos colaboradores.\n\nSe você quer importar a Matriz de Uniformes (com Regras e Valores), feche esta janela e clique no botão verde "Importar Planilha" na tela de Uniformes.');
+    return alert('ATENÃ‡ÃƒO: Este botÃ£o Ã© exclusivo para importar o CSV com as MEDIDAS de roupas dos colaboradores.\n\nSe vocÃª quer importar a Matriz de Uniformes (com Regras e Valores), feche esta janela e clique no botÃ£o verde "Importar Planilha" na tela de Uniformes.');
   }
 
-  if (!confirm('Deseja importar e sobrescrever os tamanhos com base neste arquivo CSV? As colunas devem estar na ordem: Nome, Sexo, Função, Supervisor, Camisa, Calça, Sapato, Jaqueta, Blazer')) return;
+  if (!confirm('Deseja importar e sobrescrever os tamanhos com base neste arquivo CSV? As colunas devem estar na ordem: Nome, Sexo, FunÃ§Ã£o, Supervisor, Camisa, CalÃ§a, Sapato, Jaqueta, Blazer')) return;
   
   const text = await file.text();
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
@@ -21258,7 +21258,7 @@ async function importarCsvMedidas() {
     }
   }
   
-  alert(`Importação concluída! ${successCount} colaboradores foram atualizados com base no nome.`);
+  alert(`ImportaÃ§Ã£o concluÃ­da! ${successCount} colaboradores foram atualizados com base no nome.`);
   fileInput.value = '';
 }
 window.importarCsvMedidas = importarCsvMedidas;
@@ -21316,7 +21316,7 @@ async function salvarNovaRegraUniforme() {
   const t = document.getElementById('novaRegraTamanhos').value.trim();
   
   
-  if(!f || !i) return alert('Cargo e Peça são obrigatórios!');
+  if(!f || !i) return alert('Cargo e PeÃ§a sÃ£o obrigatÃ³rios!');
   
   const url = window.editingRegraId ? `/api/uniformes/regras/${window.editingRegraId}` : '/api/uniformes/regras';
   const method = window.editingRegraId ? 'PUT' : 'POST';
@@ -21348,7 +21348,7 @@ window.adicionarNovoItemCatalogo = async function() {
   const fornecedor = document.getElementById('novoCatFornecedor').value;
   const valor = document.getElementById('novoCatValor').value;
 
-  if (!nome) return alert('Digite o nome da peça.');
+  if (!nome) return alert('Digite o nome da peÃ§a.');
 
   try {
     const res = await fetch('/api/uniformes/catalogo', {
@@ -21370,7 +21370,7 @@ window.adicionarNovoItemCatalogo = async function() {
 
 async function carregarCatalogoUniformes() {
   const tbody = document.getElementById('tabelaCatalogoUniformes');
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-500">Carregando catálogo...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-slate-500">Carregando catÃ¡logo...</td></tr>';
   try {
     if(fornecedoresListaUniformes.length === 0) {
       const rf = await fetch('/api/uniformes/fornecedores');
@@ -21431,7 +21431,7 @@ async function salvarItemCatalogo(id, nome) {
 async function gerarNecessidadesUniformes() {
   const container = document.getElementById('resultadoOrcamentoUniformes');
   container.classList.remove('hidden');
-  container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Calculando necessidades e orçamentos...</div>';
+  container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Calculando necessidades e orÃ§amentos...</div>';
   
   try {
     const res = await fetch('/api/uniformes/gerar-necessidades');
@@ -21477,12 +21477,12 @@ async function gerarNecessidadesUniformes() {
           <table class="w-full text-left text-sm whitespace-nowrap">
             <thead class="bg-slate-100 text-slate-600">
               <tr>
-              <th class="px-4 py-2">Peça</th>
+              <th class="px-4 py-2">PeÃ§a</th>
               <th class="px-4 py-2">Tamanho</th>
               <th class="px-4 py-2 text-center" title="Quantidade solicitada na planilha">Qtd Req.</th>
               <th class="px-4 py-2 text-center" title="Quantidade para o estoque">Adicional</th>
               <th class="px-4 py-2 text-center" title="Soma total do pedido">Qtd Final</th>
-              <th class="px-4 py-2 text-right">Val. Unitário</th>
+              <th class="px-4 py-2 text-right">Val. UnitÃ¡rio</th>
               <th class="px-4 py-2 text-right">Subtotal</th>
             </tr>
             </thead>
@@ -21507,7 +21507,7 @@ async function gerarNecessidadesUniformes() {
     }
     
     if(Object.keys(porFornecedor).length === 0) {
-      container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessário.</div>';
+      container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessÃ¡rio.</div>';
     } else {
       container.innerHTML = html + `
         <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-5 flex justify-between items-center mt-6">
@@ -21520,7 +21520,7 @@ async function gerarNecessidadesUniformes() {
   } catch(e) { console.error(e); }
 }
 
-// Sobrescreve a global de carregarComprasMultiPredios (apenas para garantir que ele ative matriz no início)
+// Sobrescreve a global de carregarComprasMultiPredios (apenas para garantir que ele ative matriz no inÃ­cio)
 setTimeout(() => { trocarAbaUniformes('aba-uniformes-matriz'); }, 1000);
 
 window.trocarAbaUniformes = trocarAbaUniformes;
@@ -21541,7 +21541,7 @@ window.gerarOrcamentoViaPlanilha = async function() {
   
   const container = document.getElementById('resultadoOrcamentoUniformes');
   container.classList.remove('hidden');
-  container.innerHTML = '<div class="text-center py-8 text-indigo-600"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Lendo planilha e calculando orçamentos externos...</div>';
+  container.innerHTML = '<div class="text-center py-8 text-indigo-600"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Lendo planilha e calculando orÃ§amentos externos...</div>';
   
   try {
     const resRegras = await fetch('/api/uniformes/regras');
@@ -21564,11 +21564,11 @@ window.gerarOrcamentoViaPlanilha = async function() {
           const nome = extrairCampoPlanilha(row, ['nome', 'colaborador', 'nome do colaborador']);
           if (!nome) continue;
           
-          const sexo = extrairCampoPlanilha(row, ['sexo', 'genero', 'gênero']).toUpperCase();
-          const funcao = extrairCampoPlanilha(row, ['funcao', 'função', 'cargo']).toUpperCase();
+          const sexo = extrairCampoPlanilha(row, ['sexo', 'genero', 'gÃªnero']).toUpperCase();
+          const funcao = extrairCampoPlanilha(row, ['funcao', 'funÃ§Ã£o', 'cargo']).toUpperCase();
           
           const tCamisa = extrairCampoPlanilha(row, ['camisa', 'tamanho_camisa', 'tamanho camisa']);
-          const tCalca = extrairCampoPlanilha(row, ['calca', 'calça', 'tamanho calca', 'tamanho_calca']);
+          const tCalca = extrairCampoPlanilha(row, ['calca', 'calÃ§a', 'tamanho calca', 'tamanho_calca']);
           const tSapato = extrairCampoPlanilha(row, ['sapato', 'tamanho sapato', 'tamanho_sapato']);
           const tJaqueta = extrairCampoPlanilha(row, ['jaqueta', 'tamanho jaqueta', 'tamanho_jaqueta']);
           const tBlazer = extrairCampoPlanilha(row, ['blazer', 'tamanho blazer', 'tamanho_blazer']);
@@ -21576,14 +21576,14 @@ window.gerarOrcamentoViaPlanilha = async function() {
           const regrasAplicaveis = regras.filter(r => r.funcao === 'TODOS' || (funcao && funcao.includes(r.funcao.toUpperCase())));
           
           for (const r of regrasAplicaveis) {
-            if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS') {
+            if (r.sexo_aplicavel && r.sexo_aplicavel !== 'TODOS' && r.sexo_aplicavel !== 'UNISSEX') {
               if (!sexo.includes(r.sexo_aplicavel.toUpperCase())) continue;
             }
             
             let tam = '';
             const itemUpper = r.item.toUpperCase();
             if (itemUpper.includes('CAMISA') || itemUpper.includes('JALECO') || itemUpper.includes('POLO')) tam = tCamisa;
-            else if (itemUpper.includes('CALÇA') || itemUpper.includes('CALCA')) tam = tCalca;
+            else if (itemUpper.includes('CALÃ‡A') || itemUpper.includes('CALCA')) tam = tCalca;
             else if (itemUpper.includes('SAPATO') || itemUpper.includes('BOTA') || itemUpper.includes('BOTINA')) tam = tSapato;
             else if (itemUpper.includes('JAQUETA')) tam = tJaqueta;
             else if (itemUpper.includes('BLAZER') || itemUpper.includes('COLETE')) tam = tBlazer;
@@ -21626,7 +21626,7 @@ window.gerarOrcamentoViaPlanilha = async function() {
           f.total_fornecedor += (n.quantidade * n.valor_unitario);
         });
         
-        renderizarResultadoOrcamentoUniformes(porFornecedor, "Orçamento de Planilha Externa");
+        renderizarResultadoOrcamentoUniformes(porFornecedor, "OrÃ§amento de Planilha Externa");
         fileInput.value = '';
       } catch (err) {
         alert('Erro ao processar planilha: ' + err.message);
@@ -21705,7 +21705,7 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
 
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-100 text-slate-600">
-            <tr><th class="px-4 py-2">Peça</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center" title="Qtd Solicitada">Qtd Req.</th><th class="px-4 py-2 text-center" title="Qtd Estoque Adicional">Adicional</th><th class="px-4 py-2 text-center">Qtd Final</th><th class="px-4 py-2 text-right">Val. Unitário</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
+            <tr><th class="px-4 py-2">PeÃ§a</th><th class="px-4 py-2">Tamanho</th><th class="px-4 py-2 text-center" title="Qtd Solicitada">Qtd Req.</th><th class="px-4 py-2 text-center" title="Qtd Estoque Adicional">Adicional</th><th class="px-4 py-2 text-center">Qtd Final</th><th class="px-4 py-2 text-right">Val. UnitÃ¡rio</th><th class="px-4 py-2 text-right">Subtotal</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             ${Object.values(dados.itens).sort((a, b) => a.item.localeCompare(b.item) || String(a.tamanho).localeCompare(String(b.tamanho))).map(i => `
@@ -21728,7 +21728,7 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
   }
   
   if(Object.keys(porFornecedor).length === 0) {
-    container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessário cruzado com esta base.</div>';
+    container.innerHTML = '<div class="text-center py-8 text-slate-500">Nenhum item necessÃ¡rio cruzado com esta base.</div>';
   } else {
     container.innerHTML = html + `
       
@@ -21753,7 +21753,7 @@ function renderizarResultadoOrcamentoUniformes(porFornecedor, tituloAviso) {
 async function gerarNecessidadesUniformes() {
   const container = document.getElementById('resultadoOrcamentoUniformes');
   container.classList.remove('hidden');
-  container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Calculando necessidades e orçamentos da Base...</div>';
+  container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Calculando necessidades e orÃ§amentos da Base...</div>';
   
   try {
     const res = await fetch('/api/uniformes/gerar-necessidades');
@@ -21782,8 +21782,8 @@ async function gerarNecessidadesUniformes() {
 window.baixarModeloCsvUniformes = function() {
   const wb = XLSX.utils.book_new();
   const dados = [
-    { 'NOME DO COLABORADOR': 'EXEMPLO DA SILVA', 'SEXO': 'MASCULINO', 'FUNÇÁO': 'PORTEIRO', 'SUPERVISOR RESPONSAVEL': 'JOÁO DIAS', 'TAMANHO CAMISA': 'M', 'TAMANHO CALÇA': '42', 'TAMANHO SAPATO': '40', 'TAMANHO JAQUETA': 'M', 'TAMANHO BLAZER': '44' },
-    { 'NOME DO COLABORADOR': 'MARIA EXEMPLO', 'SEXO': 'FEMININO', 'FUNÇÁO': 'RECEPCIONISTA', 'SUPERVISOR RESPONSAVEL': 'MARIA GOMES', 'TAMANHO CAMISA': 'P', 'TAMANHO CALÇA': '38', 'TAMANHO SAPATO': '36', 'TAMANHO JAQUETA': 'P', 'TAMANHO BLAZER': '38' }
+    { 'NOME DO COLABORADOR': 'EXEMPLO DA SILVA', 'SEXO': 'MASCULINO', 'FUNÃ‡ÃO': 'PORTEIRO', 'SUPERVISOR RESPONSAVEL': 'JOÃO DIAS', 'TAMANHO CAMISA': 'M', 'TAMANHO CALÃ‡A': '42', 'TAMANHO SAPATO': '40', 'TAMANHO JAQUETA': 'M', 'TAMANHO BLAZER': '44' },
+    { 'NOME DO COLABORADOR': 'MARIA EXEMPLO', 'SEXO': 'FEMININO', 'FUNÃ‡ÃO': 'RECEPCIONISTA', 'SUPERVISOR RESPONSAVEL': 'MARIA GOMES', 'TAMANHO CAMISA': 'P', 'TAMANHO CALÃ‡A': '38', 'TAMANHO SAPATO': '36', 'TAMANHO JAQUETA': 'P', 'TAMANHO BLAZER': '38' }
   ];
   const ws = XLSX.utils.json_to_sheet(dados);
   XLSX.utils.book_append_sheet(wb, ws, "Orcamento");
@@ -21793,7 +21793,7 @@ window.baixarModeloCsvUniformes = function() {
 
 
 // =====================================
-// ADMISSÕES (FLUXO DE APROVAÇÁO)
+// ADMISSÃ•ES (FLUXO DE APROVAÃ‡ÃO)
 // =====================================
 
 let currentAdmissaoId = null;
@@ -21802,7 +21802,7 @@ let currentAdmissaoData = null;
 async function carregarAdmissoesPendentes() {
   const tbody = document.getElementById('tabelaAdmissoesBody');
   if(!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando solicitações...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Carregando solicitaÃ§Ãµes...</td></tr>';
   
   try {
     const res = await fetch('/api/admissoes');
@@ -21817,7 +21817,7 @@ async function carregarAdmissoesPendentes() {
     }
     
     if (adms.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500">Nenhuma solicitação de admissão encontrada.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500">Nenhuma solicitaÃ§Ã£o de admissÃ£o encontrada.</td></tr>';
       return;
     }
     
@@ -21832,7 +21832,7 @@ async function carregarAdmissoesPendentes() {
       return `
       <tr class="hover:bg-slate-50">
         <td class="px-4 py-3 text-xs text-slate-500">${new Date(a.created_at).toLocaleString('pt-BR')}</td>
-        <td class="px-4 py-3 font-bold text-slate-800">${a.nome}<br><span class="text-[10px] font-normal text-slate-500">CPF: ${a.cpf || 'Não inf.'}</span></td>
+        <td class="px-4 py-3 font-bold text-slate-800">${a.nome}<br><span class="text-[10px] font-normal text-slate-500">CPF: ${a.cpf || 'NÃ£o inf.'}</span></td>
         <td class="px-4 py-3 text-xs text-slate-600">${a.cargo_nome || 'N/A'}<br><span class="font-bold text-indigo-700">${a.posto_nome || 'N/A'}</span></td>
         <td class="px-4 py-3 text-xs text-slate-600"><i class="fa-solid fa-user-pen mr-1"></i> ${a.solicitante_nome || 'Desconhecido'}</td>
         <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusColor}">${a.status}</span></td>
@@ -21846,7 +21846,7 @@ async function carregarAdmissoesPendentes() {
     
   } catch(e) {
     console.error(e);
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Erro ao carregar solicitações.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Erro ao carregar solicitaÃ§Ãµes.</td></tr>';
   }
 }
 
@@ -21868,15 +21868,15 @@ async function abrirInteracaoAdmissao(admObj) {
   const user = state.usuarioLogado;
   const isAutorizador = user && (user.pode_autorizar_admissao === 1 || user.login === 'admin');
   
-  const btnImprimir = `<button onclick="imprimirDossieAdmissao()" class="bg-slate-600 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2" title="Imprimir Dossiê em PDF"><i class="fa-solid fa-print"></i> Dossiê PDF</button>`;
+  const btnImprimir = `<button onclick="imprimirDossieAdmissao()" class="bg-slate-600 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2" title="Imprimir DossiÃª em PDF"><i class="fa-solid fa-print"></i> DossiÃª PDF</button>`;
   if (!admObj.status.includes('Autorizado') && !admObj.status.includes('Reprovado')) {
     if (isAutorizador) {
       botoes.innerHTML = `
-        <button onclick="aprovarAdmissao(${admObj.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-check"></i> Aprovar Admissão</button>
+        <button onclick="aprovarAdmissao(${admObj.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm"><i class="fa-solid fa-check"></i> Aprovar AdmissÃ£o</button>
         <button onclick="reprovarAdmissao(${admObj.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-xs shadow-sm ml-2"><i class="fa-solid fa-ban"></i> Reprovar</button>
       ` + btnImprimir;
     } else {
-      botoes.innerHTML = `<span class="text-xs text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando Autorização da Gerência</span>` + btnImprimir;
+      botoes.innerHTML = `<span class="text-xs text-amber-600 font-bold bg-amber-100 px-2 py-1 rounded">Aguardando AutorizaÃ§Ã£o da GerÃªncia</span>` + btnImprimir;
     }
   } else {
     botoes.innerHTML = `<span class="text-xs font-bold px-2 py-1 rounded ${admObj.status === 'Autorizado' ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100'}">${admObj.status}</span>` + btnImprimir;
@@ -21893,7 +21893,7 @@ async function carregarMensagensAdmissao(id) {
     const res = await fetch(`/api/admissoes/${id}/mensagens`);
     const msgs = await res.json();
     if(msgs.length === 0) {
-      lista.innerHTML = '<div class="text-center text-xs text-slate-400 py-2 italic">Nenhuma interação registrada ainda. Envie o primeiro questionamento.</div>';
+      lista.innerHTML = '<div class="text-center text-xs text-slate-400 py-2 italic">Nenhuma interaÃ§Ã£o registrada ainda. Envie o primeiro questionamento.</div>';
       return;
     }
     
@@ -21901,7 +21901,7 @@ async function carregarMensagensAdmissao(id) {
       const isMe = (state.usuarioLogado && m.usuario_nome === state.usuarioLogado.nome);
       return `
         <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
-           <span class="text-[10px] text-slate-400 font-bold mb-0.5 ml-1">${m.usuario_nome} • ${new Date(m.created_at).toLocaleString('pt-BR').slice(0,16)}</span>
+           <span class="text-[10px] text-slate-400 font-bold mb-0.5 ml-1">${m.usuario_nome} â€¢ ${new Date(m.created_at).toLocaleString('pt-BR').slice(0,16)}</span>
            <div class="px-3 py-2 rounded-xl text-sm shadow-sm max-w-[85%] ${isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none'}">
               ${m.mensagem}
            </div>
@@ -21924,7 +21924,7 @@ async function enviarMensagemAdmissao() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        usuario_nome: state.usuarioLogado ? state.usuarioLogado.nome : 'Usuário',
+        usuario_nome: state.usuarioLogado ? state.usuarioLogado.nome : 'UsuÃ¡rio',
         mensagem: txt
       })
     });
@@ -21935,7 +21935,7 @@ async function enviarMensagemAdmissao() {
 }
 
 async function aprovarAdmissao(id) {
-  if(!confirm('Tem certeza que deseja AUTORIZAR esta admissão?\nO colaborador entrará imediatamente no sistema e aparecerá no quadro de funcionários ativos.')) return;
+  if(!confirm('Tem certeza que deseja AUTORIZAR esta admissÃ£o?\nO colaborador entrarÃ¡ imediatamente no sistema e aparecerÃ¡ no quadro de funcionÃ¡rios ativos.')) return;
   
   try {
     const res = await fetch(`/api/admissoes/${id}/aprovar`, {
@@ -21959,11 +21959,11 @@ async function aprovarAdmissao(id) {
 }
 
 async function reprovarAdmissao(id) {
-  if(!confirm('Tem certeza que deseja REPROVAR esta admissão?\nA solicitação será cancelada e ele não entrará no sistema.')) return;
+  if(!confirm('Tem certeza que deseja REPROVAR esta admissÃ£o?\nA solicitaÃ§Ã£o serÃ¡ cancelada e ele nÃ£o entrarÃ¡ no sistema.')) return;
   
   try {
     await fetch(`/api/admissoes/${id}/reprovar`, { method: 'POST' });
-    alert('Admissão reprovada/cancelada com sucesso.');
+    alert('AdmissÃ£o reprovada/cancelada com sucesso.');
     fecharModal('modalInteracaoAdmissao');
     carregarAdmissoesPendentes(); verificarAdmissoesPendentesGlobal();
   } catch(e) { console.error(e); }
@@ -22027,14 +22027,14 @@ async function verificarAdmissoesPendentesGlobal() {
     const bannerTexto = document.getElementById('bannerAlertaAdmissoesTexto');
     if (banner && bannerTexto) {
       if (pendentesCount > 0) {
-        bannerTexto.innerHTML = `Você possui <b>${pendentesCount} solicitações</b> de admissão aguardando aprovação ou com mensagens novas!`;
+        bannerTexto.innerHTML = `VocÃª possui <b>${pendentesCount} solicitaÃ§Ãµes</b> de admissÃ£o aguardando aprovaÃ§Ã£o ou com mensagens novas!`;
         banner.classList.remove('hidden');
       } else {
         banner.classList.add('hidden');
       }
     }
     
-    // Atualiza o badge no botão da aba de colaboradores (se a aba estiver aberta)
+    // Atualiza o badge no botÃ£o da aba de colaboradores (se a aba estiver aberta)
     const badge = document.getElementById('badgeAdmissoesPendentes');
     if (badge) {
        if(pendentesCount > 0) { badge.textContent = pendentesCount; badge.classList.remove('hidden'); }
@@ -22045,7 +22045,7 @@ async function verificarAdmissoesPendentesGlobal() {
   }
 }
 
-// Injetar a chamada na inicialização autenticada e a cada 30 segundos
+// Injetar a chamada na inicializaÃ§Ã£o autenticada e a cada 30 segundos
 const originalIniciarAplicacaoAutenticada = iniciarAplicacaoAutenticada;
 window.iniciarAplicacaoAutenticada = function() {
   originalIniciarAplicacaoAutenticada();
@@ -22062,7 +22062,7 @@ window.imprimirDossieAdmissao = function() {
   
   const w = window.open('', '_blank');
   w.document.write(`
-    <html><head><title>Dossiê de Admissão - ${a.nome}</title>
+    <html><head><title>DossiÃª de AdmissÃ£o - ${a.nome}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
       h1 { font-size: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
@@ -22075,15 +22075,15 @@ window.imprimirDossieAdmissao = function() {
       .sig-line { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px; font-weight: bold; }
     </style></head>
     <body>
-       <h1>Dossiê de Solicitação e Aprovação de Admissão</h1>
+       <h1>DossiÃª de SolicitaÃ§Ã£o e AprovaÃ§Ã£o de AdmissÃ£o</h1>
        
-       <h2>1. Dados Gerais da Solicitação</h2>
+       <h2>1. Dados Gerais da SolicitaÃ§Ã£o</h2>
        <table>
          <tr><th>Protocolo / ID</th><td>#${a.id}</td></tr>
-         <tr><th>Data da Solicitação</th><td>${new Date(a.created_at).toLocaleString('pt-BR')}</td></tr>
+         <tr><th>Data da SolicitaÃ§Ã£o</th><td>${new Date(a.created_at).toLocaleString('pt-BR')}</td></tr>
          <tr><th>Status Atual</th><td><strong>${a.status}</strong></td></tr>
          <tr><th>Solicitante (Operacional)</th><td>${a.solicitante_nome || 'N/A'}</td></tr>
-         ${a.gerencia_aprovado_por ? `<tr><th>Aprovado Por (Gerência)</th><td>${a.gerencia_aprovado_por} em ${new Date(a.gerencia_aprovado_em).toLocaleString('pt-BR')}</td></tr>` : ''}
+         ${a.gerencia_aprovado_por ? `<tr><th>Aprovado Por (GerÃªncia)</th><td>${a.gerencia_aprovado_por} em ${new Date(a.gerencia_aprovado_em).toLocaleString('pt-BR')}</td></tr>` : ''}
        </table>
 
        <h2>2. Dados Pessoais do Colaborador</h2>
@@ -22091,27 +22091,27 @@ window.imprimirDossieAdmissao = function() {
          <tr><th>Nome Completo</th><td>${cBody.nome || a.nome}</td></tr>
          <tr><th>CPF</th><td>${cBody.cpf || a.cpf || '-'}</td></tr>
          <tr><th>RG</th><td>${cBody.rg || '-'}</td></tr>
-         <tr><th>Matrícula (Se aplicável)</th><td>${cBody.matricula || '-'}</td></tr>
+         <tr><th>MatrÃ­cula (Se aplicÃ¡vel)</th><td>${cBody.matricula || '-'}</td></tr>
          <tr><th>Data de Nascimento</th><td>${cBody.data_nascimento ? new Date(cBody.data_nascimento).toLocaleDateString('pt-BR') : '-'}</td></tr>
          <tr><th>PIS / NIS</th><td>${cBody.pis || '-'}</td></tr>
          <tr><th>Estado Civil</th><td>${cBody.estado_civil || '-'}</td></tr>
-         <tr><th>Filhos Menores?</th><td>${cBody.tem_filhos === 'Sim' ? 'Sim' : 'Não'}</td></tr>
+         <tr><th>Filhos Menores?</th><td>${cBody.tem_filhos === 'Sim' ? 'Sim' : 'NÃ£o'}</td></tr>
        </table>
        
        <h2>3. Dados Operacionais (Vaga)</h2>
        <table>
          <tr><th>Cliente / Posto</th><td>${a.cliente_nome || '-'} / ${a.posto_nome || '-'}</td></tr>
-         <tr><th>Função / Cargo</th><td>${a.cargo_nome || '-'}</td></tr>
+         <tr><th>FunÃ§Ã£o / Cargo</th><td>${a.cargo_nome || '-'}</td></tr>
          <tr><th>Escala de Trabalho</th><td>${cBody.escala || a.escala || '-'}</td></tr>
-         <tr><th>Salário Base Proposto</th><td>R$ ${Number(cBody.salario_base||0).toFixed(2)}</td></tr>
+         <tr><th>SalÃ¡rio Base Proposto</th><td>R$ ${Number(cBody.salario_base||0).toFixed(2)}</td></tr>
          <tr><th>Adicionais (Insalubridade/Periculosidade)</th><td>R$ ${Number(cBody.periculosidade_insalubridade||0).toFixed(2)}</td></tr>
-         <tr><th>Valor Vale Transporte (Diário)</th><td>R$ ${Number(cBody.vt_valor||0).toFixed(2)}</td></tr>
-         <tr><th>Valor Vale Alimentação (Diário)</th><td>R$ ${Number(cBody.va_vr_valor||0).toFixed(2)}</td></tr>
+         <tr><th>Valor Vale Transporte (DiÃ¡rio)</th><td>R$ ${Number(cBody.vt_valor||0).toFixed(2)}</td></tr>
+         <tr><th>Valor Vale AlimentaÃ§Ã£o (DiÃ¡rio)</th><td>R$ ${Number(cBody.va_vr_valor||0).toFixed(2)}</td></tr>
        </table>
        
        <div class="signature">
          <div class="sig-line">${a.solicitante_nome || 'Operacional RH'}<br><span style="font-size:10px;font-weight:normal">Assinatura do Solicitante</span></div>
-         <div class="sig-line">${a.gerencia_aprovado_por || 'Gerência / Auditoria'}<br><span style="font-size:10px;font-weight:normal">Assinatura da Aprovação</span></div>
+         <div class="sig-line">${a.gerencia_aprovado_por || 'GerÃªncia / Auditoria'}<br><span style="font-size:10px;font-weight:normal">Assinatura da AprovaÃ§Ã£o</span></div>
        </div>
        
        <div class="footer">Gerado por SISFAC 2.0 em ${new Date().toLocaleString('pt-BR')}</div>
@@ -22127,17 +22127,17 @@ window.imprimirDossieAdmissao = function() {
 
 window.factoryResetSistema = async function() {
   if (!state.usuarioLogado || state.usuarioLogado.login !== 'admin') {
-     return alert('Apenas o Administrador Master tem permissão para realizar esta ação.');
+     return alert('Apenas o Administrador Master tem permissÃ£o para realizar esta aÃ§Ã£o.');
   }
   
-  const code = prompt('ATENÇÁO EXTREMA: Esta ação irá APAGAR TODOS os colaboradores, admissões, comunicados e dados financeiros.\n\nConfigurações como Usuários, Cargos, Clientes, Postos e Regras de Uniforme serão MANTIDAS.\n\nPara confirmar, digite o código de segurança: ZerarSistema2026');
+  const code = prompt('ATENÃ‡ÃO EXTREMA: Esta aÃ§Ã£o irÃ¡ APAGAR TODOS os colaboradores, admissÃµes, comunicados e dados financeiros.\n\nConfiguraÃ§Ãµes como UsuÃ¡rios, Cargos, Clientes, Postos e Regras de Uniforme serÃ£o MANTIDAS.\n\nPara confirmar, digite o cÃ³digo de seguranÃ§a: ZerarSistema2026');
   
   if (code !== 'ZerarSistema2026') {
-     if (code !== null) alert('Código inválido. Operação cancelada.');
+     if (code !== null) alert('CÃ³digo invÃ¡lido. OperaÃ§Ã£o cancelada.');
      return;
   }
   
-  if (!confirm('Você tem CERTEZA ABSOLUTA? Esta ação NÁO pode ser desfeita e todos os dados operacionais desaparecerão imediatamente.')) return;
+  if (!confirm('VocÃª tem CERTEZA ABSOLUTA? Esta aÃ§Ã£o NÃO pode ser desfeita e todos os dados operacionais desaparecerÃ£o imediatamente.')) return;
   
   try {
      const res = await fetch('/api/factory-reset', {
@@ -22151,13 +22151,13 @@ window.factoryResetSistema = async function() {
      
      const j = await res.json();
      if (res.ok && j.success) {
-        alert('SUCESSO: ' + j.message + '\n\nO sistema recarregará agora.');
+        alert('SUCESSO: ' + j.message + '\n\nO sistema recarregarÃ¡ agora.');
         window.location.reload();
      } else {
         alert('ERRO: ' + (j.message || 'Falha ao processar'));
      }
   } catch(e) {
-     alert('Erro crítico: ' + e.message);
+     alert('Erro crÃ­tico: ' + e.message);
   }
 };
 
@@ -22172,10 +22172,10 @@ window.baixarModeloMatrizUniformes = function() {
   const wb = XLSX.utils.book_new();
   const dados = [
     { 'FUNCAO': 'PORTEIRO', 'GENERO': 'MASCULINO', 'PECA': 'CAMISA POLO MASCULINA', 'QUANTIDADE': 2, 'PRECO': 45.90, 'FORNECEDOR': 'UNIFORMES LTDA' },
-    { 'FUNCAO': 'PORTEIRO', 'GENERO': 'MASCULINO', 'PECA': 'CALÇA SOCIAL', 'QUANTIDADE': 2, 'PRECO': 55.00, 'FORNECEDOR': 'UNIFORMES LTDA' },
+    { 'FUNCAO': 'PORTEIRO', 'GENERO': 'MASCULINO', 'PECA': 'CALÃ‡A SOCIAL', 'QUANTIDADE': 2, 'PRECO': 55.00, 'FORNECEDOR': 'UNIFORMES LTDA' },
     { 'FUNCAO': 'RECEPCIONISTA', 'GENERO': 'FEMININO', 'PECA': 'CAMISA POLO FEMININA', 'QUANTIDADE': 2, 'PRECO': 42.50, 'FORNECEDOR': 'UNIFORMES LTDA' },
-    { 'FUNCAO': 'ASG INSALUBRE 40%', 'GENERO': 'UNISSEX', 'PECA': 'BOTA DE SEGURANÇA', 'QUANTIDADE': 1, 'PRECO': 89.90, 'FORNECEDOR': 'EPI STORE' },
-    { 'FUNCAO': 'SUPERVISOR', 'GENERO': 'TODOS', 'PECA': 'JAQUETA IMPERMEÁVEL', 'QUANTIDADE': 1, 'PRECO': 120.00, 'FORNECEDOR': 'UNIFORMES LTDA' }
+    { 'FUNCAO': 'ASG INSALUBRE 40%', 'GENERO': 'UNISSEX', 'PECA': 'BOTA DE SEGURANÃ‡A', 'QUANTIDADE': 1, 'PRECO': 89.90, 'FORNECEDOR': 'EPI STORE' },
+    { 'FUNCAO': 'SUPERVISOR', 'GENERO': 'TODOS', 'PECA': 'JAQUETA IMPERMEÃVEL', 'QUANTIDADE': 1, 'PRECO': 120.00, 'FORNECEDOR': 'UNIFORMES LTDA' }
   ];
   const ws = XLSX.utils.json_to_sheet(dados);
   XLSX.utils.book_append_sheet(wb, ws, "Matriz_Uniformes");
@@ -22201,15 +22201,15 @@ window.processarImportacaoMatrizUniformes = function() {
       const rows = XLSX.utils.sheet_to_json(firstSheet, { range: headerRowUni });
       
       const payload = rows.map(r => ({
-        funcao: extrairCampoPlanilha(r, ['funcao', 'cargo', 'função']),
-        genero: extrairCampoPlanilha(r, ['genero', 'sexo', 'gênero', 'sexo_aplicavel']),
-        peca: extrairCampoPlanilha(r, ['peca', 'peça', 'item', 'produto', 'epi']),
+        funcao: extrairCampoPlanilha(r, ['funcao', 'cargo', 'funÃ§Ã£o']),
+        genero: extrairCampoPlanilha(r, ['genero', 'sexo', 'gÃªnero', 'sexo_aplicavel']),
+        peca: extrairCampoPlanilha(r, ['peca', 'peÃ§a', 'item', 'produto', 'epi']),
         quantidade: extrairCampoPlanilha(r, ['quantidade', 'qtd']),
-        preco: extrairCampoPlanilha(r, ['preco', 'preço', 'valor', 'valor_unitario', 'custo']),
+        preco: extrairCampoPlanilha(r, ['preco', 'preÃ§o', 'valor', 'valor_unitario', 'custo']),
         fornecedor: extrairCampoPlanilha(r, ['fornecedor', 'empresa'])
       })).filter(x => x.funcao && x.peca);
       
-      if (!payload.length) return alert('Nenhum dado válido encontrado. Certifique-se de que a planilha possui as colunas FUNCAO e PECA.');
+      if (!payload.length) return alert('Nenhum dado vÃ¡lido encontrado. Certifique-se de que a planilha possui as colunas FUNCAO e PECA.');
       
       const res = await fetch('/api/uniformes/importar', {
         method: 'POST',
@@ -22290,12 +22290,12 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
     if(totalGeralBox) totalGeralBox.style.display = 'none';
   }
 
-  const nomeUsuario = state.usuarioLogado ? state.usuarioLogado.nome : 'Usuário Desconhecido';
+  const nomeUsuario = state.usuarioLogado ? state.usuarioLogado.nome : 'UsuÃ¡rio Desconhecido';
   const logoUrl = window.location.origin + '/img/logo_village.jpg';
   
   const w = window.open('', '_blank');
   w.document.write(`
-    <html><head><title>Orçamento de Uniformes ${fornecedorUnico ? '- '+fornecedorUnico : ''}</title>
+    <html><head><title>OrÃ§amento de Uniformes ${fornecedorUnico ? '- '+fornecedorUnico : ''}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 40px; color: #333; margin: 0; }
       .header-doc { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #004d40; padding-bottom: 20px; margin-bottom: 30px; }
@@ -22331,9 +22331,9 @@ window.imprimirOrcamentoUniformesPDF = function(fornecedorUnico = null) {
        <div class="header-doc">
           <img src="${logoUrl}" alt="Village Logo">
           <div class="header-text">
-             <h1>VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</h1>
-             <p>Levantamento e Orçamento de Uniformes</p>
-             <p><strong>Cotação realizada por:</strong> ${nomeUsuario}</p>
+             <h1>VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</h1>
+             <p>Levantamento e OrÃ§amento de Uniformes</p>
+             <p><strong>CotaÃ§Ã£o realizada por:</strong> ${nomeUsuario}</p>
              <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
           </div>
        </div>
@@ -22375,12 +22375,12 @@ window.exportarOrcamentoUniformesExcel = function(fornecedorUnico = null) {
         const tr = r;
         dadosExcel.push({
            'Fornecedor': fornecedor,
-           'Peça': cols[0].innerText.trim(),
+           'PeÃ§a': cols[0].innerText.trim(),
            'Tamanho': cols[1].innerText.trim(),
            'Qtd Req': parseInt(cols[2].innerText.trim(), 10),
            'Adicional': parseInt(cols[3].querySelector('input').value, 10) || 0,
            'Qtd Final': parseInt(cols[4].innerText.trim(), 10),
-           'Valor Unitário': parseFloat(cols[5].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim()),
+           'Valor UnitÃ¡rio': parseFloat(cols[5].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim()),
            'Subtotal': parseFloat(cols[6].innerText.replace('R$', '').replace('.', '').replace(',', '.').trim())
         });
      });
@@ -22410,7 +22410,7 @@ window.editarRegraUniforme = function(id, funcao, item, qtd, sexo, tamanhos) {
   document.getElementById('novaRegraTamanhos').value = tamanhos || '';
   
   const btnSalvar = document.getElementById('btnSalvarRegra');
-  btnSalvar.innerText = 'Salvar Alteração';
+  btnSalvar.innerText = 'Salvar AlteraÃ§Ã£o';
   btnSalvar.classList.remove('bg-teal-600', 'hover:bg-teal-700');
   btnSalvar.classList.add('bg-orange-500', 'hover:bg-orange-600');
   
@@ -22467,13 +22467,13 @@ window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
     
     const frees = Object.values(porFree).sort((a,b) => a.nome.localeCompare(b.nome));
     
-    if(frees.length === 0) return alert('Nenhuma cobertura (Freelancer) encontrada no período/filtros selecionados.');
+    if(frees.length === 0) return alert('Nenhuma cobertura (Freelancer) encontrada no perÃ­odo/filtros selecionados.');
     
     frees.forEach(f => {
        f.items.sort((a,b) => a.data.localeCompare(b.data));
     });
     
-    const nomeUsuario = state.usuarioLogado ? state.usuarioLogado.nome : 'Usuário Desconhecido';
+    const nomeUsuario = state.usuarioLogado ? state.usuarioLogado.nome : 'UsuÃ¡rio Desconhecido';
     const dataHoraStr = new Date().toLocaleString('pt-BR');
     
     if (formato === 'pdf') {
@@ -22481,11 +22481,11 @@ window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
       let htmlPrint = `<div class="header-doc">
         <img src="${logoUrl}" alt="Village Logo">
         <div class="header-text">
-           <h1>VILLAGE ADMINISTRAÇÁO E SERVIÇOS EIRELI</h1>
-           <p>Relatório Consolidado de Coberturas / Freelancers</p>
-           <p><strong>Competência:</strong> ${mes}</p>
+           <h1>VILLAGE ADMINISTRAÃ‡ÃO E SERVIÃ‡OS EIRELI</h1>
+           <p>RelatÃ³rio Consolidado de Coberturas / Freelancers</p>
+           <p><strong>CompetÃªncia:</strong> ${mes}</p>
            <p><strong>Gerado por:</strong> ${nomeUsuario}</p>
-           <p><strong>Emissão:</strong> ${dataHoraStr}</p>
+           <p><strong>EmissÃ£o:</strong> ${dataHoraStr}</p>
         </div>
       </div>`;
       
@@ -22514,7 +22514,7 @@ window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
       </div>`;
       
       const w = window.open('', '_blank');
-      w.document.write(`<html><head><title>Relatório Freelancers</title>
+      w.document.write(`<html><head><title>RelatÃ³rio Freelancers</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 40px; color: #333; margin: 0; }
           .header-doc { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #004d40; padding-bottom: 20px; margin-bottom: 30px; }
@@ -22564,12 +22564,12 @@ window.gerarRelatorioConsolidadoFreelancers = async function(formato) {
     }
     
   } catch(e) {
-    alert('Erro ao gerar relatório: ' + e.message);
+    alert('Erro ao gerar relatÃ³rio: ' + e.message);
   }
 };
 
 // =========================================================
-// ASSINATURAS ELETRÔNICAS (ADMIN)
+// ASSINATURAS ELETRÃ”NICAS (ADMIN)
 // =========================================================
 let docSelecionadoId = null;
 
@@ -22613,7 +22613,7 @@ window.renderizarGestaoAssinaturas = async function() {
              </div>
              
              <div class="mt-4 flex justify-between items-center text-sm">
-                <span class="${perc === 100 ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}">${perc}% Concluído</span>
+                <span class="${perc === 100 ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}">${perc}% ConcluÃ­do</span>
                 <span class="text-indigo-600 font-bold text-xs"><i class="fa-solid fa-users"></i> Gerenciar</span>
              </div>
           </div>
@@ -22689,7 +22689,7 @@ window.salvarNovaAssinatura = function(e) {
             alert(data.error || "Erro");
          }
       } catch(err) {
-         alert("Falha de conexão");
+         alert("Falha de conexÃ£o");
       } finally {
          btn.innerHTML = 'Enviar'; btn.disabled = false;
       }
@@ -22737,7 +22737,7 @@ window.abrirDetalhesAssinatura = async function(id, titulo) {
       document.getElementById('detalhesAssTotal').innerText = envios.length;
       document.getElementById('detalhesAssAssinados').innerText = assinados;
    } catch(err) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexão</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">Erro de conexÃ£o</td></tr>';
    }
 };
 
@@ -22753,7 +22753,7 @@ window.baixarCertificado = function(nome, cpf, dataHora, ip, hash, selfie) {
    const html = `
       <html>
       <head>
-         <title>Certificado de Assinatura Eletrônica</title>
+         <title>Certificado de Assinatura EletrÃ´nica</title>
          <style>
             body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
             .header { text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 20px; margin-bottom: 30px; }
@@ -22771,36 +22771,36 @@ window.baixarCertificado = function(nome, cpf, dataHora, ip, hash, selfie) {
       </head>
       <body>
          <div class="header">
-            <h1>Certificado de Assinatura Eletrônica</h1>
+            <h1>Certificado de Assinatura EletrÃ´nica</h1>
             <p>Village Facilities Services</p>
          </div>
          
          <div class="box">
-            <h3>Dados do Signatário</h3>
+            <h3>Dados do SignatÃ¡rio</h3>
             <table>
                <tr><td class="label">Nome:</td><td>${nome}</td></tr>
                <tr><td class="label">CPF:</td><td>${cpf}</td></tr>
                <tr><td class="label">Data/Hora:</td><td>${d}</td></tr>
-               <tr><td class="label">Endereço de IP:</td><td>${ip || 'Não capturado'}</td></tr>
+               <tr><td class="label">EndereÃ§o de IP:</td><td>${ip || 'NÃ£o capturado'}</td></tr>
             </table>
          </div>
          
          <div class="box">
-            <h3>Validação Biométrica</h3>
-            <p>Foto capturada no momento exato da assinatura via dispositivo do usuário:</p>
+            <h3>ValidaÃ§Ã£o BiomÃ©trica</h3>
+            <p>Foto capturada no momento exato da assinatura via dispositivo do usuÃ¡rio:</p>
             <div class="selfie">
-               <img src="${selfie}" alt="Foto Biométrica">
+               <img src="${selfie}" alt="Foto BiomÃ©trica">
             </div>
          </div>
          
          <div class="box">
             <h3>Autenticidade e Hash</h3>
-            <p>Este certificado comprova a assinatura digital vinculada ao documento interno através de algoritmos criptográficos (SHA-256).</p>
+            <p>Este certificado comprova a assinatura digital vinculada ao documento interno atravÃ©s de algoritmos criptogrÃ¡ficos (SHA-256).</p>
             <div class="hash">${hash}</div>
          </div>
          
          <div class="footer">
-            Documento gerado pelo sistema SISFAC 2.0 em conformidade com as diretrizes de assinatura eletrônica aplicáveis.
+            Documento gerado pelo sistema SISFAC 2.0 em conformidade com as diretrizes de assinatura eletrÃ´nica aplicÃ¡veis.
          </div>
          
          <script>
@@ -22876,16 +22876,16 @@ async function salvarStagingArea() {
          fecharModalStaging();
          if(state.abaAtiva === 'clientes') carregarClientes();
       } else {
-         alert('Erro ao salvar validações: ' + data.message);
+         alert('Erro ao salvar validaÃ§Ãµes: ' + data.message);
       }
    } catch(e) {
-      alert('Erro de comunicação');
+      alert('Erro de comunicaÃ§Ã£o');
    }
 }
 
 
 // =============================================================
-// GESTÃO DE COMPETÊNCIA MENSAL (FALTAS E COBERTURAS)
+// GESTÃƒO DE COMPETÃŠNCIA MENSAL (FALTAS E COBERTURAS)
 // =============================================================
 
 function inicializarCompetenciaFaltas() {
@@ -22915,7 +22915,7 @@ async function carregarFaltasCompetencia() {
          badge.classList.remove('hidden');
          badge.classList.add('flex');
          btnFechar.classList.add('hidden');
-         if(btnNovaFalta) btnNovaFalta.classList.add('hidden'); // Impede novas faltas no mês fechado
+         if(btnNovaFalta) btnNovaFalta.classList.add('hidden'); // Impede novas faltas no mÃªs fechado
       } else {
          badge.classList.add('hidden');
          badge.classList.remove('flex');
@@ -22923,7 +22923,7 @@ async function carregarFaltasCompetencia() {
          if(btnNovaFalta) btnNovaFalta.classList.remove('hidden');
       }
       
-      // O carregarFaltas() original lê direto do filtroFaltasMes, então só chamamos.
+      // O carregarFaltas() original lÃª direto do filtroFaltasMes, entÃ£o sÃ³ chamamos.
       carregarFaltas(); 
    } catch(e) {
       console.error(e);
@@ -22934,7 +22934,7 @@ async function fecharCompetenciaMensal() {
    const comp = document.getElementById('filtroFaltasMes').value;
    if (!comp) return;
    
-   if(!confirm('Tem certeza que deseja FECHAR O MÊS ' + comp + '\n\nIsso congelará os apontamentos e impedirá alterações retroativas!')) return;
+   if(!confirm('Tem certeza que deseja FECHAR O MÃŠS ' + comp + '\n\nIsso congelarÃ¡ os apontamentos e impedirÃ¡ alteraÃ§Ãµes retroativas!')) return;
    
    const totalFaltas = document.getElementById('kpiFaltasTotal').innerText;
    const custoCoberturas = 0; // Pode ser calculado depois com kpiFinanceiroCoberturas
@@ -22969,7 +22969,7 @@ function renderizarConsolidadoCompras(modo) {
       btnC.classList.add('text-slate-500');
       btnC.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
       
-      // Lógica de agrupar por fornecedor...
+      // LÃ³gica de agrupar por fornecedor...
       // (Atualiza a tabela id="tabelaConsolidadaBody")
    } else {
       btnC.classList.add('bg-white', 'text-slate-800', 'shadow-sm');
@@ -22977,7 +22977,7 @@ function renderizarConsolidadoCompras(modo) {
       btnF.classList.add('text-slate-500');
       btnF.classList.remove('bg-white', 'text-slate-800', 'shadow-sm');
       
-      // Lógica de agrupar por cliente/posto...
+      // LÃ³gica de agrupar por cliente/posto...
    }
 }
 
@@ -23006,7 +23006,7 @@ function atualizarBarraAcoesClientes() {
 async function excluirClientesSelecionados() {
    const marcados = document.querySelectorAll('.chk-cliente:checked');
    if(marcados.length === 0) return;
-   if(!confirm('Atenção: Deseja excluir ' + marcados.length + ' cliente(s) e todos os postos vinculados a ele?')) return;
+   if(!confirm('AtenÃ§Ã£o: Deseja excluir ' + marcados.length + ' cliente(s) e todos os postos vinculados a ele?')) return;
    
    const ids = Array.from(marcados).map(c => c.value);
    try {
@@ -23083,10 +23083,11 @@ function atualizarContadoresSst() {
 
 
 function arquivarCardSst(btn) {
-   if(!confirm('Deseja arquivar este processo de integração? O colaborador sairá do painel de admissões deste mês.')) return;
+   if(!confirm('Deseja arquivar este processo de integraÃ§Ã£o? O colaborador sairÃ¡ do painel de admissÃµes deste mÃªs.')) return;
    const card = btn.closest('.bg-white.p-3');
    if(card) {
       card.remove();
       atualizarContadoresSst();
    }
 }
+
